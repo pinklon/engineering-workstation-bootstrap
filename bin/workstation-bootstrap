@@ -54,6 +54,7 @@ configure_host() {
   cp "$ROOT/config/shell.zsh" "$CONFIG_ROOT/shell.zsh"
   cp "$ROOT/config/gitconfig" "$CONFIG_ROOT/gitconfig"
   cp "$ROOT/config/ssh-config" "$CONFIG_ROOT/ssh-config"
+  # shellcheck disable=SC2016
   managed_include "$HOME/.zshrc" 'source "$HOME/.config/engineering-workstation-bootstrap/shell.zsh"'
   managed_include "$HOME/.gitconfig" '[include]'
   managed_include "$HOME/.gitconfig" '    path = ~/.config/engineering-workstation-bootstrap/gitconfig'
