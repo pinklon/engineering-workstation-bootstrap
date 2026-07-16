@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ROOT="${CODEX_BROWSER_GATE_ROOT:-$HOME/.local/share/codex-tools/browser-gate}"
+ROOT="${WORKSTATION_BOOTSTRAP_BROWSER_ROOT:-$HOME/.local/share/engineering-workstation-bootstrap/browser-gate}"
 VENV="$ROOT/venv"
 BROWSERS="$ROOT/browsers"
 mkdir -p "$ROOT" "$BROWSERS"
