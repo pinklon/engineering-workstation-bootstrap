@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="${CODEX_BROWSER_GATE_ROOT:-$HOME/.local/share/codex-tools/browser-gate}"
+PYTHON="$ROOT/venv/bin/python"
+[[ -x "$PYTHON" ]] || { printf 'Browser gate is not installed. Run workstation-bootstrap reconcile.\n' >&2; exit 1; }
+export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$ROOT/browsers}"
+printf 'Browser gate environment: managed-host\n' >&2
+exec "$PYTHON" "$@"
