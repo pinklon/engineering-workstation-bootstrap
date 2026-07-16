@@ -1,68 +1,95 @@
 # Engineering Workstation Bootstrap
 
-A governed, reproducible, idempotent, secret-free control plane for preparing engineering hosts used with SharePlane, WESS, Codex, GitHub, Cloudflare, and Playwright browser validation.
+I built this because reinstalling and reconfiguring the same development tools on every computer is tedious, inconsistent, and unnecessary.
 
-This repository turns a new or drifted workstation into a declared, validated engineering host. It automates everything that can be automated safely, pauses for authentication or privileged approval where human control is required, and produces evidence showing what succeeded, what failed, and what must happen next.
+Engineering Workstation Bootstrap is an open-source, cross-platform project for turning a new or drifted computer into a useful development environment with a small, understandable command surface. It automates everything that can be automated safely, pauses when administrator approval or authentication is required, stores no secrets, and reports exactly what worked and what still needs attention.
 
-## Current maturity
+## Status
 
-Status: **release candidate under validation**
+This project is an early release candidate.
 
-- macOS implementation: available on the draft implementation branch
-- hosted repository validation: required before merge
-- clean-host installation rehearsal: pending
-- idempotence rehearsal: pending
-- release package: implemented, not yet published
-- Linux and remote-host profiles: declared, not yet implemented
+- macOS foundation: implemented
+- repository validation: passing
+- archive packaging: implemented
+- clean-machine installation testing: pending
+- repeat-run and uninstall testing: pending
+- Windows and Linux implementations: planned
 
-Do not treat the current draft branch as a production installer until its hosted and clean-host validation gates pass.
+Do not treat the current version as a stable installer until the lifecycle tests are complete.
 
-## What this solves
+## The problem
 
-Without a control plane, workstation setup becomes a mixture of remembered commands, copied credentials, package drift, undocumented shell edits, and heroic reconstruction from terminal history. This repository replaces that with:
+Moving between computers should not mean rebuilding a development environment from memory.
 
-- declared host dependencies
-- pinned language runtimes
-- managed configuration fragments
-- guided provider authentication
-- reusable browser-validation tooling
-- declarative repository cloning
-- machine-readable readiness receipts
-- repeatable reconciliation and recovery
-- package and release automation
+Typical setup work includes:
 
-## Supported profiles
+- finding and installing package managers
+- installing Git, language runtimes, browser tools, and command-line utilities
+- editing shell and source-control configuration
+- authenticating with code hosts and cloud services
+- recreating local validation tools
+- cloning repositories
+- rediscovering the same setup mistakes on every machine
 
-| Profile | Status | Intended use |
-|---|---|---|
-| `mac-studio` | Active implementation | Primary high-capability macOS engineering host |
-| `macbook` | Active declaration | Portable macOS engineering host |
-| `linux-workstation` | Planned | Linux engineering workstation |
-| `remote-codex-host` | Planned | Remote or isolated execution host |
+This project replaces that routine with declared dependencies, guided installation, managed configuration, validation, and repeatable repair.
 
-The current executable installation path supports macOS. Unsupported profiles must fail clearly rather than claim portability through optimistic shell scripting.
+## Design principles
 
-## Prerequisites for a clean Mac
+1. Automate everything safe to automate.
+2. Keep a human in the loop where security matters.
+3. Never store credentials, tokens, private keys, or authentication state in the repository or release package.
+4. Preserve user-owned configuration.
+5. Use native platform tools rather than pretending every operating system is identical.
+6. Keep tools pluggable so they can be added, replaced, deprecated, or removed.
+7. Keep application-specific dependencies inside each application repository.
+8. Produce clear human output and machine-readable receipts.
+9. Test releases on clean systems, not only on mature developer machines.
 
-A new Mac needs only:
+## Who this is for
 
-- internet access
-- Terminal
-- a local administrator account
-- the administrator password
-- browser access for OAuth and MFA
+- people who work across several computers
+- developers who want reproducible setup
+- non-developers learning or supporting software development
+- independent builders and open-source maintainers
+- platform teams that need repeatable workstation setup
+- anyone tired of reinstalling the same pile of tools by hand
 
-The bootstrap handles or guides the rest.
+## What it manages
 
-## Quick start for a new Mac
+The project can manage or guide:
 
-### 1. Install Xcode Command Line Tools
+- host package installation
+- Python and Node.js runtime setup
+- shell, Git, and secure-shell configuration fragments
+- source-control authentication
+- optional cloud-provider authentication
+- browser automation and HTML validation
+- environment inventory and health checks
+- optional repository cloning
+- package construction and checksums
+- readiness receipts
+
+The default public configuration does not clone the author's private repositories. Repository cloning is optional and user-configurable.
+
+## What remains human-controlled
+
+The installer does not bypass:
+
+- administrator approval
+- multi-factor authentication
+- browser-based sign-in
+- secure-shell key decisions
+- credential enrollment
+- privileged cloud access
+- production deployment approval
+
+## Quick start on macOS
+
+### 1. Install Apple's command-line developer tools
 
 ```bash
 xcode-select -p >/dev/null 2>&1 || xcode-select --install
 ```
-
-Complete the macOS dialog and reopen Terminal when installation finishes.
 
 ### 2. Install Homebrew
 
@@ -70,310 +97,154 @@ Complete the macOS dialog and reopen Terminal when installation finishes.
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-Apply the shell initialization line printed by Homebrew.
-
-### 3. Install Git and GitHub CLI
+### 3. Install Git and the GitHub command-line client
 
 ```bash
 brew install git gh
 ```
 
-### 4. Authenticate GitHub
+### 4. Authenticate with GitHub
 
 ```bash
 gh auth login --hostname github.com --git-protocol ssh --web
 gh auth setup-git
 ```
 
-Complete browser OAuth and MFA.
-
-### 5. Clone this private repository
+### 5. Clone this repository
 
 ```bash
 mkdir -p "$HOME/Developer"
-
 gh repo clone pinklon/engineering-workstation-bootstrap \
   "$HOME/Developer/engineering-workstation-bootstrap"
-
 cd "$HOME/Developer/engineering-workstation-bootstrap"
 ```
 
-### 6. Run the guided bootstrap
+### 6. Preview or install
 
 ```bash
-bash bin/workstation-bootstrap install
+make dry-run
+make install
 ```
 
-The installer detects existing state, installs missing dependencies, configures managed fragments, guides provider enrollment, configures browser validation, clones declared repositories, and runs the workstation doctor.
+Read [the new-machine runbook](docs/NEW-MACHINE-RUNBOOK.md) before using the full installer on an important system.
 
-For the complete sequence, failure handling, and recovery path, read [`docs/NEW-MACHINE-RUNBOOK.md`](docs/NEW-MACHINE-RUNBOOK.md).
+## Command service
 
-## Existing workstation commands
-
-### Preview without mutation
+Run:
 
 ```bash
-workstation-bootstrap dry-run
+make help
 ```
 
-### Install a new workstation
+Primary commands:
 
-```bash
-workstation-bootstrap install
+```text
+make inventory     Show installed and missing capabilities
+make dry-run       Preview the bootstrap without changing the host
+make validate      Validate repository code, policy, and package output
+make doctor        Test workstation readiness
+make auth-doctor   Test configured authentication paths
+make package       Build a versioned archive and checksum
+make install       Install and configure the selected profile
+make reconcile     Repair declared workstation state
 ```
 
-### Reconcile drift
+The command surface is intentionally small. Users should not need to reverse-engineer shell scripts merely to operate the product, though history suggests software occasionally considers that a feature.
 
-```bash
-workstation-bootstrap reconcile
-```
+## Pluggable capabilities
 
-### Check readiness
+The project models capabilities separately from tool brands. For example:
 
-```bash
-workstation-bootstrap status
-workstation-doctor --full
-```
+- JavaScript runtime: Node.js today, replaceable later
+- package manager: npm, pnpm, Yarn, or another provider
+- formatter: Prettier, Biome, or another provider
+- container runtime: Docker, Podman, or another provider
+- cloud command-line client: enabled only when a profile needs it
 
-### Validate individual planes
+See [Pluggability](docs/PLUGGABILITY.md).
 
-```bash
-github-auth-doctor
-cloudflare-auth-doctor
-browser-gate-python -c 'import playwright; print("Playwright import OK")'
-```
+## Web-development profile
 
-## What is automated
+The web-development guidance covers common modern needs without forcing every tool globally onto the host:
 
-- Xcode Command Line Tools detection
-- Homebrew installation handoff
-- host dependency installation from `Brewfile`
-- Python and Node runtime installation from `mise.toml`
-- managed shell, Git, and SSH fragments
-- `~/bin` command wrappers
-- GitHub CLI enrollment and verification
-- GitHub SSH key creation and registration when needed
-- Cloudflare Wrangler enrollment and verification
-- persistent Playwright virtual environment
-- persistent Chromium browser cache
-- declarative repository cloning
-- human-readable readiness output
-- JSON readiness receipts
-- package construction and checksums
-- repository validation and secret scanning
+- TypeScript and JavaScript runtimes
+- source formatting and linting
+- unit and browser testing
+- accessibility checks
+- local HTML preview
+- browser automation
+- development containers
+- continuous-integration validation
 
-## What remains human-controlled
-
-The bootstrap does not bypass security boundaries. Human interaction remains required for:
-
-- macOS administrator approval
-- GitHub OAuth, MFA, and access approval
-- Cloudflare OAuth, MFA, and access approval
-- SSH key passphrase selection
-- provider-side privileged approval
-- production deployment authorization
-- credential rotation or revocation
-
-## Authentication planes
-
-Authentication is deliberately separated:
-
-| Plane | Mechanism | Validation |
-|---|---|---|
-| Local GitHub CLI | macOS credential store through `gh auth login` | `gh auth status`, `gh api user` |
-| Git transport | SSH private key and agent or Keychain | `ssh -T git@github.com` |
-| Connected GitHub application | application-managed installation token | validated by the connected application |
-| GitHub Actions | workflow token, environment secret, or GitHub App | workflow-specific validation |
-| Cloudflare interactive host | Wrangler OAuth | `wrangler whoami` |
-| Cloudflare headless automation | narrowly scoped CI secret | workflow-specific validation |
-
-A working connected application does not prove local `gh` or SSH health. A working `gh` login does not prove Cloudflare access. Details are in [`docs/AUTHENTICATION-PLANES.md`](docs/AUTHENTICATION-PLANES.md).
+Project-specific versions stay in project lockfiles. See [Web development](docs/WEB-DEVELOPMENT.md).
 
 ## Configuration ownership
 
-The bootstrap does not blindly overwrite user configuration. Managed content lives under:
+Managed configuration lives under:
 
 ```text
 ~/.config/engineering-workstation-bootstrap/
+~/.local/share/engineering-workstation-bootstrap/
+~/.local/state/engineering-workstation-bootstrap/
 ```
 
-User-owned files receive stable include or source entries:
+User-owned files receive narrow include or source entries rather than wholesale replacement.
 
-```text
-~/.zshrc
-~/.gitconfig
-~/.ssh/config
-```
+## Security boundary
 
-Shared browser tooling lives under:
+Never commit or package:
 
-```text
-~/.local/share/codex-tools/browser-gate/
-```
+- access tokens
+- private keys
+- authentication caches
+- password-manager exports
+- environment files containing secrets
+- cloud-provider credentials
+- production secrets
 
-Readiness receipts live under:
-
-```text
-~/.local/state/engineering-workstation-bootstrap/receipts/
-```
-
-## Declared repositories
-
-The initial manifest can clone:
-
-- `pinklon/pinklon-shareplane-next`
-- `pinklon/wess-service-experience-and-knowledge`
-- `pinklon/skills`
-
-Repository declarations are maintained in [`manifests/repositories.txt`](manifests/repositories.txt). Product dependencies remain owned by each product repository. This bootstrap supplies the host platform, not a global dependency casserole.
+A healthy login for one service does not prove every other authentication path works. Each service is validated separately.
 
 ## Packaging
 
-The v1 distribution format is a deterministic tar archive plus checksum:
+The current package format is:
 
 ```text
 engineering-workstation-bootstrap-<version>.tar.gz
 engineering-workstation-bootstrap-<version>.tar.gz.sha256
 ```
 
-Build locally:
+Build it with:
 
 ```bash
 make package VERSION=0.1.0-rc1
 ```
 
-Verify:
-
-```bash
-shasum -a 256 -c \
-  dist/engineering-workstation-bootstrap-0.1.0-rc1.tar.gz.sha256
-```
-
-A tag-triggered GitHub workflow can publish the archive and checksum as release assets after the release process is authorized. No package is currently published. See [`docs/PACKAGE-INSTALLATION.md`](docs/PACKAGE-INSTALLATION.md).
-
-A signed and notarized macOS `.pkg` is a later distribution tier. It should follow stable install, upgrade, rollback, uninstall, privilege, signing, and notarization contracts rather than wrapping immature assumptions in a handsome box.
-
-## Validation model
-
-Repository validation checks:
-
-- Bash syntax
-- ShellCheck findings
-- accidental credential material
-- executable placeholder paths
-- bootstrap dry-run behavior
-- deterministic package creation
-- package checksum verification
-- package contents
-
-Run locally:
-
-```bash
-make validate
-```
-
-The full workstation doctor validates:
-
-- supported host
-- Homebrew
-- Git
-- GitHub CLI
-- Python
-- Node
-- Wrangler
-- managed shell configuration
-- GitHub CLI, API, and SSH access
-- Cloudflare access
-- Playwright import
-- Chromium headless launch
-
-## Receipts
-
-Doctor runs create JSON receipts containing:
-
-- generation timestamp
-- selected profile
-- overall result
-- each validation check and status
-
-Receipts provide evidence for troubleshooting, workstation comparison, and future audit or recovery workflows. They must never contain credentials.
-
-## Security boundary
-
-Never commit or package:
-
-- GitHub tokens
-- Cloudflare tokens
-- OAuth stores
-- SSH private keys
-- Keychain exports
-- `.env` credentials
-- Wrangler credential state
-- production secrets
-
-Never solve an isolated authentication failure by globally exporting a broad personal access token. Repair the failed plane specifically.
-
-## Failure behavior
-
-The bootstrap is designed to fail with an exact remediation when it cannot proceed. It must not:
-
-- silently skip required dependencies
-- terminate the caller's interactive shell
-- install into a product repository
-- mutate production services
-- overwrite user configuration without managed boundaries
-- treat one healthy authentication plane as proof that all planes are healthy
-
-## Upgrade, rollback, and recovery
-
-Routine drift repair:
-
-```bash
-workstation-bootstrap reconcile
-workstation-doctor --full
-```
-
-Package-based upgrades must preserve user-owned files and managed state boundaries. Rollback should restore the prior package version and rerun the doctor. Detailed upgrade, rollback, and uninstall contracts remain part of release hardening before a stable package is published.
-
-## Repository structure
-
-```text
-.
-├── Brewfile
-├── Makefile
-├── README.md
-├── install.sh
-├── mise.toml
-├── bin/
-├── bootstrap/
-├── config/
-├── docs/
-├── manifests/
-├── packaging/
-├── validation/
-└── .github/workflows/
-```
+Future distribution targets include Homebrew, Windows Package Manager, Debian packages, RPM packages, containers, and signed native installers.
 
 ## Documentation
 
-- [New machine runbook](docs/NEW-MACHINE-RUNBOOK.md)
-- [Authentication planes](docs/AUTHENTICATION-PLANES.md)
-- [Package installation](docs/PACKAGE-INSTALLATION.md)
-- [Release workflow](docs/RELEASE-WORKFLOW.md)
-
-Additional operational guides should cover architecture, configuration ownership, provider setup, browser validation, testing, troubleshooting, upgrade, rollback, uninstall, and contribution standards before the first stable release.
+- [Product statement](PRODUCT.md)
+- [New-machine runbook](docs/NEW-MACHINE-RUNBOOK.md)
+- [Command service](docs/COMMAND-SERVICE.md)
+- [Authentication boundaries](docs/AUTHENTICATION-PLANES.md)
+- [Pluggability](docs/PLUGGABILITY.md)
+- [Web-development guidance](docs/WEB-DEVELOPMENT.md)
+- [Packaging and distribution](docs/PACKAGING-AND-DISTRIBUTION.md)
 
 ## Release gates
 
 A stable release requires:
 
-1. exact-head hosted validation passes
-2. package build and checksum validation passes
-3. clean macOS host installation passes
-4. a second reconcile run proves idempotence
-5. GitHub, Cloudflare, SSH, and browser doctors pass
-6. rollback and uninstall behavior is tested
-7. documentation matches actual behavior
-8. no credentials or production mutations occur
+1. validation on an exact source revision
+2. package and checksum verification
+3. installation on a clean supported system
+4. a second run proving repeatability
+5. authentication and browser checks
+6. upgrade, rollback, and uninstall testing
+7. proof that user configuration is preserved
+8. documentation that matches observed behavior
+9. confirmation that no secrets are captured
 
-Until those gates pass, this repository remains a controlled release candidate rather than a magical one-command cure for every workstation humanity has ever misconfigured.
+## Public-release rule
+
+Examples and defaults must remain general. Personal repositories, private project names, internal acronyms, private service identifiers, and organization-specific configuration do not belong in the public default package.
