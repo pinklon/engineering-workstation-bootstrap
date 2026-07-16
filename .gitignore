@@ -6,6 +6,7 @@ receipts/*.json
 .local/
 .wrangler/
 node_modules/
+dist/
 *.pem
 *.key
 id_rsa*
