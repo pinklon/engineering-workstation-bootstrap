@@ -3,5 +3,5 @@ python = "3.13"
 node = "22"
 
 [env]
-PLAYWRIGHT_BROWSERS_PATH = "{{env.HOME}}/.local/share/codex-tools/browser-gate/browsers"
-CODEX_BROWSER_GATE_ROOT = "{{env.HOME}}/.local/share/codex-tools/browser-gate"
+PLAYWRIGHT_BROWSERS_PATH = "{{env.HOME}}/.local/share/engineering-workstation-bootstrap/browser-gate/browsers"
+WORKSTATION_BOOTSTRAP_BROWSER_ROOT = "{{env.HOME}}/.local/share/engineering-workstation-bootstrap/browser-gate"
