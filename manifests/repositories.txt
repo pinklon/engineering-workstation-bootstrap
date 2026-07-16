@@ -1,0 +1,4 @@
+# repository|local-directory|profiles
+pinklon/pinklon-shareplane-next|shareplane-next|mac-studio,macbook
+pinklon/wess-service-experience-and-knowledge|wess-service-experience-and-knowledge|mac-studio,macbook
+pinklon/skills|skills|mac-studio,macbook
