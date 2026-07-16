@@ -1,14 +1,50 @@
 #!/usr/bin/env bash
 set -uo pipefail
+
 failures=0
-pass(){ printf 'PASS  %s\n' "$1"; }
-fail(){ printf 'FAIL  %s\n' "$1"; failures=$((failures+1)); }
+
+pass() {
+  printf 'PASS  %s\n' "$1"
+}
+
+fail() {
+  printf 'FAIL  %s\n' "$1"
+  failures=$((failures + 1))
+}
+
 for variable in GH_TOKEN GITHUB_TOKEN GH_CONFIG_DIR; do
-  [[ -n "${!variable:-}" ]] && printf 'WARN  %s is set\n' "$variable" || pass "$variable is unset"
+  if [[ -n "${!variable:-}" ]]; then
+    printf 'WARN  %s is set\n' "$variable"
+  else
+    pass "$variable is unset"
+  fi
 done
-gh auth status --hostname github.com >/dev/null 2>&1 && pass 'GitHub CLI authentication' || fail 'GitHub CLI authentication'
-gh api user >/dev/null 2>&1 && pass 'GitHub API identity' || fail 'GitHub API identity'
+
+if gh auth status --hostname github.com >/dev/null 2>&1; then
+  pass 'GitHub CLI authentication'
+else
+  fail 'GitHub CLI authentication'
+fi
+
+if gh api user >/dev/null 2>&1; then
+  pass 'GitHub API identity'
+else
+  fail 'GitHub API identity'
+fi
+
 output="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1)" || true
-[[ "$output" == *'successfully authenticated'* && "$output" == *'does not provide shell access'* ]] && pass 'Git SSH authentication' || { fail 'Git SSH authentication'; printf '      %s\n' "$output"; }
-(( failures == 0 )) && { printf '\nRESULT: authentication is healthy\n'; exit 0; }
-printf '\nRESULT: authentication is not fully healthy\n'; exit 1
+
+if [[ "$output" == *'successfully authenticated'* && "$output" == *'does not provide shell access'* ]]; then
+  pass 'Git SSH authentication'
+else
+  fail 'Git SSH authentication'
+  printf '      %s\n' "$output"
+fi
+
+if (( failures == 0 )); then
+  printf '\nRESULT: authentication is healthy\n'
+  exit 0
+fi
+
+printf '\nRESULT: authentication is not fully healthy\n'
+exit 1
