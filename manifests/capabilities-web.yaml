@@ -1,0 +1,89 @@
+schema_version: 1
+profile: web-development
+
+capabilities:
+  node-runtime:
+    classification: required
+    provider: node
+    version_source: mise
+    validation: node --version
+
+  node-package-manager:
+    classification: required
+    default_provider: npm
+    selectable_providers:
+      - npm
+      - pnpm
+      - yarn
+    project_version_source: package.json#packageManager
+    policy: project-owned
+
+  browser-automation:
+    classification: required
+    provider: playwright
+    installation_scope: managed-host
+    validation: browser-gate-python -c 'import playwright'
+
+  html-live-preview:
+    classification: recommended
+    default_provider: microsoft-live-preview
+    alternatives: []
+    installation_scope: editor-extension
+
+  local-https:
+    classification: recommended
+    default_provider: mkcert
+    installation_scope: host
+
+  formatter:
+    classification: project-selected
+    selectable_providers:
+      - prettier
+      - biome
+    installation_scope: project
+
+  javascript-linter:
+    classification: project-selected
+    selectable_providers:
+      - eslint
+      - biome
+    installation_scope: project
+
+  type-checker:
+    classification: project-selected
+    selectable_providers:
+      - typescript
+    installation_scope: project
+
+  unit-test-runner:
+    classification: project-selected
+    selectable_providers:
+      - vitest
+      - jest
+    installation_scope: project
+
+  accessibility-testing:
+    classification: recommended
+    selectable_providers:
+      - axe-core
+      - playwright-accessibility
+    installation_scope: project
+
+  performance-testing:
+    classification: optional
+    selectable_providers:
+      - lighthouse-ci
+    installation_scope: project
+
+  container-runtime:
+    classification: optional
+    selectable_providers:
+      - docker-desktop
+      - colima
+      - podman
+    installation_scope: host
+
+  cloudflare-development:
+    classification: optional
+    provider: wrangler
+    installation_scope: host
