@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+printf 'ENGINEERING ENVIRONMENT INVENTORY\n\n'
+
+printf 'Host\n'
+printf '  OS: %s\n' "$(uname -s 2>/dev/null || printf unknown)"
+printf '  Architecture: %s\n' "$(uname -m 2>/dev/null || printf unknown)"
+printf '  Shell: %s\n\n' "${SHELL:-unknown}"
+
+check_tool() {
+  local classification="$1"
+  local tool="$2"
+  local description="$3"
+
+  if command -v "$tool" >/dev/null 2>&1; then
+    printf 'FOUND   %-11s %-18s %s\n' "$classification" "$tool" "$description"
+  else
+    printf 'MISSING %-11s %-18s %s\n' "$classification" "$tool" "$description"
+  fi
+}
+
+check_tool required git 'source control'
+check_tool required gh 'GitHub command-line client'
+check_tool required jq 'JSON processing'
+check_tool required yq 'YAML processing'
+check_tool required rg 'repository search'
+check_tool required mise 'runtime version management'
+check_tool required python3 'Python runtime'
+check_tool required node 'Node.js runtime'
+check_tool required shellcheck 'shell static analysis'
+check_tool recommended shfmt 'shell formatting'
+check_tool recommended actionlint 'GitHub Actions validation'
+check_tool recommended gitleaks 'secret scanning'
+check_tool recommended pre-commit 'local validation hooks'
+check_tool recommended delta 'readable Git diffs'
+check_tool recommended fzf 'fuzzy search'
+check_tool recommended zoxide 'directory navigation'
+check_tool recommended fd 'file discovery'
+check_tool recommended uv 'Python project and package tooling'
+check_tool optional docker 'container runtime'
+check_tool optional wrangler 'Cloudflare command-line client'
+check_tool optional code 'Visual Studio Code command-line client'
+
+printf '\nThis inventory is advisory. Effective requirements are selected by platform, profile, and future user overrides.\n'
