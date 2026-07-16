@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -uo pipefail
+if ! command -v wrangler >/dev/null 2>&1; then
+  printf 'FAIL  Wrangler is not installed\n'; exit 1
+fi
+if wrangler whoami >/dev/null 2>&1; then
+  printf 'PASS  Wrangler installed\nPASS  Cloudflare authentication\nRESULT: Cloudflare read access is healthy\n'
+  exit 0
+fi
+printf 'PASS  Wrangler installed\nFAIL  Cloudflare authentication\nREMEDIATION: run wrangler login and complete browser OAuth/MFA.\n'
+exit 1
