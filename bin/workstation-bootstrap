@@ -3,10 +3,11 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:-install}"
-PROFILE="${WORKSTATION_PROFILE:-mac-studio}"
+PROFILE="${WORKSTATION_PROFILE:-macos-desktop}"
 CONFIG_ROOT="${HOME}/.config/engineering-workstation-bootstrap"
-TOOL_ROOT="${HOME}/.local/share/codex-tools"
+TOOL_ROOT="${HOME}/.local/share/engineering-workstation-bootstrap"
 RECEIPT_ROOT="${HOME}/.local/state/engineering-workstation-bootstrap/receipts"
+ENABLE_CLOUDFLARE="${ENABLE_CLOUDFLARE:-0}"
 
 log() { printf '%s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -14,7 +15,7 @@ need_human() { printf '\nACTION REQUIRED: %s\n' "$*"; }
 
 install_xcode_tools() {
   xcode-select -p >/dev/null 2>&1 && return 0
-  need_human "Install Xcode Command Line Tools in the macOS dialog, then rerun this command."
+  need_human "Install Apple's command-line developer tools in the macOS dialog, then rerun this command."
   xcode-select --install || true
   exit 10
 }
@@ -31,7 +32,9 @@ install_packages() {
   log "Installing declared host packages..."
   brew bundle --file "$ROOT/Brewfile"
   command -v mise >/dev/null 2>&1 && mise install --cd "$ROOT"
-  npm install --global wrangler
+  if [[ "$ENABLE_CLOUDFLARE" == "1" ]]; then
+    npm install --global wrangler
+  fi
 }
 
 managed_include() {
@@ -61,27 +64,30 @@ configure_host() {
   mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
   managed_include "$HOME/.ssh/config" 'Include ~/.config/engineering-workstation-bootstrap/ssh-config'
   chmod 600 "$HOME/.ssh/config"
-  for tool in workstation-bootstrap workstation-doctor github-auth-doctor cloudflare-auth-doctor browser-gate-python; do write_wrapper "$tool"; done
+  for tool in workstation-bootstrap workstation-doctor github-auth-doctor cloudflare-auth-doctor browser-gate-python environment-inventory; do
+    write_wrapper "$tool"
+  done
 }
 
 enroll_github() {
   if ! gh auth status --hostname github.com >/dev/null 2>&1; then
-    need_human "Complete GitHub browser OAuth and MFA."
+    need_human "Complete GitHub browser sign-in and multi-factor authentication."
     gh auth login --hostname github.com --git-protocol ssh --web
   fi
-  ssh -G git@github.com >/dev/null 2>&1 || die "SSH client configuration is invalid."
+  ssh -G git@github.com >/dev/null 2>&1 || die "Secure-shell client configuration is invalid."
   if ! find "$HOME/.ssh" -maxdepth 1 -name '*.pub' -print -quit | grep -q .; then
     local key="$HOME/.ssh/id_ed25519_github"
-    need_human "Create the GitHub SSH key. You may accept the default passphrase prompt."
+    need_human "Create a GitHub secure-shell key. You may choose a passphrase at the prompt."
     ssh-keygen -t ed25519 -f "$key" -C "$(gh api user --jq .login)@$(scutil --get ComputerName 2>/dev/null || hostname)"
     gh ssh-key add "$key.pub" --title "$(scutil --get ComputerName 2>/dev/null || hostname)-$(date +%Y-%m-%d)"
   fi
   gh auth setup-git
 }
 
-enroll_cloudflare() {
+enroll_optional_cloud_provider() {
+  [[ "$ENABLE_CLOUDFLARE" == "1" ]] || return 0
   if ! wrangler whoami >/dev/null 2>&1; then
-    need_human "Complete Cloudflare browser OAuth and MFA. No deployment will occur."
+    need_human "Complete optional Cloudflare browser sign-in. No deployment will occur."
     wrangler login
   fi
 }
@@ -94,7 +100,7 @@ case "$MODE" in
   install)
     [[ "$(uname -s)" == "Darwin" ]] || die "install currently supports macOS."
     install_xcode_tools; install_homebrew; install_packages; configure_host
-    enroll_github; enroll_cloudflare; configure_browser_gate; clone_repositories; run_doctor
+    enroll_github; enroll_optional_cloud_provider; configure_browser_gate; clone_repositories; run_doctor
     ;;
   reconcile)
     install_homebrew; install_packages; configure_host; configure_browser_gate; clone_repositories; run_doctor
@@ -102,7 +108,10 @@ case "$MODE" in
   status) run_doctor ;;
   dry-run)
     log "Profile: $PROFILE"
-    log "Would install declared dependencies, configure managed fragments, enroll providers, configure browser gate, clone repositories, and validate."
+    log "Would install declared dependencies, configure managed fragments, enroll required services, configure browser validation, optionally clone repositories, and validate."
+    if [[ "$ENABLE_CLOUDFLARE" == "1" ]]; then
+      log "Optional Cloudflare support is enabled."
+    fi
     ;;
   *) die "Usage: workstation-bootstrap {install|reconcile|status|dry-run}" ;;
 esac

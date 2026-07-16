@@ -10,7 +10,7 @@ The command service is the public operating surface for Engineering Workstation 
 - Commands never require placeholder paths.
 - Commands must not alter the caller's interactive shell options.
 - Commands must not use `exec` in paste-ready examples.
-- Failures identify the exact capability or authentication plane and print a remediation.
+- Failures identify the exact capability or authentication path and print a remediation.
 - Make targets are convenience aliases, not hidden alternative behavior.
 
 ## Primary Make targets
@@ -25,7 +25,7 @@ Run `make help` to display the command surface.
 | `make dry-run` | No | Preview the selected bootstrap profile |
 | `make validate` | Repository-local | Run syntax, lint, secret, placeholder, dry-run, and package checks |
 | `make doctor` | No provider mutation | Validate workstation readiness and emit a receipt |
-| `make auth-doctor` | No | Validate GitHub and Cloudflare authentication planes |
+| `make auth-doctor` | No | Validate configured authentication providers |
 | `make package` | Repository-local | Build a versioned archive and checksum under `dist/` |
 | `make install` | Yes | Run the guided first-time workstation bootstrap |
 | `make reconcile` | Yes | Repair declared workstation drift |
@@ -47,17 +47,15 @@ Default: `0.1.0-dev`.
 Selects the intended host profile.
 
 ```bash
-make dry-run WORKSTATION_PROFILE=mac-studio
+make dry-run WORKSTATION_PROFILE=macos-desktop
 ```
 
-Current declared profiles:
+Current public profiles:
 
-- `mac-studio`
-- `macbook`
-- `linux-workstation`
-- `remote-codex-host`
+- `macos-desktop`
+- `linux-workstation` (planned)
 
-Unsupported execution paths must stop clearly.
+Future profiles may be added without changing the command intent. Unsupported execution paths must stop clearly.
 
 ## Read-only operating sequence
 
@@ -72,6 +70,8 @@ make doctor
 ```
 
 A doctor can fail because a capability is missing. Failure does not imply that the diagnostic mutated the host.
+
+Optional provider checks run only when the relevant provider command-line tool is installed or selected by configuration.
 
 ## Development sequence
 
@@ -90,7 +90,7 @@ make install
 make doctor
 ```
 
-Installation may invoke package managers, write managed configuration fragments, guide OAuth or SSH enrollment, configure browser tooling, and clone declared repositories. Human approval remains required at security boundaries.
+Installation may invoke package managers, write managed configuration fragments, guide sign-in or secure-shell enrollment, configure browser tooling, and optionally clone user-declared repositories. Human approval remains required at security boundaries.
 
 ## Reconciliation sequence
 

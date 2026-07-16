@@ -1,27 +1,31 @@
 # Engineering Workstation Bootstrap
 
+## Why this exists
+
+I use more than one computer, and I do not want to reinstall and reconfigure the same development tools every time I move to another system.
+
+That problem is not unique to me. People work across desktops, laptops, remote machines, containers, and cloud environments. Every system has different package managers, runtime versions, command shells, credential stores, browser tools, and setup history. Rebuilding a useful environment by hand is repetitive, inconsistent, and easy to get wrong.
+
+Engineering Workstation Bootstrap exists to make that routine repeatable.
+
 ## Product statement
 
-Modern engineering work rarely happens on one machine. Developers, architects, operators, and creators move among macOS, Windows, Linux, local workstations, remote hosts, containers, and cloud development environments. Every system arrives with different package managers, runtime versions, shell behavior, credential stores, browser tooling, and provider authentication.
+Engineering Workstation Bootstrap is an open-source, cross-platform setup and validation system for development workstations. A user should be able to obtain the package for a supported platform, inspect what it will do, run one clear command, complete only the security-sensitive approvals, and receive a working environment with a clear readiness report.
 
-Rebuilding that environment by hand is slow, inconsistent, and error-prone. The usual process depends on remembered commands, copied setup notes, undocumented configuration edits, stale credentials, and hours of rediscovery. The result is dependency drift, fragile automation, avoidable security mistakes, and lost time before useful work can begin.
-
-Engineering Workstation Bootstrap exists to remove that friction.
-
-The product provides a cross-platform, open-source, configuration-as-code approach for turning a new or drifted system into a declared, validated engineering environment. A user should be able to obtain the package for the current platform, run one clear command, complete only the security-sensitive human approvals, and reach a working state with evidence showing exactly what was installed, configured, skipped, or blocked.
+The product automates everything safe to automate. It keeps a human in the loop for administrator approval, authentication, multi-factor verification, key management, and privileged service access. It does not store secrets in source control or release packages.
 
 ## Product promise
 
 From a supported system, a user should be able to:
 
 1. obtain the appropriate open-source package
-2. inspect what it will do
-3. run a single, understandable entry command
+2. inspect the planned changes
+3. run a small, documented command surface
 4. allow automated installation and configuration
-5. intervene only for security, privilege, OAuth, MFA, or credential approval
+5. intervene only when security or privilege requires it
 6. receive exact remediation when automation cannot continue
 7. validate the resulting environment
-8. reconcile drift later without rebuilding from memory
+8. repair drift later without rebuilding from memory
 
 The target experience is measured in minutes, not an afternoon of browser tabs and terminal archaeology.
 
@@ -29,27 +33,31 @@ The target experience is measured in minutes, not an afternoon of browser tabs a
 
 ### Automate everything safe to automate
 
-Package installation, runtime setup, configuration fragments, browser tooling, repository cloning, validation, reconciliation, receipts, packaging, and release checks should be mechanical.
+Package installation, runtime setup, managed configuration, browser tooling, optional repository cloning, validation, reconciliation, receipts, packaging, and release checks should be mechanical.
 
 ### Keep humans where security matters
 
-The product does not bypass administrator approval, MFA, OAuth consent, SSH key decisions, credential enrollment, privileged provider access, or production authorization.
+The product does not bypass administrator approval, multi-factor authentication, browser sign-in, secure-shell key decisions, credential enrollment, privileged provider access, or production authorization.
 
-### Never store secrets in the repository
+### Never store secrets
 
-Tokens, private keys, OAuth state, credential-store exports, provider secrets, and user `.env` files are outside the product source and release packages.
+Tokens, private keys, authentication state, credential-store exports, provider secrets, and user environment files containing credentials remain outside the source repository and release packages.
 
-### Be cross-platform without pretending the platforms are identical
+### Be cross-platform without pretending platforms are identical
 
-macOS, Windows, and Linux share product semantics, manifests, validation contracts, and command intent. Each platform uses native package management, scripting, credential stores, and configuration mechanisms.
+macOS, Windows, and Linux share product semantics, manifests, validation contracts, and command intent. Each platform uses its own native package management, scripting, credential storage, and configuration mechanisms.
 
-### Make every operation understandable
+### Keep tools replaceable
 
-The command service must be small, discoverable, documented, and consistent. Users should not need to read implementation code to determine how to preview, install, validate, reconcile, package, or troubleshoot the product.
+The product depends on capabilities rather than permanent allegiance to a particular tool. A runtime, formatter, package manager, container engine, editor extension, cloud client, or browser tool can be added, replaced, deprecated, or removed through declared providers and profiles.
+
+### Make operation understandable
+
+The command service must be small, discoverable, documented, and consistent. Users should not need to read implementation code to preview, install, validate, reconcile, package, or troubleshoot the product.
 
 ### Preserve user ownership
 
-The product manages explicit configuration boundaries. It must not seize entire shell, Git, SSH, editor, or provider configuration files merely because rewriting them is easier for the installer.
+The product manages explicit configuration boundaries. It must not replace an entire shell, source-control, secure-shell, editor, or provider configuration merely because overwriting it is easier.
 
 ### Produce evidence
 
@@ -57,7 +65,7 @@ Every meaningful run should report what happened and produce machine-readable re
 
 ### Fail clearly
 
-A failure must identify the broken capability or authentication plane and provide the next executable remediation. Generic messages such as “setup failed” are defects.
+A failure must identify the broken capability or authentication path and provide the next executable remediation. Generic messages such as “setup failed” are defects.
 
 ### Test outside accumulated developer machines
 
@@ -65,12 +73,12 @@ A bootstrap tested only on a mature workstation proves very little. Releases req
 
 ## Intended users
 
-- developers working across multiple operating systems
-- independent builders maintaining several machines
+- people working across multiple computers
+- developers who want reproducible setup
+- non-developers learning or supporting software development
+- independent builders and open-source maintainers
 - platform and infrastructure engineers
-- AI and automation practitioners using local and cloud execution lanes
-- open-source maintainers onboarding contributors
-- regulated or governed teams that need repeatable setup evidence
+- teams that need repeatable setup evidence
 
 ## Product scope
 
@@ -79,28 +87,41 @@ The product is responsible for:
 - host dependency declaration
 - runtime installation and version control
 - managed host configuration
-- provider authentication guidance and validation
+- authentication guidance and validation
 - browser and HTML validation tooling
-- declared repository acquisition
+- optional repository acquisition
 - environment inventory and readiness checks
 - drift reconciliation
 - package construction and release verification
 - upgrade, rollback, and uninstall contracts
 - complete operating documentation
 
-Product repositories remain responsible for their own application dependencies and lockfiles.
+Application repositories remain responsible for their own dependencies and lockfiles.
+
+## Public defaults
+
+The public package must not contain:
+
+- private repository names
+- organization-specific acronyms
+- internal service identifiers
+- personal infrastructure paths
+- company-specific configuration
+- credentials or secret material
+
+Personal customization belongs in user-owned manifests or profiles that are excluded from the public defaults.
 
 ## Platform direction
 
-The product roadmap includes:
+The roadmap includes:
 
 - macOS archive, Homebrew, and signed package distribution
-- Windows PowerShell, WinGet configuration, and packaged distribution
-- Linux archive, Debian, RPM, container, and Dev Container distribution
+- Windows PowerShell, Windows Package Manager configuration, and packaged distribution
+- Linux archive, Debian, RPM, container, and development-container distribution
 - clean-host validation across macOS, Windows, and Linux
-- a universal Dev Container and Codespaces environment
+- cloud development-environment support
 - a consistent command service across platforms
 
 ## Success criteria
 
-The product succeeds when a user can move to a supported clean system and become engineering-ready through a documented, repeatable routine with minimal manual intervention, no secret leakage, no destructive configuration replacement, and a clear readiness result.
+The product succeeds when a user can move to a supported clean system and become development-ready through a documented, repeatable routine with minimal manual intervention, no secret leakage, no destructive configuration replacement, and a clear readiness result.

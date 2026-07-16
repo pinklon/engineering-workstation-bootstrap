@@ -1,4 +1,7 @@
-# repository|local-directory|profiles
-pinklon/pinklon-shareplane-next|shareplane-next|mac-studio,macbook
-pinklon/wess-service-experience-and-knowledge|wess-service-experience-and-knowledge|mac-studio,macbook
-pinklon/skills|skills|mac-studio,macbook
+# Optional repository cloning manifest
+# Format: repository|local-directory|profiles
+#
+# Public defaults intentionally clone nothing.
+# Add repositories in a user-owned profile or uncomment and replace examples.
+#
+# example-owner/example-project|example-project|macos-desktop,macos-laptop

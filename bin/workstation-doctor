@@ -2,6 +2,7 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATE_ROOT="${HOME}/.local/state/engineering-workstation-bootstrap/receipts"
+ENABLE_CLOUDFLARE="${ENABLE_CLOUDFLARE:-0}"
 mkdir -p "$STATE_ROOT"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 JSON="$STATE_ROOT/doctor-$STAMP.json"
@@ -12,21 +13,26 @@ printf 'ENGINEERING WORKSTATION DOCTOR\n\n'
 check 'Supported host' test "$(uname -s)" = Darwin
 check 'Homebrew' command -v brew
 check 'Git' command -v git
-check 'GitHub CLI' command -v gh
+check 'GitHub command-line client' command -v gh
 check 'Python' command -v python3
-check 'Node' command -v node
-check 'Wrangler' command -v wrangler
-check 'Shell managed fragment' test -f "$HOME/.config/engineering-workstation-bootstrap/shell.zsh"
-check 'GitHub authentication doctor' bash "$ROOT/bin/github-auth-doctor"
-check 'Cloudflare authentication doctor' bash "$ROOT/bin/cloudflare-auth-doctor"
-check 'Playwright import' bash "$ROOT/bin/browser-gate-python" -c 'import playwright'
-check 'Chromium launch' bash "$ROOT/bin/browser-gate-python" -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(headless=True); b.close(); p.stop()'
+check 'Node.js' command -v node
+check 'Managed shell fragment' test -f "$HOME/.config/engineering-workstation-bootstrap/shell.zsh"
+check 'GitHub authentication' bash "$ROOT/bin/github-auth-doctor"
+if [[ "$ENABLE_CLOUDFLARE" == "1" ]]; then
+  check 'Cloudflare command-line client' command -v wrangler
+  check 'Cloudflare authentication' bash "$ROOT/bin/cloudflare-auth-doctor"
+else
+  printf 'SKIP  Optional Cloudflare capability is not enabled\n'
+  results+=("{\"name\":\"Cloudflare capability\",\"status\":\"skipped\"}")
+fi
+check 'Browser automation library' bash "$ROOT/bin/browser-gate-python" -c 'import playwright'
+check 'Headless browser launch' bash "$ROOT/bin/browser-gate-python" -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(headless=True); b.close(); p.stop()'
 {
-  printf '{"generated_at":"%s","profile":"%s","result":"%s","checks":[' "$STAMP" "${WORKSTATION_PROFILE:-mac-studio}" "$([[ $failures -eq 0 ]] && echo pass || echo fail)"
+  printf '{"generated_at":"%s","profile":"%s","result":"%s","checks":[' "$STAMP" "${WORKSTATION_PROFILE:-macos-desktop}" "$([[ $failures -eq 0 ]] && echo pass || echo fail)"
   separator=''
   for item in "${results[@]}"; do printf '%s%s' "$separator" "$item"; separator=','; done
   printf ']}\n'
 } > "$JSON"
 printf '\nReceipt: %s\n' "$JSON"
-(( failures == 0 )) && { printf 'RESULT: workstation is engineering-ready\n'; exit 0; }
+(( failures == 0 )) && { printf 'RESULT: workstation is development-ready\n'; exit 0; }
 printf 'RESULT: workstation has %d failed checks\n' "$failures"; exit 1

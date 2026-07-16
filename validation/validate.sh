@@ -26,6 +26,12 @@ if grep -RInE --exclude-dir=.git --exclude-dir=dist --exclude='validate.sh' '(/p
   exit 1
 fi
 
+printf 'Validating public-release language...\n'
+if grep -RInE --exclude-dir=.git --exclude-dir=dist --exclude='validate.sh' '(SharePlane|WESS|remote-codex-host|CODEX_BROWSER_GATE_ROOT|codex-tools|pinklon-shareplane-next|wess-service-experience-and-knowledge)' .; then
+  printf 'FAIL: private-project coupling or legacy product-specific language found.\n' >&2
+  exit 1
+fi
+
 printf 'Validating dry run...\n'
 bash bin/workstation-bootstrap dry-run
 
