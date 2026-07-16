@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -uo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+STATE_ROOT="${HOME}/.local/state/engineering-workstation-bootstrap/receipts"
+mkdir -p "$STATE_ROOT"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+JSON="$STATE_ROOT/doctor-$STAMP.json"
+failures=0
+results=()
+check(){ local name="$1"; shift; if "$@" >/dev/null 2>&1; then printf 'PASS  %s\n' "$name"; results+=("{\"name\":\"$name\",\"status\":\"pass\"}"); else printf 'FAIL  %s\n' "$name"; results+=("{\"name\":\"$name\",\"status\":\"fail\"}"); failures=$((failures+1)); fi; }
+printf 'ENGINEERING WORKSTATION DOCTOR\n\n'
+check 'Supported host' test "$(uname -s)" = Darwin
+check 'Homebrew' command -v brew
+check 'Git' command -v git
+check 'GitHub CLI' command -v gh
+check 'Python' command -v python3
+check 'Node' command -v node
+check 'Wrangler' command -v wrangler
+check 'Shell managed fragment' test -f "$HOME/.config/engineering-workstation-bootstrap/shell.zsh"
+check 'GitHub authentication doctor' "$ROOT/bin/github-auth-doctor"
+check 'Cloudflare authentication doctor' "$ROOT/bin/cloudflare-auth-doctor"
+check 'Playwright import' "$ROOT/bin/browser-gate-python" -c 'import playwright'
+check 'Chromium launch' "$ROOT/bin/browser-gate-python" -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(headless=True); b.close(); p.stop()'
+{
+  printf '{"generated_at":"%s","profile":"%s","result":"%s","checks":[' "$STAMP" "${WORKSTATION_PROFILE:-mac-studio}" "$([[ $failures -eq 0 ]] && echo pass || echo fail)"
+  local_sep=''
+  for item in "${results[@]}"; do printf '%s%s' "$local_sep" "$item"; local_sep=','; done
+  printf ']}\n'
+} > "$JSON"
+printf '\nReceipt: %s\n' "$JSON"
+(( failures == 0 )) && { printf 'RESULT: workstation is engineering-ready\n'; exit 0; }
+printf 'RESULT: workstation has %d failed checks\n' "$failures"; exit 1
