@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "ms-vscode.live-server",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-playwright.playwright",
+    "editorconfig.editorconfig",
+    "ms-vscode-remote.remote-containers",
+    "eamodio.gitlens",
+    "timonwong.shellcheck"
+  ]
+}
