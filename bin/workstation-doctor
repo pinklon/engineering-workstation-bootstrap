@@ -17,14 +17,14 @@ check 'Python' command -v python3
 check 'Node' command -v node
 check 'Wrangler' command -v wrangler
 check 'Shell managed fragment' test -f "$HOME/.config/engineering-workstation-bootstrap/shell.zsh"
-check 'GitHub authentication doctor' "$ROOT/bin/github-auth-doctor"
-check 'Cloudflare authentication doctor' "$ROOT/bin/cloudflare-auth-doctor"
-check 'Playwright import' "$ROOT/bin/browser-gate-python" -c 'import playwright'
-check 'Chromium launch' "$ROOT/bin/browser-gate-python" -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(headless=True); b.close(); p.stop()'
+check 'GitHub authentication doctor' bash "$ROOT/bin/github-auth-doctor"
+check 'Cloudflare authentication doctor' bash "$ROOT/bin/cloudflare-auth-doctor"
+check 'Playwright import' bash "$ROOT/bin/browser-gate-python" -c 'import playwright'
+check 'Chromium launch' bash "$ROOT/bin/browser-gate-python" -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(headless=True); b.close(); p.stop()'
 {
   printf '{"generated_at":"%s","profile":"%s","result":"%s","checks":[' "$STAMP" "${WORKSTATION_PROFILE:-mac-studio}" "$([[ $failures -eq 0 ]] && echo pass || echo fail)"
-  local_sep=''
-  for item in "${results[@]}"; do printf '%s%s' "$local_sep" "$item"; local_sep=','; done
+  separator=''
+  for item in "${results[@]}"; do printf '%s%s' "$separator" "$item"; separator=','; done
   printf ']}\n'
 } > "$JSON"
 printf '\nReceipt: %s\n' "$JSON"
