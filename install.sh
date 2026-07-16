@@ -4,7 +4,6 @@ set -euo pipefail
 REPO="pinklon/engineering-workstation-bootstrap"
 BRANCH="main"
 ROOT="${HOME}/.local/share/engineering-workstation-bootstrap"
-ARCHIVE="https://github.com/${REPO}/archive/refs/heads/${BRANCH}.tar.gz"
 
 printf 'Engineering Workstation Bootstrap\n\n'
 
@@ -29,4 +28,4 @@ fi
 
 rm -rf "$ROOT"
 mv "$ROOT.new/repo" "$ROOT"
-exec "$ROOT/bin/workstation-bootstrap" install "$@"
+exec bash "$ROOT/bin/workstation-bootstrap" install "$@"
