@@ -11,7 +11,7 @@ help:
 	  '  make dry-run       Preview the selected workstation profile' \
 	  '  make validate      Validate repository scripts and package output' \
 	  '  make doctor        Run the full workstation doctor' \
-	  '  make auth-doctor   Validate GitHub and Cloudflare authentication' \
+	  '  make auth-doctor   Validate configured authentication providers' \
 	  '  make package       Build archive and checksum; set VERSION=<version>' \
 	  '' \
 	  'Mutating commands:' \
@@ -19,7 +19,7 @@ help:
 	  '  make reconcile     Repair declared workstation drift' \
 	  '' \
 	  'Optional variable:' \
-	  '  WORKSTATION_PROFILE=mac-studio|macbook|linux-workstation|remote-codex-host'
+	  '  WORKSTATION_PROFILE=macos-desktop|linux-workstation'
 
 status:
 	bash bin/workstation-bootstrap status
@@ -38,8 +38,12 @@ doctor:
 
 auth-doctor:
 	@bash bin/github-auth-doctor; github_status=$$?; \
-	bash bin/cloudflare-auth-doctor; cloudflare_status=$$?; \
-	test $$github_status -eq 0 -a $$cloudflare_status -eq 0
+	if command -v wrangler >/dev/null 2>&1; then \
+	  bash bin/cloudflare-auth-doctor; cloud_status=$$?; \
+	else \
+	  printf 'SKIP  Optional Cloudflare provider is not installed\n'; cloud_status=0; \
+	fi; \
+	test $$github_status -eq 0 -a $$cloud_status -eq 0
 
 package:
 	bash packaging/build-package.sh "$${VERSION:-0.1.0-dev}"
