@@ -40,6 +40,15 @@ managed_include() {
   grep -Fqx "$line" "$target" 2>/dev/null || printf '\n%s\n' "$line" >> "$target"
 }
 
+write_wrapper() {
+  local name="$1"
+  cat > "$HOME/bin/$name" <<EOF
+#!/usr/bin/env bash
+exec bash "$ROOT/bin/$name" "\$@"
+EOF
+  chmod 755 "$HOME/bin/$name"
+}
+
 configure_host() {
   mkdir -p "$HOME/bin" "$CONFIG_ROOT" "$TOOL_ROOT" "$RECEIPT_ROOT"
   cp "$ROOT/config/shell.zsh" "$CONFIG_ROOT/shell.zsh"
@@ -51,9 +60,7 @@ configure_host() {
   mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
   managed_include "$HOME/.ssh/config" 'Include ~/.config/engineering-workstation-bootstrap/ssh-config'
   chmod 600 "$HOME/.ssh/config"
-  for tool in workstation-bootstrap workstation-doctor github-auth-doctor cloudflare-auth-doctor browser-gate-python; do
-    ln -sfn "$ROOT/bin/$tool" "$HOME/bin/$tool"
-  done
+  for tool in workstation-bootstrap workstation-doctor github-auth-doctor cloudflare-auth-doctor browser-gate-python; do write_wrapper "$tool"; done
 }
 
 enroll_github() {
@@ -61,7 +68,7 @@ enroll_github() {
     need_human "Complete GitHub browser OAuth and MFA."
     gh auth login --hostname github.com --git-protocol ssh --web
   fi
-  if ! ssh -G git@github.com >/dev/null 2>&1; then die "SSH client configuration is invalid."; fi
+  ssh -G git@github.com >/dev/null 2>&1 || die "SSH client configuration is invalid."
   if ! find "$HOME/.ssh" -maxdepth 1 -name '*.pub' -print -quit | grep -q .; then
     local key="$HOME/.ssh/id_ed25519_github"
     need_human "Create the GitHub SSH key. You may accept the default passphrase prompt."
@@ -78,39 +85,23 @@ enroll_cloudflare() {
   fi
 }
 
-configure_browser_gate() {
-  "$ROOT/bootstrap/configure-browser-gate.sh"
-}
-
-clone_repositories() {
-  "$ROOT/bootstrap/clone-repositories.sh" "$PROFILE"
-}
+configure_browser_gate() { bash "$ROOT/bootstrap/configure-browser-gate.sh"; }
+clone_repositories() { bash "$ROOT/bootstrap/clone-repositories.sh" "$PROFILE"; }
+run_doctor() { bash "$ROOT/bin/workstation-doctor" --full; }
 
 case "$MODE" in
   install)
     [[ "$(uname -s)" == "Darwin" ]] || die "install currently supports macOS."
-    install_xcode_tools
-    install_homebrew
-    install_packages
-    configure_host
-    enroll_github
-    enroll_cloudflare
-    configure_browser_gate
-    clone_repositories
-    "$ROOT/bin/workstation-doctor" --full
+    install_xcode_tools; install_homebrew; install_packages; configure_host
+    enroll_github; enroll_cloudflare; configure_browser_gate; clone_repositories; run_doctor
     ;;
   reconcile)
-    install_homebrew
-    install_packages
-    configure_host
-    configure_browser_gate
-    clone_repositories
-    "$ROOT/bin/workstation-doctor" --full
+    install_homebrew; install_packages; configure_host; configure_browser_gate; clone_repositories; run_doctor
     ;;
-  status) exec "$ROOT/bin/workstation-doctor" --full ;;
+  status) run_doctor ;;
   dry-run)
     log "Profile: $PROFILE"
-    log "Would install Brewfile and mise.toml dependencies, configure managed fragments, enroll providers, configure browser gate, clone declared repositories, and validate."
+    log "Would install declared dependencies, configure managed fragments, enroll providers, configure browser gate, clone repositories, and validate."
     ;;
   *) die "Usage: workstation-bootstrap {install|reconcile|status|dry-run}" ;;
 esac
