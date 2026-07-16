@@ -1,0 +1,28 @@
+name: release-package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install validation dependency
+        run: brew install shellcheck
+      - name: Validate
+        run: bash validation/validate.sh
+      - name: Build package
+        run: bash packaging/build-package.sh "${GITHUB_REF_NAME#v}"
+      - name: Publish release artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.sha256
+          generate_release_notes: true

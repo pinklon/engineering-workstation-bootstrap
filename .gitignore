@@ -1,0 +1,13 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+receipts/*.json
+.local/
+.wrangler/
+node_modules/
+dist/
+*.pem
+*.key
+id_rsa*
+id_ed25519*
