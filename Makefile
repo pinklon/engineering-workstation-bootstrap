@@ -1,4 +1,4 @@
-.PHONY: help status inventory dry-run validate doctor auth-doctor package package-drive install reconcile repair rollback
+.PHONY: help status inventory private-profile dry-run validate doctor auth-doctor package package-drive install activate reconcile repair rollback
 
 help:
 	@printf '%s\n' \
@@ -13,13 +13,15 @@ help:
 	  '  make doctor        Run the full workstation doctor' \
 	  '  make auth-doctor   Validate configured authentication providers' \
 	  '  make package       Build archive and checksum; set VERSION=<version>' \
-	  '  make package-drive Build a non-active Google Drive candidate' \
+	  '  make private-profile Generate a local, secret-free endpoint overlay' \
+	  '  make package-drive Publish with an explicit publication contract' \
 	  '' \
 	  'Mutating commands:' \
-	  '  make install       Run the guided first-time bootstrap' \
+	  '  make install       Run prerequisites, then require an activation contract' \
+	  '  make activate      Transactionally activate with ACTIVATION_CONTRACT=<file>' \
 	  '  make reconcile     Reconcile a disposable staged target only' \
 	  '  make repair        Validate and reconcile a staged target only' \
-	  '  make rollback      Remove a named staged target only' \
+	  '  make rollback      Restore a transaction with ROLLBACK_RECEIPT=<file>' \
 	  '' \
 	  'Optional variable:' \
 	  '  WORKSTATION_PROFILE=macos-desktop|linux-workstation'
@@ -29,6 +31,9 @@ status:
 
 inventory:
 	bash bin/environment-inventory
+
+private-profile:
+	bash bin/workstation-private-profile inventory --output "$${PRIVATE_PROFILE:-.local/tony-private-profile.json}"
 
 dry-run:
 	bash bin/workstation-bootstrap dry-run
@@ -52,10 +57,21 @@ package:
 	bash packaging/build-package.sh "$${VERSION:-0.1.0-dev}"
 
 package-drive:
-	bash bin/staged-workstation package-drive "$${VERSION:-0.1.0-dev}"
+	@if [ -n "$${PRIVATE_PROFILE:-}" ]; then \
+	  bash bin/workstation-publish-drive --publication-contract "$${PUBLICATION_CONTRACT:?set PUBLICATION_CONTRACT}" --version "$${VERSION:-0.1.0-dev}" --private-profile "$$PRIVATE_PROFILE"; \
+	else \
+	  bash bin/workstation-publish-drive --publication-contract "$${PUBLICATION_CONTRACT:?set PUBLICATION_CONTRACT}" --version "$${VERSION:-0.1.0-dev}"; \
+	fi
 
 install:
 	bash bin/workstation-bootstrap install
+
+activate:
+	@if [ -n "$${PRIVATE_PROFILE:-}" ]; then \
+	  bash bin/workstation-activate --activation-contract "$${ACTIVATION_CONTRACT:?set ACTIVATION_CONTRACT}" --private-profile "$$PRIVATE_PROFILE"; \
+	else \
+	  bash bin/workstation-activate --activation-contract "$${ACTIVATION_CONTRACT:?set ACTIVATION_CONTRACT}"; \
+	fi
 
 reconcile:
 	bash bin/staged-workstation reconcile
@@ -64,4 +80,4 @@ repair:
 	bash bin/staged-workstation repair
 
 rollback:
-	bash bin/staged-workstation rollback
+	@if [ -n "$${ROLLBACK_RECEIPT:-}" ]; then bash bin/workstation-rollback --receipt "$$ROLLBACK_RECEIPT"; else bash bin/workstation-rollback --latest; fi

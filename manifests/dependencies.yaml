@@ -3,7 +3,7 @@ profiles:
   public-macos:
     required: [git, gh, jq, yq, ripgrep, shellcheck, mise, python3, node]
     recommended: [gnu-tar, shfmt, actionlint, gitleaks, uv]
-  tony-private:
+  private-overlay:
     extends: public-macos
-    discovered_utilities: [yt, rp, cgh, lgh, execution-packet]
+    discovered_utilities: []
     classification: private-overlay

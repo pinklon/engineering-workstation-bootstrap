@@ -4,8 +4,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:-status}"
 STAGE_ROOT="${WORKSTATION_STAGE_ROOT:-}"
-VERSION="${2:-0.2.0-v2-staged}"
-DRIVE_ROOT="${WORKSTATION_DRIVE_ROOT:-$HOME/Library/CloudStorage/GoogleDrive-malott@gmail.com/My Drive}"
 
 require_stage() {
   [[ -n "$STAGE_ROOT" ]] || { printf 'REFUSE: set WORKSTATION_STAGE_ROOT to a disposable non-home target.\n' >&2; exit 64; }
@@ -29,24 +27,8 @@ case "$MODE" in
   repair) bash "$ROOT/validation/validate.sh"; render_stage; printf 'PASS: staged repair completed\n' ;;
   rollback) require_stage; case "$STAGE_ROOT" in /private/tmp/*|/tmp/*) rm -rf "$STAGE_ROOT";; *) printf 'REFUSE: rollback accepts only /tmp or /private/tmp staged targets.\n' >&2; exit 64;; esac; printf 'PASS: staged target removed\n' ;;
   package-drive)
-    bash "$ROOT/packaging/build-package.sh" "$VERSION"
-    candidate="$DRIVE_ROOT/Tony Workstation Bootstrap/current"
-    if ! mkdir -p "$candidate/releases" "$candidate/payloads" "$candidate/receipts" 2>/dev/null; then
-      checksum="$(awk '{print $1}' "$ROOT/dist/engineering-workstation-bootstrap-$VERSION.tar.gz.sha256")"
-      printf '{"schema_version":1,"version":"%s","sha256":"%s","destination":"%s","state":"pending-publish"}\n' "$VERSION" "$checksum" "$candidate" > "$ROOT/dist/drive-pending-publish.json"
-      printf 'PENDING: Drive is unavailable; local receipt %s\n' "$ROOT/dist/drive-pending-publish.json"
-      exit 0
-    fi
-    cp "$ROOT/dist/engineering-workstation-bootstrap-$VERSION.tar.gz" "$candidate/payloads/"
-    cp "$ROOT/dist/engineering-workstation-bootstrap-$VERSION.tar.gz.sha256" "$candidate/checksums.sha256"
-    printf '%s\n' "$VERSION" > "$candidate/VERSION"
-    printf '%s\n' 'Read README-FIRST.txt, verify checksums.sha256, then run only after explicit cutover approval.' > "$candidate/README-FIRST.txt"
-    printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' 'echo "Candidate only: verify README-FIRST.txt and checksum before an explicitly authorized cutover."' > "$candidate/START_TONY_WORKSTATION_BOOTSTRAP.command"
-    chmod 755 "$candidate/START_TONY_WORKSTATION_BOOTSTRAP.command"
-    checksum="$(awk '{print $1}' "$candidate/checksums.sha256")"
-    printf '{"schema_version":1,"version":"%s","archive":"payloads/engineering-workstation-bootstrap-%s.tar.gz","sha256":"%s","activation":"pending-explicit-cutover"}\n' "$VERSION" "$VERSION" "$checksum" > "$candidate/manifest.json"
-    cp "$candidate/manifest.json" "$candidate/receipts/pending-publish.json"
-    printf 'PASS: Drive candidate %s\n' "$candidate"
+    printf 'REFUSE: use workstation-publish-drive with an explicit publication contract.\n' >&2
+    exit 64
     ;;
   *) printf 'Usage: staged-workstation {status|reconcile|repair|rollback|package-drive}\n' >&2; exit 64 ;;
 esac

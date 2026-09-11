@@ -5,6 +5,11 @@ REPO="pinklon/engineering-workstation-bootstrap"
 BRANCH="main"
 ROOT="${HOME}/.local/share/engineering-workstation-bootstrap"
 
+[[ -f "${WORKSTATION_ACTIVATION_CONTRACT:-}" ]] || {
+  printf 'REFUSE: set WORKSTATION_ACTIVATION_CONTRACT before the installer changes live workstation state.\n' >&2
+  exit 64
+}
+
 printf 'Engineering Workstation Bootstrap\n\n'
 
 if [[ "$(uname -s)" != "Darwin" ]]; then

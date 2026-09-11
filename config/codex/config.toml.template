@@ -1,8 +1,4 @@
-# Generated into a staged target only; no tokens, OAuth caches, or live paths.
-[skills]
-discovery = "manifest-only"
-manifest = "{{STAGE_ROOT}}/manifests/skills.yaml"
-
-[mcp]
-manifest = "{{STAGE_ROOT}}/manifests/mcp.yaml"
-optional_startup = "disabled-until-enrolled"
+# Generated policy baseline. Existing unrelated Codex settings are preserved by
+# bin/render-codex-config during activation.
+approval_policy = "never"
+sandbox_mode = "workspace-write"

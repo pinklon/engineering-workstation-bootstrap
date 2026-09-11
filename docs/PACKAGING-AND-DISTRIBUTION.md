@@ -69,13 +69,35 @@ A minimal public loader could install Homebrew and GitHub CLI, authenticate the 
 
 A signed and notarized `.pkg` is appropriate only after the installation contract stabilizes. It adds Apple signing, notarization, package receipts, privileged installer behavior, and uninstall obligations. Starting there would produce a beautifully polished maintenance burden before the bootstrap contract has earned it.
 
+## Contract-bound Drive publication
+
+The publication command creates this checksum-bound layout:
+
+```text
+Tony Workstation Bootstrap/
+  current -> releases/<version>
+  releases/<version>/
+    START_TONY_WORKSTATION_BOOTSTRAP.command
+    engineering-workstation-bootstrap-<version>.tar.gz
+    manifest.json
+    checksums.sha256
+    VERSION
+    README-FIRST.txt
+    private/  # optional, ignored local profile bundle
+  receipts/
+```
+
+Publication refuses without a JSON contract whose Drive root, version, archive
+checksum, authority reference, and optional private-profile checksum match the
+inputs. An existing immutable release with different content is never replaced.
+
 ## Upgrade and rollback
 
-- `workstation-bootstrap reconcile` applies the current declared state.
-- Existing user files are not replaced wholesale.
-- Managed fragments live under `~/.config/engineering-workstation-bootstrap`.
-- Every run produces a receipt.
-- A future package version must document schema changes and any migration steps.
+- Activation prepares a versioned state and switches a stable `current` pointer.
+- Existing user files are backed up before their narrow managed boundaries change.
+- Shell integration uses one stable source line; aliases and functions live in managed fragments.
+- Every activation, doctor, rollback, and Drive publication produces a receipt.
+- `workstation-rollback --latest` restores every managed pre-state path for the active transaction.
 
 ## Security controls
 

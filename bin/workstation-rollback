@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/workstation-common.sh
+source "$ROOT/lib/workstation-common.sh"
+
+RECEIPT=''
+TARGET_HOME="$HOME"
+AUTOMATIC=0
+LATEST=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --receipt) RECEIPT="${2:-}"; shift 2 ;;
+    --home) TARGET_HOME="${2:-}"; shift 2 ;;
+    --automatic) AUTOMATIC=1; shift ;;
+    --latest) LATEST=1; shift ;;
+    *) ws_die "usage: workstation-rollback (--receipt <activation-json>|--latest) [--home <path>]" ;;
+  esac
+done
+
+ws_need jq
+[[ -d "$TARGET_HOME" ]] || ws_die "target home does not exist"
+TARGET_HOME="$(ws_real_dir "$TARGET_HOME")"
+state_root="$TARGET_HOME/.local/state/engineering-workstation-bootstrap"
+if [[ "$LATEST" == 1 ]]; then
+  [[ -z "$RECEIPT" ]] || ws_die "choose --receipt or --latest, not both"
+  [[ -f "$state_root/current-transaction" ]] || ws_die "there is no active transaction marker"
+  latest_transaction="$(sed -n '1p' "$state_root/current-transaction")"
+  RECEIPT="$state_root/receipts/activation-$latest_transaction.json"
+fi
+[[ -f "$RECEIPT" ]] || ws_die "activation receipt is required"
+[[ "$(jq -r '.targetHome // empty' "$RECEIPT")" == "$TARGET_HOME" ]] || ws_die "receipt targetHome mismatch"
+transaction_id="$(jq -r '.transactionId // empty' "$RECEIPT")"
+[[ -n "$transaction_id" ]] || ws_die "receipt has no transactionId"
+manifest="$(jq -r '.backupManifest // empty' "$RECEIPT")"
+[[ -f "$manifest" ]] || ws_die "backup manifest is missing"
+
+share_root="$TARGET_HOME/.local/share/engineering-workstation-bootstrap"
+lock="$state_root/activation.lock"
+if [[ "$AUTOMATIC" == 0 ]]; then
+  mkdir "$lock" 2>/dev/null || ws_die "another activation or rollback holds $lock"
+  trap 'rmdir "$lock" 2>/dev/null || true' EXIT
+fi
+
+if [[ -f "$state_root/current-transaction" ]]; then
+  [[ "$(sed -n '1p' "$state_root/current-transaction")" == "$transaction_id" ]] || ws_die "receipt is not the active transaction"
+elif [[ "$AUTOMATIC" == 0 ]]; then
+  ws_die "there is no active transaction marker"
+fi
+
+mapfile_path="$(mktemp)"
+jq -r '.paths | reverse[] | [.relativePath,.originalType,.backupRelative] | @tsv' "$manifest" > "$mapfile_path"
+while IFS=$'\t' read -r relative original_type backup_relative; do
+  ws_assert_relative_path "$relative"
+  live="$TARGET_HOME/$relative"
+  backup="$(dirname "$manifest")/$backup_relative"
+  ws_remove_exact_path "$TARGET_HOME" "$live"
+  if [[ "$original_type" != absent ]]; then
+    [[ -L "$backup" || -e "$backup" ]] || ws_die "backup payload is missing for $relative"
+    mkdir -p "$(dirname "$live")"
+    mv "$backup" "$live"
+  fi
+done < "$mapfile_path"
+rm -f "$mapfile_path"
+
+ws_remove_exact_path "$TARGET_HOME" "$share_root/current"
+previous_current="$(jq -r '.previousCurrent // empty' "$RECEIPT")"
+if [[ -n "$previous_current" ]]; then
+  ln -s "$previous_current" "$share_root/current"
+fi
+previous_transaction="$(jq -r '.previousTransaction // empty' "$RECEIPT")"
+if [[ -n "$previous_transaction" ]]; then
+  printf '%s\n' "$previous_transaction" > "$state_root/current-transaction"
+else
+  rm -f "$state_root/current-transaction"
+fi
+
+rollback_receipt="$state_root/receipts/rollback-$transaction_id.json"
+jq -n --arg transactionId "$transaction_id" --arg targetHome "$TARGET_HOME" \
+  --arg activationReceipt "$RECEIPT" --arg completedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '{schemaVersion:1,transactionId:$transactionId,targetHome:$targetHome,activationReceipt:$activationReceipt,
+    status:"rolled-back",completedAt:$completedAt,restoredAllManagedPaths:true,secretValues:false}' > "$rollback_receipt"
+receipt_tmp="$RECEIPT.tmp"
+jq --arg rollbackReceipt "$rollback_receipt" --arg rolledBackAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '.status="rolled-back" | .rollbackReceipt=$rollbackReceipt | .rolledBackAt=$rolledBackAt' "$RECEIPT" > "$receipt_tmp"
+mv "$receipt_tmp" "$RECEIPT"
+printf 'PASS: restored transaction %s\nReceipt: %s\n' "$transaction_id" "$rollback_receipt"
