@@ -14,8 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install validation dependency
-        run: brew install shellcheck
+      - name: Install validation dependencies
+        run: brew install shellcheck ripgrep
 
       - name: Validate repository
         id: validate
