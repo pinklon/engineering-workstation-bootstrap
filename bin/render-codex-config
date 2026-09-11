@@ -39,7 +39,8 @@ awk -v optional_file="$optional" '
     close(optional_file)
     section = ""
     print "# Managed routine-execution posture; high-risk stops remain in AGENTS.md."
-    print "approval_policy = \"never\""
+    print "approval_policy = \"on-request\""
+    print "approvals_reviewer = \"auto_review\""
     print "sandbox_mode = \"workspace-write\""
   }
   function mcp_name(header, value) {
@@ -63,6 +64,9 @@ awk -v optional_file="$optional" '
     next
   }
   section == "" && /^[[:space:]]*approval_policy[[:space:]]*=/ {
+    next
+  }
+  section == "" && /^[[:space:]]*approvals_reviewer[[:space:]]*=/ {
     next
   }
   section == "" && /^[[:space:]]*sandbox_mode[[:space:]]*=/ {

@@ -68,7 +68,8 @@ else
   done
   check 'Managed Codex config' test -L "$TARGET_HOME/.codex/config.toml"
   check 'Managed Codex instructions' test -L "$TARGET_HOME/.codex/AGENTS.md"
-  check 'Routine execution policy' rg -q '^approval_policy = "never"$' "$TARGET_HOME/.codex/config.toml"
+  check 'Routine execution policy' rg -q '^approval_policy = "on-request"$' "$TARGET_HOME/.codex/config.toml"
+  check 'Automatic routine approval review' rg -q '^approvals_reviewer = "auto_review"$' "$TARGET_HOME/.codex/config.toml"
   check 'Workspace sandbox policy' rg -q '^sandbox_mode = "workspace-write"$' "$TARGET_HOME/.codex/config.toml"
   # shellcheck disable=SC2016
   check 'No routine confirmation gate' sh -c '! rg -n "Await explicit user confirmation|confirm plan|may I proceed" "$1"' sh "$TARGET_HOME/.codex/AGENTS.md"

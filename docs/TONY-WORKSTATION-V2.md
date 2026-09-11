@@ -39,11 +39,11 @@ standalone skills. Duplicate names are canonicalized during inventory.
 
 ## Codex and optional MCP state
 
-The renderer preserves unrelated existing Codex settings, sets routine execution
-to `approval_policy = "never"` inside the workspace sandbox, and installs the
-managed global instructions. Those instructions permit already-authorized routine
-work while retaining explicit stops for destructive, credential, permission,
-production/public-release, settings, and unresolved semantic boundaries.
+The renderer preserves unrelated existing Codex settings and routes routine
+workspace-sandbox approval requests through Codex automatic review. The managed
+global instructions permit already-authorized routine work while retaining
+explicit stops for destructive, credential, permission, production/public-release,
+settings, and unresolved semantic boundaries.
 
 An unhealthy optional MCP is rendered with `enabled = false` and `auth-required`
 state in the private profile. Its URL, bearer-token environment-variable name,

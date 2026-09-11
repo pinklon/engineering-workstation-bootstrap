@@ -7,7 +7,7 @@ fixture_home="$tmp/home"
 mkdir -p "$fixture_home/.codex/skills/legacy/layers/00" "$fixture_home/.agents/skills" "$fixture_home/bin" "$tmp/source-skill/layers/00"
 fixture_home="$(cd "$fixture_home" && pwd -P)"
 printf '%s\n' '# user-owned-start' 'export USER_SETTING=preserved' > "$fixture_home/.zshrc"
-printf '%s\n' 'model = "fixture-model"' '' '[mcp_servers."supabase-fixture"]' 'url = "https://example.invalid/mcp"' 'bearer_token_env_var = "SUPABASE_ACCESS_TOKEN"' 'enabled = true' > "$fixture_home/.codex/config.toml"
+printf '%s\n' 'model = "fixture-model"' 'approvals_reviewer = "user"' '' '[mcp_servers."supabase-fixture"]' 'url = "https://example.invalid/mcp"' 'bearer_token_env_var = "SUPABASE_ACCESS_TOKEN"' 'enabled = true' > "$fixture_home/.codex/config.toml"
 printf '%s\n' '---' 'name: legacy' 'description: fixture' '---' > "$fixture_home/.codex/skills/legacy/SKILL.md"
 printf '%s\n' '# invalid internal layer' > "$fixture_home/.codex/skills/legacy/layers/00/SKILL.md"
 printf '%s\n' '---' 'name: layered-fixture' 'description: fixture layered skill' '---' '# fixture' > "$tmp/source-skill/SKILL.md"
@@ -56,6 +56,7 @@ test "$(jq -r '.paths | length' "$(jq -r .backupManifest "$activation_one")")" -
 test "$(grep -Fxc "source \"\$HOME/.config/engineering-workstation-bootstrap/shell.zsh\"" "$fixture_home/.zshrc")" = 1
 rg -q '^export USER_SETTING=preserved$' "$fixture_home/.zshrc"
 rg -q '^model = "fixture-model"$' "$fixture_home/.codex/config.toml"
+test "$(grep -Fxc 'approvals_reviewer = "auto_review"' "$fixture_home/.codex/config.toml")" = 1
 rg -q '^bearer_token_env_var = "SUPABASE_ACCESS_TOKEN"$' "$fixture_home/.codex/config.toml"
 awk '/^\[mcp_servers\."supabase-fixture"\]/{inside=1;next} /^\[/{inside=0} inside && /^enabled = false$/{found=1} END{exit(found?0:1)}' "$fixture_home/.codex/config.toml"
 test -x "$fixture_home/bin/reasonpack"
