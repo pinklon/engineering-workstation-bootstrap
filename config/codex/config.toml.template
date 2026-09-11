@@ -1,0 +1,5 @@
+# Generated policy baseline. Existing unrelated Codex settings are preserved by
+# bin/render-codex-config during activation.
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+sandbox_mode = "workspace-write"

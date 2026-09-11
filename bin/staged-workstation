@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MODE="${1:-status}"
+STAGE_ROOT="${WORKSTATION_STAGE_ROOT:-}"
+
+require_stage() {
+  [[ -n "$STAGE_ROOT" ]] || { printf 'REFUSE: set WORKSTATION_STAGE_ROOT to a disposable non-home target.\n' >&2; exit 64; }
+  case "$STAGE_ROOT" in "$HOME"|"$HOME"/*) printf 'REFUSE: staged target must not be inside HOME.\n' >&2; exit 64;; esac
+}
+
+render_stage() {
+  require_stage
+  mkdir -p "$STAGE_ROOT/config/codex" "$STAGE_ROOT/manifests" "$STAGE_ROOT/skills"
+  cp "$ROOT/config/codex/config.toml.template" "$STAGE_ROOT/config/codex/config.toml"
+  sed -i.bak "s#{{STAGE_ROOT}}#$STAGE_ROOT#g" "$STAGE_ROOT/config/codex/config.toml" && rm -f "$STAGE_ROOT/config/codex/config.toml.bak"
+  cp "$ROOT/config/codex/AGENTS.md" "$STAGE_ROOT/config/codex/AGENTS.md"
+  cp "$ROOT/manifests/skills.yaml" "$ROOT/manifests/mcp.yaml" "$ROOT/manifests/environment.yaml" "$STAGE_ROOT/manifests/"
+  cp -R "$ROOT/skills/workstation-operations" "$STAGE_ROOT/skills/"
+  printf '{"schema_version":1,"mode":"staged","status":"ready","secret_values":false}\n' > "$STAGE_ROOT/receipt.json"
+}
+
+case "$MODE" in
+  status) printf 'STAGED_TARGET=%s\n' "${STAGE_ROOT:-unset}"; printf 'LIVE_ACTIVATION=disabled\n' ;;
+  reconcile) render_stage; printf 'PASS: staged reconcile completed\n' ;;
+  repair) bash "$ROOT/validation/validate.sh"; render_stage; printf 'PASS: staged repair completed\n' ;;
+  rollback) require_stage; case "$STAGE_ROOT" in /private/tmp/*|/tmp/*) rm -rf "$STAGE_ROOT";; *) printf 'REFUSE: rollback accepts only /tmp or /private/tmp staged targets.\n' >&2; exit 64;; esac; printf 'PASS: staged target removed\n' ;;
+  package-drive)
+    printf 'REFUSE: use workstation-publish-drive with an explicit publication contract.\n' >&2
+    exit 64
+    ;;
+  *) printf 'Usage: staged-workstation {status|reconcile|repair|rollback|package-drive}\n' >&2; exit 64 ;;
+esac

@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/workstation-common.sh
+source "$ROOT/lib/workstation-common.sh"
+
+SOURCE_FILE=''
+OUTPUT_FILE=''
+OPTIONAL_MCP_FILE=''
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --source) SOURCE_FILE="${2:-}"; shift 2 ;;
+    --output) OUTPUT_FILE="${2:-}"; shift 2 ;;
+    --optional-mcp-file) OPTIONAL_MCP_FILE="${2:-}"; shift 2 ;;
+    *) ws_die "usage: render-codex-config --source <file> --output <file> [--optional-mcp-file <file>]" ;;
+  esac
+done
+
+[[ -n "$OUTPUT_FILE" ]] || ws_die "--output is required"
+mkdir -p "$(dirname "$OUTPUT_FILE")"
+input="$(mktemp)"
+optional="$(mktemp)"
+if [[ -n "$SOURCE_FILE" && -f "$SOURCE_FILE" ]]; then
+  cp "$SOURCE_FILE" "$input"
+else
+  cp "$ROOT/config/codex/config.toml.template" "$input"
+fi
+if [[ -n "$OPTIONAL_MCP_FILE" && -f "$OPTIONAL_MCP_FILE" ]]; then
+  sed '/^[[:space:]]*$/d' "$OPTIONAL_MCP_FILE" | sort -u > "$optional"
+else
+  : > "$optional"
+fi
+
+awk -v optional_file="$optional" '
+  BEGIN {
+    while ((getline item < optional_file) > 0) optional[item] = 1
+    close(optional_file)
+    section = ""
+    print "# Managed routine-execution posture; high-risk stops remain in AGENTS.md."
+    print "approval_policy = \"on-request\""
+    print "approvals_reviewer = \"auto_review\""
+    print "sandbox_mode = \"workspace-write\""
+  }
+  function mcp_name(header, value) {
+    value = header
+    sub(/^\[mcp_servers\./, "", value)
+    sub(/\]$/, "", value)
+    gsub(/^"|"$/, "", value)
+    return value
+  }
+  function finish_section() {
+    if (section ~ /^\[mcp_servers\./ && optional[current_mcp] && !mcp_enabled_seen) {
+      print "enabled = false"
+    }
+  }
+  /^\[/ {
+    finish_section()
+    section = $0
+    current_mcp = mcp_name($0)
+    mcp_enabled_seen = 0
+    print
+    next
+  }
+  section == "" && /^[[:space:]]*approval_policy[[:space:]]*=/ {
+    next
+  }
+  section == "" && /^[[:space:]]*approvals_reviewer[[:space:]]*=/ {
+    next
+  }
+  section == "" && /^[[:space:]]*sandbox_mode[[:space:]]*=/ {
+    next
+  }
+  section ~ /^\[mcp_servers\./ && /^[[:space:]]*enabled[[:space:]]*=/ {
+    if (optional[current_mcp]) print "enabled = false"
+    else print
+    mcp_enabled_seen = 1
+    next
+  }
+  { print }
+  END {
+    finish_section()
+  }
+' "$input" > "$OUTPUT_FILE"
+
+rm -f "$input" "$optional"

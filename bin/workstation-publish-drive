@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/workstation-common.sh
+source "$ROOT/lib/workstation-common.sh"
+
+CONTRACT=''
+VERSION=''
+DRIVE_ROOT="${WORKSTATION_DRIVE_ROOT:-$HOME/Library/CloudStorage}"
+ARCHIVE=''
+PRIVATE_PROFILE=''
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --publication-contract) CONTRACT="${2:-}"; shift 2 ;;
+    --version) VERSION="${2:-}"; shift 2 ;;
+    --drive-root) DRIVE_ROOT="${2:-}"; shift 2 ;;
+    --archive) ARCHIVE="${2:-}"; shift 2 ;;
+    --private-profile) PRIVATE_PROFILE="${2:-}"; shift 2 ;;
+    *) ws_die "usage: workstation-publish-drive --publication-contract <json> --version <version> [--drive-root <path>] [--archive <tar.gz>] [--private-profile <json>]" ;;
+  esac
+done
+
+ws_need jq
+[[ -f "$CONTRACT" ]] || ws_die "publication contract is required"
+[[ "$(jq -r '.schemaVersion // 0' "$CONTRACT")" == 1 ]] || ws_die "unsupported publication contract schema"
+[[ "$(jq -r '.publicationAuthorized // false' "$CONTRACT")" == true ]] || ws_die "contract does not authorize publication"
+[[ -n "$(jq -r '.authorityReference // empty' "$CONTRACT")" ]] || ws_die "contract authorityReference is required"
+[[ -n "$VERSION" && "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || ws_die "safe --version is required"
+[[ "$(jq -r '.version // empty' "$CONTRACT")" == "$VERSION" ]] || ws_die "contract version mismatch"
+mkdir -p "$DRIVE_ROOT"
+DRIVE_ROOT="$(ws_real_dir "$DRIVE_ROOT")"
+[[ "$(jq -r '.driveRoot // empty' "$CONTRACT")" == "$DRIVE_ROOT" ]] || ws_die "contract driveRoot mismatch"
+
+[[ -n "$ARCHIVE" ]] || ARCHIVE="$ROOT/dist/engineering-workstation-bootstrap-$VERSION.tar.gz"
+[[ -f "$ARCHIVE" ]] || bash "$ROOT/packaging/build-package.sh" "$VERSION"
+archive_sha="$(ws_sha256 "$ARCHIVE")"
+[[ "$(jq -r '.archiveSha256 // empty' "$CONTRACT")" == "$archive_sha" ]] || ws_die "contract archive checksum mismatch"
+if [[ -n "$PRIVATE_PROFILE" ]]; then
+  [[ -f "$PRIVATE_PROFILE" ]] || ws_die "private profile is unreadable"
+  private_profile_sha="$(ws_sha256 "$PRIVATE_PROFILE")"
+  [[ "$(jq -r '.privateProfileSha256 // empty' "$CONTRACT")" == "$private_profile_sha" ]] || ws_die "contract private profile checksum mismatch"
+  private_assets="$(dirname "$PRIVATE_PROFILE")/$(basename "$PRIVATE_PROFILE" .json).assets"
+  [[ -d "$private_assets" ]] || ws_die "private profile assets are missing"
+else
+  private_profile_sha=''
+fi
+
+distribution="$DRIVE_ROOT/Tony Workstation Bootstrap"
+release="$distribution/releases/$VERSION"
+receipts="$distribution/receipts"
+mkdir -p "$distribution/releases" "$receipts"
+if [[ -e "$release" ]]; then
+  [[ -f "$release/manifest.json" && "$(jq -r '.sha256 // empty' "$release/manifest.json")" == "$archive_sha" ]] || ws_die "immutable release path already exists with different content"
+  [[ "$(jq -r '.privateProfileSha256 // empty' "$release/manifest.json")" == "$private_profile_sha" ]] || ws_die "immutable release path has a different private profile"
+else
+  mkdir -p "$release"
+  archive_name="$(basename "$ARCHIVE")"
+  cp "$ARCHIVE" "$release/$archive_name"
+  printf '%s\n' "$VERSION" > "$release/VERSION"
+  printf '%s\n' \
+    'Verify checksums.sha256 before activation.' \
+    'Activation requires a separate JSON activation contract bound to this version and target home.' \
+    'Credentials, OAuth stores, and private environment values are not included.' > "$release/README-FIRST.txt"
+  cat > "$release/START_TONY_WORKSTATION_BOOTSTRAP.command" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+here="$(cd "$(dirname "$0")" && pwd -P)"
+contract="${1:?pass the activation contract as the first argument}"
+shift
+(cd "$here" && shasum -a 256 -c checksums.sha256)
+extract_root="$(mktemp -d)"
+tar -xzf "$here/$(awk '{print $2}' "$here/checksums.sha256")" -C "$extract_root"
+package_root="$(find "$extract_root" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+private_profile="$(find "$here/private" -maxdepth 1 -type f -name '*.json' -print -quit 2>/dev/null || true)"
+if [[ -n "$private_profile" ]]; then
+  WORKSTATION_ACTIVATION_CONTRACT="$contract" WORKSTATION_PRIVATE_PROFILE="$private_profile" \
+    bash "$package_root/bin/workstation-bootstrap" install "$@"
+else
+  WORKSTATION_ACTIVATION_CONTRACT="$contract" bash "$package_root/bin/workstation-bootstrap" install "$@"
+fi
+EOF
+  chmod 755 "$release/START_TONY_WORKSTATION_BOOTSTRAP.command"
+  if [[ -n "$PRIVATE_PROFILE" ]]; then
+    mkdir -p "$release/private"
+    profile_name="$(basename "$PRIVATE_PROFILE")"
+    assets_name="$(basename "$private_assets")"
+    cp "$PRIVATE_PROFILE" "$release/private/$profile_name"
+    cp -R "$private_assets" "$release/private/$assets_name"
+    private_profile_ref="private/$profile_name"
+  else
+    private_profile_ref=''
+  fi
+  (
+    cd "$release"
+    printf '%s  %s\n' "$archive_sha" "$archive_name"
+    if [[ -n "$private_profile_ref" ]]; then
+      find private -type f -print | LC_ALL=C sort | while IFS= read -r file; do
+        printf '%s  %s\n' "$(ws_sha256 "$file")" "$file"
+      done
+    fi
+  ) > "$release/checksums.sha256"
+  jq -n --arg version "$VERSION" --arg archive "$archive_name" --arg sha256 "$archive_sha" --arg privateProfile "$private_profile_ref" --arg privateProfileSha256 "$private_profile_sha" \
+    '{schemaVersion:1,version:$version,archive:$archive,sha256:$sha256,activationContractRequired:true,
+      privateProfile:(if $privateProfile == "" then null else $privateProfile end),
+      privateProfileSha256:(if $privateProfileSha256 == "" then null else $privateProfileSha256 end),
+      secretValues:false,layout:["START_TONY_WORKSTATION_BOOTSTRAP.command","manifest.json","checksums.sha256","VERSION","README-FIRST.txt"]}' \
+    > "$release/manifest.json"
+fi
+
+current="$distribution/current"
+if [[ -e "$current" && ! -L "$current" ]]; then
+  ws_die "current exists but is not an atomic release pointer"
+fi
+next="$distribution/current.next.$$"
+ln -s "releases/$VERSION" "$next"
+mv -f "$next" "$current"
+
+published_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+publish_receipt="$receipts/publish-$VERSION-$(date -u +%Y%m%dT%H%M%SZ)-$$.json"
+jq -n --arg version "$VERSION" --arg sha256 "$archive_sha" --arg release "$release" --arg current "$current" \
+  --arg privateProfileSha256 "$private_profile_sha" --arg authorityReference "$(jq -r '.authorityReference' "$CONTRACT")" --arg publishedAt "$published_at" \
+  '{schemaVersion:1,version:$version,sha256:$sha256,release:$release,current:$current,
+    privateProfileSha256:(if $privateProfileSha256 == "" then null else $privateProfileSha256 end),
+    authorityReference:$authorityReference,publishedAt:$publishedAt,status:"published",secretValues:false}' > "$publish_receipt"
+cp "$publish_receipt" "$release/publication-receipt.json"
+printf 'PASS: Drive release published\nCurrent: %s\nReceipt: %s\n' "$current" "$publish_receipt"

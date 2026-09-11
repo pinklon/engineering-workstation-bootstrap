@@ -4,9 +4,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:-install}"
 PROFILE="${WORKSTATION_PROFILE:-macos-desktop}"
-CONFIG_ROOT="${HOME}/.config/engineering-workstation-bootstrap"
-TOOL_ROOT="${HOME}/.local/share/engineering-workstation-bootstrap"
-RECEIPT_ROOT="${HOME}/.local/state/engineering-workstation-bootstrap/receipts"
 ENABLE_CLOUDFLARE="${ENABLE_CLOUDFLARE:-0}"
 
 log() { printf '%s\n' "$*"; }
@@ -37,36 +34,12 @@ install_packages() {
   fi
 }
 
-managed_include() {
-  local target="$1" line="$2"
-  touch "$target"
-  grep -Fqx "$line" "$target" 2>/dev/null || printf '\n%s\n' "$line" >> "$target"
-}
-
-write_wrapper() {
-  local name="$1"
-  cat > "$HOME/bin/$name" <<EOF
-#!/usr/bin/env bash
-exec bash "$ROOT/bin/$name" "\$@"
-EOF
-  chmod 755 "$HOME/bin/$name"
-}
-
-configure_host() {
-  mkdir -p "$HOME/bin" "$CONFIG_ROOT" "$TOOL_ROOT" "$RECEIPT_ROOT"
-  cp "$ROOT/config/shell.zsh" "$CONFIG_ROOT/shell.zsh"
-  cp "$ROOT/config/gitconfig" "$CONFIG_ROOT/gitconfig"
-  cp "$ROOT/config/ssh-config" "$CONFIG_ROOT/ssh-config"
-  # shellcheck disable=SC2016
-  managed_include "$HOME/.zshrc" 'source "$HOME/.config/engineering-workstation-bootstrap/shell.zsh"'
-  managed_include "$HOME/.gitconfig" '[include]'
-  managed_include "$HOME/.gitconfig" '    path = ~/.config/engineering-workstation-bootstrap/gitconfig'
-  mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
-  managed_include "$HOME/.ssh/config" 'Include ~/.config/engineering-workstation-bootstrap/ssh-config'
-  chmod 600 "$HOME/.ssh/config"
-  for tool in workstation-bootstrap workstation-doctor github-auth-doctor cloudflare-auth-doctor browser-gate-python environment-inventory; do
-    write_wrapper "$tool"
-  done
+activate_host() {
+  local contract="${WORKSTATION_ACTIVATION_CONTRACT:-}" args
+  [[ -f "$contract" ]] || die "Set WORKSTATION_ACTIVATION_CONTRACT to an explicit activation contract before any live install or reconcile."
+  args=(--activation-contract "$contract")
+  [[ -z "${WORKSTATION_PRIVATE_PROFILE:-}" ]] || args+=(--private-profile "$WORKSTATION_PRIVATE_PROFILE")
+  bash "$ROOT/bin/workstation-activate" "${args[@]}"
 }
 
 enroll_github() {
@@ -99,16 +72,18 @@ run_doctor() { bash "$ROOT/bin/workstation-doctor" --full; }
 case "$MODE" in
   install)
     [[ "$(uname -s)" == "Darwin" ]] || die "install currently supports macOS."
-    install_xcode_tools; install_homebrew; install_packages; configure_host
-    enroll_github; enroll_optional_cloud_provider; configure_browser_gate; clone_repositories; run_doctor
+    [[ -f "${WORKSTATION_ACTIVATION_CONTRACT:-}" ]] || die "Live install requires WORKSTATION_ACTIVATION_CONTRACT."
+    install_xcode_tools; install_homebrew; install_packages
+    enroll_github; enroll_optional_cloud_provider; configure_browser_gate; clone_repositories; activate_host; run_doctor
     ;;
   reconcile)
-    install_homebrew; install_packages; configure_host; configure_browser_gate; clone_repositories; run_doctor
+    [[ -f "${WORKSTATION_ACTIVATION_CONTRACT:-}" ]] || die "Live reconcile requires WORKSTATION_ACTIVATION_CONTRACT."
+    install_homebrew; install_packages; configure_browser_gate; clone_repositories; activate_host; run_doctor
     ;;
   status) run_doctor ;;
   dry-run)
     log "Profile: $PROFILE"
-    log "Would install declared dependencies, configure managed fragments, enroll required services, configure browser validation, optionally clone repositories, and validate."
+    log "Would install declared dependencies, require an activation contract, configure managed fragments transactionally, enroll required services, configure browser validation, optionally clone repositories, and validate."
     if [[ "$ENABLE_CLOUDFLARE" == "1" ]]; then
       log "Optional Cloudflare support is enabled."
     fi

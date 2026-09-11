@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/workstation-common.sh
+source "$ROOT/lib/workstation-common.sh"
+
+MODE="${1:-}"
+shift || true
+OUTPUT=''
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --output) OUTPUT="${2:-}"; shift 2 ;;
+    *) ws_die "usage: workstation-private-profile inventory --output <local-json>" ;;
+  esac
+done
+[[ "$MODE" == inventory && -n "$OUTPUT" ]] || ws_die "usage: workstation-private-profile inventory --output <local-json>"
+ws_need jq
+
+case "$OUTPUT" in
+  /*) ;;
+  *) OUTPUT="$PWD/$OUTPUT" ;;
+esac
+case "$OUTPUT" in *'/../'*|*'/./'*) ws_die "private profile output path must be normalized" ;; esac
+
+case "$OUTPUT" in
+  "$ROOT"/.local/*|/private/tmp/*|/tmp/*) ;;
+  *) ws_die "private profiles may be generated only under repository .local/ or a temporary directory" ;;
+esac
+
+work="$(mktemp -d)"
+output_name="$(basename "$OUTPUT" .json)"
+assets_dir="$(dirname "$OUTPUT")/$output_name.assets"
+assets_ref="$output_name.assets"
+rm -rf "$assets_dir"
+mkdir -p "$assets_dir/skills" "$assets_dir/bin"
+: > "$work/skills.ndjson"
+: > "$work/environment.ndjson"
+: > "$work/mcp.ndjson"
+: > "$work/utilities.ndjson"
+: > "$work/seen-skills"
+
+record_skill() {
+  local skill_file="$1" install_root="$2" name source_dir safe_name bundled_dir
+  [[ "$(sed -n '1p' "$skill_file")" == '---' ]] || return 0
+  source_dir="$(dirname "$skill_file")"
+  name="$(awk -F': *' '$1 == "name" {gsub(/^"|"$/, "", $2); print $2; exit}' "$skill_file")"
+  [[ -n "$name" ]] || name="$(basename "$source_dir")"
+  grep -Fqx "$name" "$work/seen-skills" 2>/dev/null && return 0
+  printf '%s\n' "$name" >> "$work/seen-skills"
+  safe_name="$(printf '%s' "$name" | sed 's/[^A-Za-z0-9._-]/-/g')"
+  bundled_dir="$assets_dir/skills/$safe_name"
+  cp -R "$source_dir" "$bundled_dir"
+  jq -cn --arg name "$name" --arg sourceDir "$assets_ref/skills/$safe_name" --arg installRoot "$install_root" \
+    '{name:$name,sourceDir:$sourceDir,installRoot:$installRoot,state:"enabled"}' >> "$work/skills.ndjson"
+}
+
+for skill_root in "$HOME/.codex/skills" "$HOME/.agents/skills"; do
+  [[ -d "$skill_root" ]] || continue
+  install_root=agent-skills
+  [[ "$skill_root" == "$HOME/.codex/skills" ]] && install_root=codex-skills
+  while IFS= read -r skill_file; do
+    record_skill "$skill_file" "$install_root"
+  done < <(
+    find "$skill_root" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print
+    [[ -d "$skill_root/.system" ]] && find "$skill_root/.system" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print
+  )
+done
+
+for startup in "$HOME/.zshenv" "$HOME/.zprofile" "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.profile"; do
+  [[ -f "$startup" ]] || continue
+  awk '/^[[:space:]]*export[[:space:]]+[A-Za-z_][A-Za-z0-9_]*=/{line=$0; sub(/=.*/, "", line); sub(/^[[:space:]]*export[[:space:]]+/, "", line); print line}' "$startup"
+done | sort -u | while IFS= read -r name; do
+  class=discovered
+  case "$name" in *TOKEN*|*SECRET*|*PASSWORD*|*API_KEY*|*PRIVATE_KEY*) class=secret-bound ;; esac
+  jq -cn --arg name "$name" --arg class "$class" '{name:$name,class:$class,origin:"shell-startup",valueIncluded:false}' >> "$work/environment.ndjson"
+done
+
+if command -v codex >/dev/null 2>&1; then
+  codex mcp list 2>/dev/null | awk 'tolower($1) ~ /supabase/ {print $1}' | sort -u | while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
+    jq -cn --arg name "$name" '{name:$name,state:"auth-required",startup:"disabled",credentials:"preserve"}' >> "$work/mcp.ndjson"
+  done
+fi
+
+reasonpack_path="$(zsh -lic 'whence -p reasonpack' 2>/dev/null || true)"
+if [[ -n "$reasonpack_path" && -f "$reasonpack_path" ]]; then
+  reasonpack_sha="$(ws_sha256 "$reasonpack_path")"
+  cp "$reasonpack_path" "$assets_dir/bin/reasonpack"
+  chmod 755 "$assets_dir/bin/reasonpack"
+  jq -cn --arg source "$assets_ref/bin/reasonpack" --arg sha256 "$reasonpack_sha" \
+    '{name:"reasonpack",source:$source,sha256:$sha256,aliases:["yt","rp"],dependencies:["yt-dlp","ffmpeg","ffprobe","python3"],classification:"canonicalize"}' \
+    >> "$work/utilities.ndjson"
+fi
+
+github_root="$(zsh -lic 'printf "%s" "${GITHUB_ROOT:-}"' 2>/dev/null || true)"
+mkdir -p "$(dirname "$OUTPUT")"
+jq -n \
+  --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg githubRoot "$github_root" \
+  --slurpfile skills "$work/skills.ndjson" \
+  --slurpfile environment "$work/environment.ndjson" \
+  --slurpfile mcp "$work/mcp.ndjson" \
+  --slurpfile utilities "$work/utilities.ndjson" \
+  '{schemaVersion:1,profile:"tony-private",generatedAt:$generatedAt,secretValues:false,
+    shell:{preservePrompt:true,githubRoot:$githubRoot,functions:["cgh","lgh"]},
+    skills:$skills,environment:$environment,mcp:$mcp,utilities:$utilities}' > "$OUTPUT"
+
+if rg -n "$(ws_secret_pattern)" "$OUTPUT" >/dev/null 2>&1; then
+  ws_die "generated private profile matched the secret exclusion policy"
+fi
+if rg -n '((^|[^A-Za-z0-9])(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,})|-----BEGIN (RSA|OPENSSH|EC) PRIVATE KEY-----)' "$assets_dir" >/dev/null 2>&1; then
+  ws_die "generated private profile assets matched the secret exclusion policy"
+fi
+
+rm -rf "$work"
+printf 'PASS: local private profile generated at %s\n' "$OUTPUT"
+printf 'Skills: %s; utilities: %s; optional MCP entries: %s; secret values: false\n' \
+  "$(jq '.skills | length' "$OUTPUT")" "$(jq '.utilities | length' "$OUTPUT")" "$(jq '.mcp | length' "$OUTPUT")"

@@ -1,0 +1,12 @@
+schema_version: 2
+discovery:
+  mode: manifest-only
+  active_roots: [codex-skills, agent-skills]
+  entrypoint_glob: "*/SKILL.md"
+  external_library: "skill-library"
+  internal_material_active: false
+skills:
+  - name: workstation-operations
+    source: skills/workstation-operations/SKILL.md
+    install_root: agent-skills
+    state: enabled

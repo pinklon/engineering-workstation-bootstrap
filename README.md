@@ -11,8 +11,9 @@ This project is an early release candidate.
 - macOS foundation: implemented
 - repository validation: passing
 - archive packaging: implemented
-- clean-machine installation testing: pending
-- repeat-run and uninstall testing: pending
+- disposable-home transactional activation and rollback: implemented
+- repeat activation and package reproducibility testing: implemented
+- clean physical-machine installation testing: pending
 - Windows and Linux implementations: planned
 
 Do not treat the current version as a stable installer until the lifecycle tests are complete.
@@ -119,11 +120,15 @@ gh repo clone pinklon/engineering-workstation-bootstrap \
 cd "$HOME/Developer/engineering-workstation-bootstrap"
 ```
 
-### 6. Preview or install
+### 6. Preview, create an activation contract, then install
 
 ```bash
 make dry-run
-make install
+jq -n --arg home "$(cd "$HOME" && pwd -P)" \
+  '{schemaVersion:1,activationAuthorized:true,allowLiveHome:true,
+    authorityReference:"owner-issued-local-contract",targetHome:$home,
+    version:"0.2.0",manageSkillRoots:false}' > "$HOME/Downloads/workstation-activation.json"
+WORKSTATION_ACTIVATION_CONTRACT="$HOME/Downloads/workstation-activation.json" make install
 ```
 
 Read [the new-machine runbook](docs/NEW-MACHINE-RUNBOOK.md) before using the full installer on an important system.
@@ -145,8 +150,12 @@ make validate      Validate repository code, policy, and package output
 make doctor        Test workstation readiness
 make auth-doctor   Test configured authentication paths
 make package       Build a versioned archive and checksum
-make install       Install and configure the selected profile
-make reconcile     Repair declared workstation state
+make private-profile Build a local portable profile and asset bundle
+make package-drive Publish only with a checksum-bound contract
+make install       Install prerequisites and activate only with a contract
+make activate      Apply a prepared release transactionally
+make reconcile     Repair a declared disposable staged target
+make rollback      Restore every path recorded by an activation receipt
 ```
 
 The command surface is intentionally small. Users should not need to reverse-engineer shell scripts merely to operate the product, though history suggests software occasionally considers that a feature.
@@ -189,6 +198,9 @@ Managed configuration lives under:
 ```
 
 User-owned files receive narrow include or source entries rather than wholesale replacement.
+Each activation prepares an immutable version directory, switches a `current`
+pointer, records the pre-state, and backs up every managed live path. A failed
+post-activation doctor invokes rollback automatically.
 
 ## Security boundary
 
@@ -230,6 +242,7 @@ Future distribution targets include Homebrew, Windows Package Manager, Debian pa
 - [Pluggability](docs/PLUGGABILITY.md)
 - [Web-development guidance](docs/WEB-DEVELOPMENT.md)
 - [Packaging and distribution](docs/PACKAGING-AND-DISTRIBUTION.md)
+- [Transactional workstation v2 profile](docs/TONY-WORKSTATION-V2.md)
 
 ## Release gates
 

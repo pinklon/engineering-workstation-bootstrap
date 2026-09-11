@@ -27,8 +27,12 @@ Run `make help` to display the command surface.
 | `make doctor` | No provider mutation | Validate workstation readiness and emit a receipt |
 | `make auth-doctor` | No | Validate configured authentication providers |
 | `make package` | Repository-local | Build a versioned archive and checksum under `dist/` |
-| `make install` | Yes | Run the guided first-time workstation bootstrap |
-| `make reconcile` | Yes | Repair declared workstation drift |
+| `make private-profile` | Repository-local | Build an ignored, portable, secret-free local overlay |
+| `make activate` | Yes | Apply a checksum-bound activation contract transactionally |
+| `make install` | Yes | Install prerequisites, then delegate to contracted activation |
+| `make reconcile` | Staged only | Repair a declared disposable staging target |
+| `make rollback` | Yes | Restore every path from one activation receipt |
+| `make package-drive` | External | Publish an immutable release and atomic current pointer with a contract |
 
 ## Variables
 
@@ -86,11 +90,15 @@ Validation is expected to run before a pull request is marked ready. Package cre
 
 ```bash
 make dry-run
-make install
+WORKSTATION_ACTIVATION_CONTRACT="$HOME/Downloads/workstation-activation.json" make install
 make doctor
 ```
 
-Installation may invoke package managers, write managed configuration fragments, guide sign-in or secure-shell enrollment, configure browser tooling, and optionally clone user-declared repositories. Human approval remains required at security boundaries.
+Installation refuses before mutation unless `WORKSTATION_ACTIVATION_CONTRACT`
+names a JSON contract bound to the exact target home and version. It may invoke
+package managers, guide sign-in or secure-shell enrollment, configure browser
+tooling, and optionally clone user-declared repositories. Human approval remains
+required at security boundaries.
 
 ## Reconciliation sequence
 
@@ -107,12 +115,15 @@ Make delegates to the canonical product commands:
 
 ```text
 make install       -> bash bin/workstation-bootstrap install
-make reconcile     -> bash bin/workstation-bootstrap reconcile
+make activate      -> bash bin/workstation-activate --activation-contract <file>
+make rollback      -> bash bin/workstation-rollback --receipt <file>
+make reconcile     -> bash bin/staged-workstation reconcile
 make status        -> bash bin/workstation-bootstrap status
 make dry-run       -> bash bin/workstation-bootstrap dry-run
 make doctor        -> bash bin/workstation-doctor --full
 make validate      -> bash validation/validate.sh
 make package       -> bash packaging/build-package.sh <version>
+make package-drive -> bash bin/workstation-publish-drive --publication-contract <file>
 ```
 
 Platform-specific implementations may use PowerShell or native package tooling later, but command intent and documentation remain consistent.

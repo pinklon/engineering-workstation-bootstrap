@@ -1,0 +1,278 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/workstation-common.sh
+source "$ROOT/lib/workstation-common.sh"
+
+CONTRACT=''
+PRIVATE_PROFILE=''
+TARGET_HOME="$HOME"
+VERSION=''
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --activation-contract) CONTRACT="${2:-}"; shift 2 ;;
+    --private-profile) PRIVATE_PROFILE="${2:-}"; shift 2 ;;
+    --home) TARGET_HOME="${2:-}"; shift 2 ;;
+    --version) VERSION="${2:-}"; shift 2 ;;
+    *) ws_die "usage: workstation-activate --activation-contract <json> [--private-profile <json>] [--home <path>] [--version <version>]" ;;
+  esac
+done
+
+ws_need jq
+ws_need rg
+[[ -f "$CONTRACT" ]] || ws_die "--activation-contract must name a readable JSON contract"
+[[ -d "$TARGET_HOME" ]] || ws_die "target home does not exist: $TARGET_HOME"
+TARGET_HOME="$(ws_real_dir "$TARGET_HOME")"
+
+[[ "$(jq -r '.schemaVersion // 0' "$CONTRACT")" == 1 ]] || ws_die "unsupported activation contract schema"
+[[ "$(jq -r '.activationAuthorized // false' "$CONTRACT")" == true ]] || ws_die "contract does not authorize activation"
+contract_home="$(jq -r '.targetHome // empty' "$CONTRACT")"
+[[ "$contract_home" == "$TARGET_HOME" ]] || ws_die "contract targetHome does not match --home"
+authority_reference="$(jq -r '.authorityReference // empty' "$CONTRACT")"
+[[ -n "$authority_reference" ]] || ws_die "contract authorityReference is required"
+
+contract_version="$(jq -r '.version // empty' "$CONTRACT")"
+[[ -n "$VERSION" ]] || VERSION="$contract_version"
+[[ "$VERSION" == "$contract_version" ]] || ws_die "contract version does not match requested version"
+[[ "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || ws_die "version contains unsafe characters"
+if [[ "$TARGET_HOME" == "$(ws_real_dir "$HOME")" ]]; then
+  [[ "$(jq -r '.allowLiveHome // false' "$CONTRACT")" == true ]] || ws_die "contract does not allow the live home"
+fi
+
+if [[ -n "$PRIVATE_PROFILE" ]]; then
+  [[ -f "$PRIVATE_PROFILE" ]] || ws_die "private profile is unreadable"
+  jq -e '.secretValues == false' "$PRIVATE_PROFILE" >/dev/null || ws_die "private profile does not attest secretValues=false"
+  if rg -n "$(ws_secret_pattern)" "$PRIVATE_PROFILE" >/dev/null 2>&1; then
+    ws_die "private profile matched the secret exclusion policy"
+  fi
+  expected_profile_sha="$(jq -r '.privateProfileSha256 // empty' "$CONTRACT")"
+  [[ -n "$expected_profile_sha" ]] || ws_die "contract must bind the private profile checksum"
+  [[ "$(ws_sha256 "$PRIVATE_PROFILE")" == "$expected_profile_sha" ]] || ws_die "private profile checksum does not match contract"
+  profile_root="$(cd "$(dirname "$PRIVATE_PROFILE")" && pwd -P)"
+fi
+
+manage_skill_roots="$(jq -r '.manageSkillRoots // false' "$CONTRACT")"
+state_root="$TARGET_HOME/.local/state/engineering-workstation-bootstrap"
+share_root="$TARGET_HOME/.local/share/engineering-workstation-bootstrap"
+mkdir -p "$state_root/receipts" "$state_root/backups" "$share_root/versions"
+lock="$state_root/activation.lock"
+mkdir "$lock" 2>/dev/null || ws_die "another activation or rollback holds $lock"
+
+transaction_id="${WORKSTATION_TRANSACTION_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+[[ "$transaction_id" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || ws_die "transaction id contains unsafe characters"
+release_dir="$share_root/versions/$VERSION-$transaction_id"
+backup_root="$state_root/backups/$transaction_id"
+receipt="$state_root/receipts/activation-$transaction_id.json"
+install_map="$backup_root/install-map.tsv"
+prestate_tsv="$backup_root/pre-state.tsv"
+backup_manifest="$backup_root/manifest.json"
+applied=0
+applied_paths=0
+
+cleanup_lock() { rmdir "$lock" 2>/dev/null || true; }
+rollback_on_error() {
+  local status=$?
+  trap - ERR
+  if [[ "$applied" == 1 && -f "$receipt" ]]; then
+    bash "$ROOT/bin/workstation-rollback" --receipt "$receipt" --home "$TARGET_HOME" --automatic >/dev/null 2>&1 || true
+  fi
+  cleanup_lock
+  exit "$status"
+}
+trap rollback_on_error ERR
+trap cleanup_lock EXIT
+
+[[ ! -e "$release_dir" ]] || ws_die "version transaction already exists: $release_dir"
+mkdir -p "$release_dir/config/codex" "$release_dir/runtime" "$release_dir/private-bin" \
+  "$release_dir/codex-skills" "$release_dir/agent-skills" "$release_dir/skill-library" \
+  "$release_dir/bin-links" "$release_dir/generated-home" "$backup_root/files"
+cp -R "$ROOT/bin" "$ROOT/lib" "$release_dir/runtime/"
+cp "$ROOT/config/shell.zsh" "$ROOT/config/aliases.zsh" "$ROOT/config/functions.zsh" \
+  "$ROOT/config/environment.zsh" "$ROOT/config/prompt.zsh" "$release_dir/config/"
+cp "$ROOT/config/codex/AGENTS.md" "$release_dir/config/codex/AGENTS.md"
+cp "$ROOT/manifests/skills.yaml" "$ROOT/manifests/mcp.yaml" "$ROOT/manifests/environment.yaml" "$release_dir/"
+
+optional_mcp="$backup_root/optional-mcp.txt"
+: > "$optional_mcp"
+if [[ -n "$PRIVATE_PROFILE" ]]; then
+  jq -r '.mcp[]? | select(.startup == "disabled") | .name' "$PRIVATE_PROFILE" > "$optional_mcp"
+fi
+bash "$ROOT/bin/render-codex-config" \
+  --source "$TARGET_HOME/.codex/config.toml" \
+  --output "$release_dir/config/codex/config.toml" \
+  --optional-mcp-file "$optional_mcp"
+
+if [[ -n "$PRIVATE_PROFILE" ]]; then
+  github_root="$(jq -r '.shell.githubRoot // empty' "$PRIVATE_PROFILE")"
+  if [[ -n "$github_root" ]]; then
+    printf 'export GITHUB_ROOT=%q\n' "$github_root" >> "$release_dir/config/environment.zsh"
+  fi
+  if jq -e '.shell.functions // [] | index("cgh")' "$PRIVATE_PROFILE" >/dev/null; then
+    # shellcheck disable=SC2016
+    printf '%s\n' 'cgh() {' '  if [[ $# -eq 0 ]]; then cd "${GITHUB_ROOT:-$HOME/Documents/GitHub}"; return; fi' '  local target="${GITHUB_ROOT:-$HOME/Documents/GitHub}/$1"' '  [[ -d "$target" ]] || { printf "Not found: %s\\n" "$target" >&2; return 1; }' '  cd "$target"' '}' >> "$release_dir/config/functions.zsh"
+  fi
+  if jq -e '.shell.functions // [] | index("lgh")' "$PRIVATE_PROFILE" >/dev/null; then
+    # shellcheck disable=SC2016
+    printf '%s\n' 'lgh() {' '  command ls -1 "${GITHUB_ROOT:-$HOME/Documents/GitHub}"' '}' >> "$release_dir/config/functions.zsh"
+  fi
+  while IFS= read -r utility; do
+    name="$(jq -r '.name' <<<"$utility")"
+    source_path="$(jq -r '.source' <<<"$utility")"
+    [[ "$source_path" == /* ]] || source_path="$profile_root/$source_path"
+    expected_sha="$(jq -r '.sha256' <<<"$utility")"
+    [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || ws_die "unsafe private utility name"
+    [[ -f "$source_path" && "$(ws_sha256 "$source_path")" == "$expected_sha" ]] || ws_die "private utility source changed: $name"
+    cp "$source_path" "$release_dir/private-bin/$name"
+    chmod 755 "$release_dir/private-bin/$name"
+    while IFS= read -r alias_name; do
+      [[ "$alias_name" =~ ^[A-Za-z][A-Za-z0-9_-]*$ ]] || ws_die "unsafe private utility alias"
+      printf 'alias %s=%q\n' "$alias_name" "$name" >> "$release_dir/config/aliases.zsh"
+    done < <(jq -r '.aliases[]?' <<<"$utility")
+  done < <(jq -c '.utilities[]?' "$PRIVATE_PROFILE")
+fi
+
+cp -R "$ROOT/skills/workstation-operations" "$release_dir/agent-skills/"
+if [[ -n "$PRIVATE_PROFILE" ]]; then
+  while IFS= read -r skill; do
+    name="$(jq -r '.name' <<<"$skill")"
+    source_dir="$(jq -r '.sourceDir' <<<"$skill")"
+    [[ "$source_dir" == /* ]] || source_dir="$profile_root/$source_dir"
+    install_root="$(jq -r '.installRoot' <<<"$skill")"
+    safe_name="$(printf '%s' "$name" | sed 's/[^A-Za-z0-9._-]/-/g')"
+    [[ -f "$source_dir/SKILL.md" ]] || ws_die "skill entrypoint is missing: $name"
+    [[ "$(sed -n '1p' "$source_dir/SKILL.md")" == '---' ]] || ws_die "skill entrypoint lacks frontmatter: $name"
+    case "$install_root" in codex-skills|agent-skills) ;; *) ws_die "invalid skill install root: $install_root" ;; esac
+    library="$release_dir/skill-library/$safe_name"
+    cp -R "$source_dir" "$library"
+    active="$release_dir/$install_root/$safe_name"
+    mkdir -p "$active"
+    cat > "$active/SKILL.md" <<EOF
+---
+name: $safe_name
+description: Managed entrypoint for the externally stored $safe_name skill package.
+---
+
+# Managed skill entrypoint
+
+Read and follow the complete skill at \`$library/SKILL.md\`. Resolve every relative
+reference from \`$library\`. The external package is outside active discovery so
+its internal layers are not scanned as standalone skills.
+EOF
+  done < <(jq -c '.skills[]?' "$PRIVATE_PROFILE")
+fi
+
+for command_name in workstation-activate workstation-rollback workstation-doctor workstation-publish-drive workstation-private-profile environment-inventory; do
+  cat > "$release_dir/bin-links/$command_name" <<EOF
+#!/usr/bin/env bash
+exec bash "\$HOME/.local/share/engineering-workstation-bootstrap/current/runtime/bin/$command_name" "\$@"
+EOF
+  chmod 755 "$release_dir/bin-links/$command_name"
+done
+
+zshrc_source="$TARGET_HOME/.zshrc"
+zshrc_rendered="$release_dir/generated-home/.zshrc"
+[[ -f "$zshrc_source" ]] && cp "$zshrc_source" "$zshrc_rendered" || : > "$zshrc_rendered"
+# shellcheck disable=SC2016
+managed_source='source "$HOME/.config/engineering-workstation-bootstrap/shell.zsh"'
+grep -Fqx "$managed_source" "$zshrc_rendered" 2>/dev/null || printf '\n%s\n' "$managed_source" >> "$zshrc_rendered"
+
+: > "$install_map"
+add_link() { ws_assert_relative_path "$1"; printf '%s\tlink\t%s\n' "$1" "$2" >> "$install_map"; }
+add_file() { ws_assert_relative_path "$1"; printf '%s\tfile\t%s\n' "$1" "$2" >> "$install_map"; }
+for fragment in shell aliases functions environment prompt; do add_link ".config/engineering-workstation-bootstrap/$fragment.zsh" "config/$fragment.zsh"; done
+add_link '.codex/config.toml' 'config/codex/config.toml'
+add_link '.codex/AGENTS.md' 'config/codex/AGENTS.md'
+if [[ "$manage_skill_roots" == true ]]; then
+  add_link '.codex/skills' 'codex-skills'
+  add_link '.agents/skills' 'agent-skills'
+else
+  add_link '.agents/skills/workstation-operations' 'agent-skills/workstation-operations'
+fi
+for command_name in workstation-activate workstation-rollback workstation-doctor workstation-publish-drive workstation-private-profile environment-inventory; do
+  add_link "bin/$command_name" "bin-links/$command_name"
+done
+if [[ -n "$PRIVATE_PROFILE" ]]; then
+  while IFS= read -r name; do add_link "bin/$name" "private-bin/$name"; done < <(jq -r '.utilities[]?.name' "$PRIVATE_PROFILE")
+fi
+add_file '.zshrc' "$zshrc_rendered"
+
+: > "$prestate_tsv"
+while IFS=$'\t' read -r relative kind source; do
+  live="$TARGET_HOME/$relative"
+  original_type="$(ws_path_type "$live")"
+  backup_relative="files/$relative"
+  digest=''
+  link_target=''
+  [[ "$original_type" == file ]] && digest="$(ws_sha256 "$live")"
+  [[ "$original_type" == symlink ]] && link_target="$(readlink "$live")"
+  printf '%s\t%s\t%s\t%s\t%s\n' "$relative" "$original_type" "$backup_relative" "$digest" "$link_target" >> "$prestate_tsv"
+done < "$install_map"
+
+# Materialize every backup before the first live mutation. A partial apply can
+# therefore restore paths that had not yet been reached as well as those changed.
+while IFS=$'\t' read -r relative original_type backup_relative digest link_target; do
+  : "$digest" "$link_target"
+  [[ "$original_type" != absent ]] || continue
+  live="$TARGET_HOME/$relative"
+  backup="$backup_root/$backup_relative"
+  mkdir -p "$(dirname "$backup")"
+  cp -pR "$live" "$backup"
+  [[ "$(ws_path_type "$backup")" == "$original_type" ]] || ws_die "backup verification failed for $relative"
+done < "$prestate_tsv"
+
+jq -Rn --arg transactionId "$transaction_id" --arg targetHome "$TARGET_HOME" --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
+  [inputs | split("\t") | {relativePath:.[0],originalType:.[1],backupRelative:.[2],sha256:(if .[3] == "" then null else .[3] end),linkTarget:(if .[4] == "" then null else .[4] end)}]
+  | {schemaVersion:1,transactionId:$transactionId,targetHome:$targetHome,createdAt:$createdAt,paths:.}' < "$prestate_tsv" > "$backup_manifest"
+
+previous_current=''
+if [[ -L "$share_root/current" ]]; then
+  previous_current="$(readlink "$share_root/current")"
+elif [[ -e "$share_root/current" ]]; then
+  ws_die "current pointer exists but is not a symlink"
+fi
+previous_transaction=''
+[[ -f "$state_root/current-transaction" ]] && previous_transaction="$(sed -n '1p' "$state_root/current-transaction")"
+jq -n --arg transactionId "$transaction_id" --arg version "$VERSION" --arg targetHome "$TARGET_HOME" \
+  --arg authorityReference "$authority_reference" --arg releaseDir "$release_dir" --arg backupManifest "$backup_manifest" \
+  --arg previousCurrent "$previous_current" --arg previousTransaction "$previous_transaction" --arg startedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '{schemaVersion:1,transactionId:$transactionId,version:$version,targetHome:$targetHome,authorityReference:$authorityReference,
+    releaseDir:$releaseDir,backupManifest:$backupManifest,previousCurrent:$previousCurrent,previousTransaction:$previousTransaction,status:"applying",startedAt:$startedAt,
+    secretValues:false,liveHomeActivated:false}' > "$receipt"
+
+next_pointer="$share_root/current.next.$transaction_id"
+ln -s "$release_dir" "$next_pointer"
+mv -f "$next_pointer" "$share_root/current"
+applied=1
+while IFS=$'\t' read -r relative kind source; do
+  live="$TARGET_HOME/$relative"
+  ws_assert_under_home "$TARGET_HOME" "$live"
+  if [[ -L "$live" || -e "$live" ]]; then
+    ws_remove_exact_path "$TARGET_HOME" "$live"
+  fi
+  mkdir -p "$(dirname "$live")"
+  if [[ "$kind" == link ]]; then
+    ln -s "$share_root/current/$source" "$live"
+  else
+    cp "$source" "$live"
+  fi
+  applied_paths=$((applied_paths + 1))
+  if [[ "${WORKSTATION_FAIL_AFTER_PATHS:-0}" == "$applied_paths" ]]; then
+    false
+  fi
+done < "$install_map"
+printf '%s\n' "$transaction_id" > "$state_root/current-transaction"
+
+doctor_args=(--activation --home "$TARGET_HOME" --receipt-root "$state_root/receipts")
+[[ -n "$PRIVATE_PROFILE" ]] && doctor_args+=(--private-profile "$PRIVATE_PROFILE")
+if ! bash "$release_dir/runtime/bin/workstation-doctor" "${doctor_args[@]}"; then
+  bash "$release_dir/runtime/bin/workstation-rollback" --receipt "$receipt" --home "$TARGET_HOME" --automatic
+  ws_die "post-activation doctor failed; rollback completed"
+fi
+
+receipt_tmp="$receipt.tmp"
+jq --arg completedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson live "$([[ "$TARGET_HOME" == "$(ws_real_dir "$HOME")" ]] && printf true || printf false)" \
+  '.status="active" | .completedAt=$completedAt | .liveHomeActivated=$live' "$receipt" > "$receipt_tmp"
+mv "$receipt_tmp" "$receipt"
+printf 'PASS: activation transaction %s\nReceipt: %s\n' "$transaction_id" "$receipt"

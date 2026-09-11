@@ -1,38 +1,116 @@
 #!/usr/bin/env bash
 set -uo pipefail
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-STATE_ROOT="${HOME}/.local/state/engineering-workstation-bootstrap/receipts"
-ENABLE_CLOUDFLARE="${ENABLE_CLOUDFLARE:-0}"
-mkdir -p "$STATE_ROOT"
+MODE=full
+TARGET_HOME="$HOME"
+PRIVATE_PROFILE=''
+RECEIPT_ROOT=''
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --full) MODE=full; shift ;;
+    --activation) MODE=activation; shift ;;
+    --home) TARGET_HOME="${2:-}"; shift 2 ;;
+    --private-profile) PRIVATE_PROFILE="${2:-}"; shift 2 ;;
+    --receipt-root) RECEIPT_ROOT="${2:-}"; shift 2 ;;
+    *) printf 'Usage: workstation-doctor [--full|--activation] [--home <path>] [--private-profile <json>]\n' >&2; exit 64 ;;
+  esac
+done
+
+TARGET_HOME="$(cd "$TARGET_HOME" 2>/dev/null && pwd -P)" || { printf 'FAIL  Target home\n'; exit 1; }
+[[ -n "$RECEIPT_ROOT" ]] || RECEIPT_ROOT="$TARGET_HOME/.local/state/engineering-workstation-bootstrap/receipts"
+mkdir -p "$RECEIPT_ROOT"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-JSON="$STATE_ROOT/doctor-$STAMP.json"
+JSON="$RECEIPT_ROOT/doctor-$STAMP-$$.json"
+RESULTS="$(mktemp)"
 failures=0
-results=()
-check(){ local name="$1"; shift; if "$@" >/dev/null 2>&1; then printf 'PASS  %s\n' "$name"; results+=("{\"name\":\"$name\",\"status\":\"pass\"}"); else printf 'FAIL  %s\n' "$name"; results+=("{\"name\":\"$name\",\"status\":\"fail\"}"); failures=$((failures+1)); fi; }
-printf 'ENGINEERING WORKSTATION DOCTOR\n\n'
-check 'Supported host' test "$(uname -s)" = Darwin
-check 'Homebrew' command -v brew
-check 'Git' command -v git
-check 'GitHub command-line client' command -v gh
-check 'Python' command -v python3
-check 'Node.js' command -v node
-check 'Managed shell fragment' test -f "$HOME/.config/engineering-workstation-bootstrap/shell.zsh"
-check 'GitHub authentication' bash "$ROOT/bin/github-auth-doctor"
-if [[ "$ENABLE_CLOUDFLARE" == "1" ]]; then
-  check 'Cloudflare command-line client' command -v wrangler
-  check 'Cloudflare authentication' bash "$ROOT/bin/cloudflare-auth-doctor"
+
+record() {
+  local name="$1" status="$2"
+  printf '%-5s %s\n' "$(printf '%s' "$status" | tr '[:lower:]' '[:upper:]')" "$name"
+  jq -cn --arg name "$name" --arg status "$status" '{name:$name,status:$status}' >> "$RESULTS"
+  [[ "$status" != fail ]] || failures=$((failures + 1))
+}
+
+check() {
+  local name="$1"
+  shift
+  if "$@" >/dev/null 2>&1; then record "$name" pass; else record "$name" fail; fi
+}
+
+mcp_disabled() {
+  local config="$1" target="$2"
+  awk -v target="$target" '
+    function name_of(line, value) { value=line; sub(/^\[mcp_servers\./,"",value); sub(/\]$/, "", value); gsub(/^"|"$/, "", value); return value }
+    /^\[mcp_servers\./ { in_target=(name_of($0) == target); next }
+    /^\[/ { in_target=0 }
+    in_target && /^[[:space:]]*enabled[[:space:]]*=[[:space:]]*false([[:space:]]*(#.*)?)?$/ { found=1 }
+    END { exit(found ? 0 : 1) }
+  ' "$config"
+}
+
+printf 'ENGINEERING WORKSTATION DOCTOR (%s)\n\n' "$MODE"
+if [[ "$MODE" == full ]]; then
+  check 'Supported host' test "$(uname -s)" = Darwin
+  for tool in brew git gh python3 node jq; do check "$tool" command -v "$tool"; done
+  check 'GitHub authentication' bash "$ROOT/bin/github-auth-doctor"
+  if [[ "${ENABLE_CLOUDFLARE:-0}" == 1 ]]; then
+    check 'Cloudflare authentication' bash "$ROOT/bin/cloudflare-auth-doctor"
+  else
+    record 'Optional Cloudflare capability' skipped
+  fi
+  check 'Browser automation library' bash "$ROOT/bin/browser-gate-python" -c 'import playwright'
 else
-  printf 'SKIP  Optional Cloudflare capability is not enabled\n'
-  results+=("{\"name\":\"Cloudflare capability\",\"status\":\"skipped\"}")
+  share_root="$TARGET_HOME/.local/share/engineering-workstation-bootstrap"
+  check 'Atomic current pointer' test -L "$share_root/current"
+  for fragment in shell aliases functions environment prompt; do
+    check "Managed shell $fragment" test -L "$TARGET_HOME/.config/engineering-workstation-bootstrap/$fragment.zsh"
+  done
+  check 'Managed Codex config' test -L "$TARGET_HOME/.codex/config.toml"
+  check 'Managed Codex instructions' test -L "$TARGET_HOME/.codex/AGENTS.md"
+  check 'Routine execution policy' rg -q '^approval_policy = "on-request"$' "$TARGET_HOME/.codex/config.toml"
+  check 'Automatic routine approval review' rg -q '^approvals_reviewer = "auto_review"$' "$TARGET_HOME/.codex/config.toml"
+  check 'Workspace sandbox policy' rg -q '^sandbox_mode = "workspace-write"$' "$TARGET_HOME/.codex/config.toml"
+  # shellcheck disable=SC2016
+  check 'No routine confirmation gate' sh -c '! rg -n "Await explicit user confirmation|confirm plan|may I proceed" "$1"' sh "$TARGET_HOME/.codex/AGENTS.md"
+  include_count="$(grep -Fxc "source \"\$HOME/.config/engineering-workstation-bootstrap/shell.zsh\"" "$TARGET_HOME/.zshrc" 2>/dev/null || true)"
+  if [[ "$include_count" == 1 ]]; then record 'Single managed shell include' pass; else record 'Single managed shell include' fail; fi
+  invalid_skills=0
+  for skill_root in "$TARGET_HOME/.codex/skills" "$TARGET_HOME/.agents/skills"; do
+    [[ -e "$skill_root" ]] || continue
+    count="$(find -L "$skill_root" -type f -name SKILL.md -exec awk 'FNR==1 && $0 != "---" {n++} END {print n+0}' {} + 2>/dev/null | awk '{s+=$1} END {print s+0}')"
+    invalid_skills=$((invalid_skills + count))
+    if find -L "$skill_root" -type f -path '*/layers/*/SKILL.md' -print -quit 2>/dev/null | grep -q .; then
+      invalid_skills=$((invalid_skills + 1))
+    fi
+  done
+  if [[ "$invalid_skills" == 0 ]]; then record 'Manifest-only valid skill discovery' pass; else record 'Manifest-only valid skill discovery' fail; fi
+  if [[ -n "$PRIVATE_PROFILE" && -f "$PRIVATE_PROFILE" ]]; then
+    while IFS= read -r name; do
+      if mcp_disabled "$TARGET_HOME/.codex/config.toml" "$name"; then record "Optional MCP $name disabled/auth-required" pass; else record "Optional MCP $name disabled/auth-required" fail; fi
+    done < <(jq -r '.mcp[]? | select(.startup == "disabled") | .name' "$PRIVATE_PROFILE")
+    while IFS= read -r utility; do
+      check "Private utility $utility" test -x "$TARGET_HOME/bin/$utility"
+    done < <(jq -r '.utilities[]?.name' "$PRIVATE_PROFILE")
+    while IFS= read -r dependency; do
+      check "Utility dependency $dependency" command -v "$dependency"
+    done < <(jq -r '.utilities[]?.dependencies[]?' "$PRIVATE_PROFILE" | sort -u)
+  fi
+  secret_pattern='((^|[^A-Za-z0-9])(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,})|-----BEGIN (RSA|OPENSSH|EC) PRIVATE KEY-----)'
+  if rg -n "$secret_pattern" "$share_root/current/config" "$share_root/current/private-bin" >/dev/null 2>&1; then
+    record 'Generated state excludes secret values' fail
+  else
+    record 'Generated state excludes secret values' pass
+  fi
 fi
-check 'Browser automation library' bash "$ROOT/bin/browser-gate-python" -c 'import playwright'
-check 'Headless browser launch' bash "$ROOT/bin/browser-gate-python" -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(headless=True); b.close(); p.stop()'
-{
-  printf '{"generated_at":"%s","profile":"%s","result":"%s","checks":[' "$STAMP" "${WORKSTATION_PROFILE:-macos-desktop}" "$([[ $failures -eq 0 ]] && echo pass || echo fail)"
-  separator=''
-  for item in "${results[@]}"; do printf '%s%s' "$separator" "$item"; separator=','; done
-  printf ']}\n'
-} > "$JSON"
+
+[[ "${WORKSTATION_DOCTOR_FORCE_FAIL:-0}" != 1 ]] || record 'Forced rollback fixture' fail
+result=pass
+[[ "$failures" == 0 ]] || result=fail
+jq -s --arg generatedAt "$STAMP" --arg mode "$MODE" --arg targetHome "$TARGET_HOME" --arg result "$result" \
+  '{schemaVersion:1,generatedAt:$generatedAt,mode:$mode,targetHome:$targetHome,result:$result,checks:.,secretValues:false}' "$RESULTS" > "$JSON"
+rm -f "$RESULTS"
 printf '\nReceipt: %s\n' "$JSON"
-(( failures == 0 )) && { printf 'RESULT: workstation is development-ready\n'; exit 0; }
-printf 'RESULT: workstation has %d failed checks\n' "$failures"; exit 1
+if [[ "$failures" == 0 ]]; then printf 'RESULT: workstation is activation-ready\n'; exit 0; fi
+printf 'RESULT: workstation has %d failed checks\n' "$failures"
+exit 1

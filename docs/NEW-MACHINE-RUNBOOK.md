@@ -44,15 +44,31 @@ gh repo clone pinklon/engineering-workstation-bootstrap \
 cd "$HOME/Developer/engineering-workstation-bootstrap"
 ```
 
-## 7. Run the guided bootstrap
+## 7. Issue a local activation contract
+
+Activation is deliberately separate from repository or package validation. Create
+a contract bound to the physical home path and the package version:
 
 ```bash
-./bin/workstation-bootstrap install
+jq -n --arg home "$(cd "$HOME" && pwd -P)" \
+  '{schemaVersion:1,activationAuthorized:true,allowLiveHome:true,
+    authorityReference:"owner-issued-local-contract",targetHome:$home,
+    version:"0.2.0",manageSkillRoots:false}' > "$HOME/Downloads/workstation-activation.json"
+```
+
+Set `manageSkillRoots` only when a local private profile has inventoried and
+checksum-bound every active skill entrypoint.
+
+## 8. Run the guided bootstrap
+
+```bash
+WORKSTATION_ACTIVATION_CONTRACT="$HOME/Downloads/workstation-activation.json" \
+  ./bin/workstation-bootstrap install
 ```
 
 The bootstrap installs declared packages, configures managed fragments, enrolls required providers, configures Playwright, clones declared repositories, and runs the full doctor.
 
-## 8. Complete human checkpoints
+## 9. Complete human checkpoints
 
 The bootstrap may pause for:
 
@@ -63,7 +79,7 @@ The bootstrap may pause for:
 
 No script should bypass or persist those approvals in Git.
 
-## 9. Validate
+## 10. Validate
 
 ```bash
 workstation-doctor --full
@@ -72,13 +88,18 @@ cloudflare-auth-doctor
 browser-gate-python -c 'import playwright; print("Playwright import OK")'
 ```
 
-## 10. Reconcile later
+## 11. Reconcile or roll back later
 
 ```bash
-workstation-bootstrap reconcile
+WORKSTATION_ACTIVATION_CONTRACT="$HOME/Downloads/workstation-activation.json" \
+  workstation-bootstrap reconcile
+workstation-rollback --latest
 ```
 
-Reconcile is designed to be rerunnable. Managed fragments are copied to `~/.config/engineering-workstation-bootstrap`; user configuration files receive only stable include or source lines.
+Reconcile is designed to be rerunnable. Managed fragments resolve through the
+versioned `current` pointer; user shell content receives one stable source line.
+Rollback restores the recorded file, directory, and symlink pre-state rather than
+guessing what existed before activation.
 
 ## Recovery
 

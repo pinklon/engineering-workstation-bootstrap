@@ -1,0 +1,14 @@
+schema_version: 1
+ownership: narrow-managed-boundaries
+paths:
+  - {path: .config/engineering-workstation-bootstrap/shell.zsh, kind: symlink}
+  - {path: .config/engineering-workstation-bootstrap/aliases.zsh, kind: symlink}
+  - {path: .config/engineering-workstation-bootstrap/functions.zsh, kind: symlink}
+  - {path: .config/engineering-workstation-bootstrap/environment.zsh, kind: symlink}
+  - {path: .config/engineering-workstation-bootstrap/prompt.zsh, kind: symlink}
+  - {path: .codex/config.toml, kind: symlink}
+  - {path: .codex/AGENTS.md, kind: symlink}
+  - {path: .zshrc, kind: managed-include}
+conditional_paths:
+  skill_roots: [.codex/skills, .agents/skills]
+  utility_links: bin
