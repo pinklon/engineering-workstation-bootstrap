@@ -145,8 +145,9 @@ make validate      Validate repository code, policy, and package output
 make doctor        Test workstation readiness
 make auth-doctor   Test configured authentication paths
 make package       Build a versioned archive and checksum
+make package-drive Build a non-active Drive recovery candidate
 make install       Install and configure the selected profile
-make reconcile     Repair declared workstation state
+make reconcile     Repair a declared disposable staged target
 ```
 
 The command surface is intentionally small. Users should not need to reverse-engineer shell scripts merely to operate the product, though history suggests software occasionally considers that a feature.
@@ -230,6 +231,7 @@ Future distribution targets include Homebrew, Windows Package Manager, Debian pa
 - [Pluggability](docs/PLUGGABILITY.md)
 - [Web-development guidance](docs/WEB-DEVELOPMENT.md)
 - [Packaging and distribution](docs/PACKAGING-AND-DISTRIBUTION.md)
+- [Staged Tony workstation v2 profile](docs/TONY-WORKSTATION-V2.md)
 
 ## Release gates
 

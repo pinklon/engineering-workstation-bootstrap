@@ -1,0 +1,9 @@
+schema_version: 2
+profiles:
+  public-macos:
+    required: [git, gh, jq, yq, ripgrep, shellcheck, mise, python3, node]
+    recommended: [gnu-tar, shfmt, actionlint, gitleaks, uv]
+  tony-private:
+    extends: public-macos
+    discovered_utilities: [yt, rp, cgh, lgh, execution-packet]
+    classification: private-overlay

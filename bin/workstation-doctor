@@ -27,6 +27,14 @@ else
 fi
 check 'Browser automation library' bash "$ROOT/bin/browser-gate-python" -c 'import playwright'
 check 'Headless browser launch' bash "$ROOT/bin/browser-gate-python" -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(headless=True); b.close(); p.stop()'
+if [[ -n "${TONY_PRIVATE_PROFILE:-}" && -f "${TONY_PRIVATE_PROFILE}" ]]; then
+  while IFS= read -r utility; do
+    check "Private utility $utility" command -v "$utility"
+  done < <(awk '/^  [a-z0-9-]+: \{state: discovered/{gsub(":", "", $1); print $1}' "$TONY_PRIVATE_PROFILE")
+else
+  printf 'SKIP  Private utility profile is not selected\n'
+  results+=("{\"name\":\"Private utilities\",\"status\":\"skipped\"}")
+fi
 {
   printf '{"generated_at":"%s","profile":"%s","result":"%s","checks":[' "$STAMP" "${WORKSTATION_PROFILE:-macos-desktop}" "$([[ $failures -eq 0 ]] && echo pass || echo fail)"
   separator=''

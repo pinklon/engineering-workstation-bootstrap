@@ -9,7 +9,7 @@ bash -n install.sh
 
 if command -v shellcheck >/dev/null 2>&1; then
   printf 'Running ShellCheck...\n'
-  shellcheck -e SC1090,SC1091 install.sh bin/* bootstrap/*.sh packaging/*.sh validation/validate.sh
+  shellcheck -e SC1090,SC1091 install.sh bin/* bootstrap/*.sh packaging/*.sh validation/*.sh
 else
   printf 'WARN: shellcheck unavailable; CI must provide it.\n'
 fi
@@ -34,6 +34,9 @@ fi
 
 printf 'Validating dry run...\n'
 bash bin/workstation-bootstrap dry-run
+
+printf 'Validating v2 staged fixtures...\n'
+bash validation/v2-fixtures.sh
 
 printf 'Validating package build...\n'
 bash packaging/build-package.sh 0.0.0-validation

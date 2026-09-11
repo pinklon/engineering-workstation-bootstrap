@@ -1,0 +1,8 @@
+# Generated into a staged target only; no tokens, OAuth caches, or live paths.
+[skills]
+discovery = "manifest-only"
+manifest = "{{STAGE_ROOT}}/manifests/skills.yaml"
+
+[mcp]
+manifest = "{{STAGE_ROOT}}/manifests/mcp.yaml"
+optional_startup = "disabled-until-enrolled"

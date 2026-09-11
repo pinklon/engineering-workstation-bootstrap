@@ -7,11 +7,12 @@ DIST="$ROOT/dist"
 STAGE="$DIST/engineering-workstation-bootstrap-$VERSION"
 ARCHIVE="$DIST/engineering-workstation-bootstrap-$VERSION.tar.gz"
 CHECKSUM="$ARCHIVE.sha256"
+TARFILE="$DIST/engineering-workstation-bootstrap-$VERSION.tar"
 
 rm -rf "$DIST"
 mkdir -p "$STAGE"
 
-for path in README.md Brewfile mise.toml Makefile install.sh bin bootstrap config manifests docs validation; do
+for path in AGENTS.md README.md Brewfile mise.toml Makefile install.sh bin bootstrap config manifests docs skills validation; do
   cp -R "$ROOT/$path" "$STAGE/"
 done
 
@@ -19,12 +20,16 @@ find "$STAGE" -type f -name '*.sh' -exec chmod 755 {} +
 find "$STAGE/bin" -type f -exec chmod 755 {} +
 
 printf '%s\n' "$VERSION" > "$STAGE/VERSION"
+# Normalize timestamps before archiving; gzip -n removes its own timestamp/name.
+find "$STAGE" -exec touch -h -t 202001010000 {} +
 
 COPYFILE_DISABLE=1 tar \
   --exclude='.DS_Store' \
-  -czf "$ARCHIVE" \
+  -cf "$TARFILE" \
   -C "$DIST" \
   "$(basename "$STAGE")"
+gzip -n -9 -c "$TARFILE" > "$ARCHIVE"
+rm -f "$TARFILE"
 
 if command -v shasum >/dev/null 2>&1; then
   shasum -a 256 "$ARCHIVE" > "$CHECKSUM"

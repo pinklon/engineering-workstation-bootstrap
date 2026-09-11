@@ -1,0 +1,9 @@
+schema_version: 2
+discovery:
+  mode: manifest-only
+  entrypoint_glob: "skills/*/SKILL.md"
+  internal_layer_glob: "skills/*/layers/**"
+skills:
+  - name: workstation-operations
+    source: skills/workstation-operations/SKILL.md
+    state: enabled

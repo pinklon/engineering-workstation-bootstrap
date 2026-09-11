@@ -1,0 +1,5 @@
+schema_version: 2
+servers:
+  github: {state: required, auth: oauth-enrolled}
+  supabase: {state: optional, auth: oauth-enrolled, startup: disabled-until-enrolled}
+  cloudflare: {state: optional, auth: oauth-enrolled, startup: disabled-until-enrolled}

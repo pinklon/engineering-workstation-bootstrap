@@ -1,0 +1,11 @@
+schema_version: 2
+classes: [non-secret, discovered, secret-bound, oauth-enrolled, brokered, optional, retired]
+bindings:
+  PATH: {class: non-secret, origin: shell-startup}
+  WORKSTATION_PROFILE: {class: optional, origin: operator}
+  WORKSTATION_STAGE_ROOT: {class: non-secret, origin: operator}
+  GH_TOKEN: {class: secret-bound, origin: external, persist: false}
+  GITHUB_TOKEN: {class: secret-bound, origin: external, persist: false}
+  OPENAI_API_KEY: {class: secret-bound, origin: external, persist: false}
+  SUPABASE_ACCESS_TOKEN: {class: oauth-enrolled, origin: provider, persist: false}
+  CLOUDFLARE_API_TOKEN: {class: secret-bound, origin: provider, persist: false}

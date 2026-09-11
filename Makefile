@@ -1,4 +1,4 @@
-.PHONY: help status inventory dry-run validate doctor auth-doctor package install reconcile
+.PHONY: help status inventory dry-run validate doctor auth-doctor package package-drive install reconcile repair rollback
 
 help:
 	@printf '%s\n' \
@@ -13,10 +13,13 @@ help:
 	  '  make doctor        Run the full workstation doctor' \
 	  '  make auth-doctor   Validate configured authentication providers' \
 	  '  make package       Build archive and checksum; set VERSION=<version>' \
+	  '  make package-drive Build a non-active Google Drive candidate' \
 	  '' \
 	  'Mutating commands:' \
 	  '  make install       Run the guided first-time bootstrap' \
-	  '  make reconcile     Repair declared workstation drift' \
+	  '  make reconcile     Reconcile a disposable staged target only' \
+	  '  make repair        Validate and reconcile a staged target only' \
+	  '  make rollback      Remove a named staged target only' \
 	  '' \
 	  'Optional variable:' \
 	  '  WORKSTATION_PROFILE=macos-desktop|linux-workstation'
@@ -48,8 +51,17 @@ auth-doctor:
 package:
 	bash packaging/build-package.sh "$${VERSION:-0.1.0-dev}"
 
+package-drive:
+	bash bin/staged-workstation package-drive "$${VERSION:-0.1.0-dev}"
+
 install:
 	bash bin/workstation-bootstrap install
 
 reconcile:
-	bash bin/workstation-bootstrap reconcile
+	bash bin/staged-workstation reconcile
+
+repair:
+	bash bin/staged-workstation repair
+
+rollback:
+	bash bin/staged-workstation rollback
