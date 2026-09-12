@@ -41,6 +41,12 @@ def main():
                           "pendingCapabilities": manifest["pendingCapabilities"]}, indent=2))
         return 0
 
+    args.state_root.mkdir(parents=True, exist_ok=True)
+    receipt_path = args.state_root / "readiness.json"
+    # Never leave an older PASS as the latest result after a failed attempt.
+    receipt_path.write_text(json.dumps({"schemaVersion": 1, "result": "incomplete",
+        "liveCloudCommissioned": False, "publicationCleared": False, "secretValues": False}) + "\n")
+
     if platform.system() != "Linux":
         raise SystemExit("Cloud provisioning requires a supported Ubuntu container.")
     os_release = dict(line.split("=", 1) for line in Path("/etc/os-release").read_text().splitlines() if "=" in line)
@@ -72,6 +78,14 @@ def main():
     for item in packages:
         passed, version = probe([item["command"]] + item["versionArgs"])
         record(item["command"], passed, version, shutil.which(item["command"]) or "")
+        package_ok, package_version = probe(["dpkg-query", "-W", "-f=${Version}", item["package"]])
+        checks[-1]["osPackageVersion"] = package_version if package_ok else "not-owned-by-image-package"
+        executable = shutil.which(item["command"])
+        if executable:
+            try:
+                checks[-1]["executableSha256"] = hashlib.sha256(Path(executable).read_bytes()).hexdigest()
+            except OSError:
+                checks[-1]["executableSha256"] = "unreadable"
 
     env = os.environ.copy()
     env["WORKSTATION_BOOTSTRAP_BROWSER_ROOT"] = str(args.state_root.resolve() / "browser")
@@ -99,8 +113,6 @@ def main():
                "result": "pass" if all(item["state"] == "ready" for item in checks) else "fail",
                "checks": checks, "agents": agents, "pendingCapabilities": manifest["pendingCapabilities"],
                "liveCloudCommissioned": False, "publicationCleared": False, "secretValues": False}
-    args.state_root.mkdir(parents=True, exist_ok=True)
-    receipt_path = args.state_root / "readiness.json"
     receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
     print("Receipt: " + str(receipt_path))
     print("This proves local container tool readiness only. Account access, effective permissions and publication clearance are separate.")

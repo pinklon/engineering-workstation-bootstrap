@@ -22,6 +22,7 @@ done
 
 ws_need jq
 ws_need rg
+ws_need python3
 [[ -f "$CONTRACT" ]] || ws_die "--activation-contract must name a readable JSON contract"
 [[ -d "$TARGET_HOME" ]] || ws_die "target home does not exist: $TARGET_HOME"
 TARGET_HOME="$(ws_real_dir "$TARGET_HOME")"
@@ -176,7 +177,11 @@ done
 
 zshrc_source="$TARGET_HOME/.zshrc"
 zshrc_rendered="$release_dir/generated-home/.zshrc"
-[[ -f "$zshrc_source" ]] && cp "$zshrc_source" "$zshrc_rendered" || : > "$zshrc_rendered"
+if [[ -f "$zshrc_source" ]]; then
+  cp "$zshrc_source" "$zshrc_rendered"
+else
+  : > "$zshrc_rendered"
+fi
 # shellcheck disable=SC2016
 managed_source='source "$HOME/.config/engineering-workstation-bootstrap/shell.zsh"'
 grep -Fqx "$managed_source" "$zshrc_rendered" 2>/dev/null || printf '\n%s\n' "$managed_source" >> "$zshrc_rendered"
@@ -244,9 +249,7 @@ jq -n --arg transactionId "$transaction_id" --arg version "$VERSION" --arg targe
     releaseDir:$releaseDir,backupManifest:$backupManifest,previousCurrent:$previousCurrent,previousTransaction:$previousTransaction,status:"applying",startedAt:$startedAt,
     secretValues:false,liveHomeActivated:false}' > "$receipt"
 
-next_pointer="$share_root/current.next.$transaction_id"
-ln -s "$release_dir" "$next_pointer"
-mv -f "$next_pointer" "$share_root/current"
+ws_atomic_symlink "$release_dir" "$share_root/current"
 applied=1
 while IFS=$'\t' read -r relative kind source; do
   live="$TARGET_HOME/$relative"

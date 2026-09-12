@@ -2,10 +2,19 @@
 set -euo pipefail
 fixture_root="$(mktemp -d)"
 trap 'rm -rf "$fixture_root"' EXIT
-mkdir -p "$fixture_root/path" "$fixture_root/prior/versions"
-printf 'retained\n' > "$fixture_root/prior/versions/marker"
+prior_store="$fixture_root/prior/.local/share/engineering-workstation-bootstrap"
+mkdir -p "$fixture_root/path" "$prior_store/versions"
+printf 'retained\n' > "$prior_store/versions/marker"
 printf '{}\n' > "$fixture_root/activation.json"
 export TRANCHE_FIXTURE_ROOT="$fixture_root"
+# Route any home references in the entrypoint to the fixture without changing HOME.
+export TRANCHE_FIXTURE_HOME="$fixture_root/prior"
+python3 - "$fixture_root/installer.sh" <<'PY'
+from pathlib import Path
+import sys
+source = Path('install.sh').read_text()
+Path(sys.argv[1]).write_text(source.replace('${HOME}', '${TRANCHE_FIXTURE_HOME}').replace('$HOME', '$TRANCHE_FIXTURE_HOME'))
+PY
 cat > "$fixture_root/path/uname" <<'SCRIPT'
 #!/usr/bin/env bash
 printf 'Darwin\n'
@@ -28,13 +37,13 @@ chmod 755 "$fixture_root/path/"*
 for failure in 0 37; do
   actual=0
   PATH="$fixture_root/path:$PATH" WORKSTATION_ACTIVATION_CONTRACT="$fixture_root/activation.json" \
-    TRANCHE_INSTALL_EXIT="$failure" bash install.sh >/dev/null || actual=$?
+    TRANCHE_INSTALL_EXIT="$failure" bash "$fixture_root/installer.sh" >/dev/null || actual=$?
   [[ "$actual" == "$failure" ]]
   [[ -f "$fixture_root/invoked" && ! -e "$(cat "$fixture_root/source-path")" ]]
-  [[ "$(cat "$fixture_root/prior/versions/marker")" == retained ]]
+  [[ "$(cat "$prior_store/versions/marker")" == retained ]]
 done
 if PATH="$fixture_root/path:$PATH" WORKSTATION_ACTIVATION_CONTRACT="$fixture_root/activation.json" \
-  TRANCHE_CLONE_FAIL=1 bash install.sh >/dev/null 2>&1; then exit 1; fi
+  TRANCHE_CLONE_FAIL=1 bash "$fixture_root/installer.sh" >/dev/null 2>&1; then exit 1; fi
 printf 'PASS: installer source staging, error propagation and cleanup\n'
 
 mkdir -p "$fixture_root/package/bin" "$fixture_root/profile.assets"
@@ -61,6 +70,10 @@ for overlay in public private; do
   [[ "$overlay" != private ]] || args=(--private-profile "$fixture_root/profile.json")
   bash bin/workstation-publish-drive --publication-contract "$fixture_root/publication.json" \
     --drive-root "$drive" --version fixture --archive "$fixture_root/launcher.tar.gz" "${args[@]}" >/dev/null
+  jq '.version="fixture-2"' "$fixture_root/publication.json" > "$fixture_root/publication-2.json"
+  bash bin/workstation-publish-drive --publication-contract "$fixture_root/publication-2.json" \
+    --drive-root "$drive" --version fixture-2 --archive "$fixture_root/launcher.tar.gz" "${args[@]}" >/dev/null
+  [[ "$(readlink "$drive/Tony Workstation Bootstrap/current")" == releases/fixture-2 ]]
   release="$drive/Tony Workstation Bootstrap/current"
   bash "$release/START_TONY_WORKSTATION_BOOTSTRAP.command" "$fixture_root/activation.json" >/dev/null
   [[ "$(jq -r .contract "$fixture_root/launch.json")" == "$fixture_root/activation.json" ]]

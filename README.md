@@ -109,7 +109,7 @@ xcode-select -p >/dev/null 2>&1 || xcode-select --install
 ### 3. Install Git and the GitHub command-line client
 
 ```bash
-brew install git gh
+brew install git gh jq
 ```
 
 ### 4. Authenticate with GitHub

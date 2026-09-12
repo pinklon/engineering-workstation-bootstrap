@@ -78,6 +78,7 @@ WORKSTATION_TRANSACTION_ID=fixture-v2 bash bin/workstation-activate \
   --home "$fixture_home" --version fixture-v1 >/dev/null
 test "$(grep -Fxc "source \"\$HOME/.config/engineering-workstation-bootstrap/shell.zsh\"" "$fixture_home/.zshrc")" = 1
 activation_two="$fixture_home/.local/state/engineering-workstation-bootstrap/receipts/activation-fixture-v2.json"
+test "$(readlink "$fixture_home/.local/share/engineering-workstation-bootstrap/current")" = "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-v1-fixture-v2"
 bash bin/workstation-rollback --receipt "$activation_two" --home "$fixture_home" >/dev/null
 test "$(cat "$fixture_home/.local/state/engineering-workstation-bootstrap/current-transaction")" = fixture-v1
 bash bin/workstation-rollback --receipt "$activation_one" --home "$fixture_home" >/dev/null
