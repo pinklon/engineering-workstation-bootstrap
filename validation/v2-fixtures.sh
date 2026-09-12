@@ -2,7 +2,8 @@
 set -euo pipefail
 
 tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
+profile_tmp="$(mktemp -d /tmp/workstation-profile-fixture.XXXXXX)"
+trap 'rm -rf "$tmp" "$profile_tmp"' EXIT
 fixture_home="$tmp/home"
 mkdir -p "$fixture_home/.codex/skills/legacy/layers/00" "$fixture_home/.agents/skills" "$fixture_home/bin" "$tmp/source-skill/layers/00"
 fixture_home="$(cd "$fixture_home" && pwd -P)"
@@ -18,6 +19,48 @@ utility_sha="$(shasum -a 256 "$tmp/reasonpack" | awk '{print $1}')"
 mkdir -p "$tmp/private-profile.assets/skills" "$tmp/private-profile.assets/bin"
 cp -R "$tmp/source-skill" "$tmp/private-profile.assets/skills/layered-fixture"
 cp "$tmp/reasonpack" "$tmp/private-profile.assets/bin/reasonpack"
+
+printf 'Validating private-profile inventory through managed skill-root symlinks...\n'
+inventory_home="$tmp/inventory-home"
+managed_release="$tmp/managed-release"
+mkdir -p "$inventory_home/.codex" "$inventory_home/.agents" \
+  "$inventory_home/.local/share/engineering-workstation-bootstrap" \
+  "$managed_release/codex-skills/linked-codex" \
+  "$managed_release/agent-skills/linked-agent" \
+  "$managed_release/skill-library/linked-codex" \
+  "$managed_release/skill-library/linked-agent" \
+  "$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-codex/layers/00" \
+  "$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-agent"
+ln -s "$managed_release" "$inventory_home/.local/share/engineering-workstation-bootstrap/current"
+ln -s "$inventory_home/.local/share/engineering-workstation-bootstrap/current/codex-skills" "$inventory_home/.codex/skills"
+ln -s "$inventory_home/.local/share/engineering-workstation-bootstrap/current/agent-skills" "$inventory_home/.agents/skills"
+printf '%s\n' '---' 'name: linked-codex' 'description: managed entrypoint fixture' '---' \
+  '# managed wrapper, not the package' > "$managed_release/codex-skills/linked-codex/SKILL.md"
+printf '%s\n' '---' 'name: linked-agent' 'description: managed entrypoint fixture' '---' \
+  '# managed wrapper, not the package' > "$managed_release/agent-skills/linked-agent/SKILL.md"
+printf '%s\n' '---' 'name: linked-codex' \
+  'description: Managed entrypoint for the externally stored linked-codex skill package.' '---' '' \
+  "Read and follow the complete skill at \`$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-codex/SKILL.md\`. Resolve every relative reference from the package." \
+  > "$managed_release/skill-library/linked-codex/SKILL.md"
+printf '%s\n' '---' 'name: linked-agent' \
+  'description: Managed entrypoint for the externally stored linked-agent skill package.' '---' '' \
+  "Read and follow the complete skill at \`$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-agent/SKILL.md\`. Resolve every relative reference from the package." \
+  > "$managed_release/skill-library/linked-agent/SKILL.md"
+printf '%s\n' '---' 'name: linked-codex' 'description: full package fixture' '---' \
+  '# canonical package' > "$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-codex/SKILL.md"
+printf '%s\n' '# internal layer remains package material' \
+  > "$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-codex/layers/00/SKILL.md"
+printf '%s\n' '---' 'name: linked-agent' 'description: full package fixture' '---' \
+  '# canonical package' > "$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-agent/SKILL.md"
+HOME="$inventory_home" bash bin/workstation-private-profile inventory \
+  --output "$profile_tmp/inventoried-profile.json" >/dev/null
+test "$(jq '.skills | length' "$profile_tmp/inventoried-profile.json")" = 2
+test "$(jq -r '[.skills[].name] | sort | join(",")' "$profile_tmp/inventoried-profile.json")" = 'linked-agent,linked-codex'
+test -f "$profile_tmp/inventoried-profile.assets/skills/linked-codex/layers/00/SKILL.md"
+cmp "$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-codex/SKILL.md" \
+  "$profile_tmp/inventoried-profile.assets/skills/linked-codex/SKILL.md"
+cmp "$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-agent/SKILL.md" \
+  "$profile_tmp/inventoried-profile.assets/skills/linked-agent/SKILL.md"
 
 jq -n --arg utilitySha "$utility_sha" \
   '{schemaVersion:1,profile:"fixture-private",secretValues:false,
