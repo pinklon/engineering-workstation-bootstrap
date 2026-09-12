@@ -15,6 +15,8 @@ This project is an early release candidate.
 - repeat activation and package reproducibility testing: implemented
 - clean physical-machine installation testing: pending
 - Windows and Linux implementations: planned
+- Codex and Claude Code CLI installation: declared in the macOS baseline
+- Local secrets/OCR/metadata tools: declared; complete publication-content gate and PII runtime qualification remain pending
 
 Do not treat the current version as a stable installer until the lifecycle tests are complete.
 
@@ -243,6 +245,7 @@ Future distribution targets include Homebrew, Windows Package Manager, Debian pa
 - [Web-development guidance](docs/WEB-DEVELOPMENT.md)
 - [Packaging and distribution](docs/PACKAGING-AND-DISTRIBUTION.md)
 - [Transactional workstation v2 profile](docs/TONY-WORKSTATION-V2.md)
+- [Coding agents and publication-security tools](docs/AGENT-AND-SECURITY-TOOLS.md)
 
 ## Release gates
 

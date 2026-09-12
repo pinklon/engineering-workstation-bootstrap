@@ -52,7 +52,8 @@ mcp_disabled() {
 printf 'ENGINEERING WORKSTATION DOCTOR (%s)\n\n' "$MODE"
 if [[ "$MODE" == full ]]; then
   check 'Supported host' test "$(uname -s)" = Darwin
-  for tool in brew git gh python3 node jq; do check "$tool" command -v "$tool"; done
+  check 'Homebrew package manager' command -v brew
+  check 'Manifest-declared agent and shared tool versions' bash "$ROOT/bin/workstation-toolsets" doctor
   check 'GitHub authentication' bash "$ROOT/bin/github-auth-doctor"
   if [[ "${ENABLE_CLOUDFLARE:-0}" == 1 ]]; then
     check 'Cloudflare authentication' bash "$ROOT/bin/cloudflare-auth-doctor"
@@ -111,6 +112,9 @@ jq -s --arg generatedAt "$STAMP" --arg mode "$MODE" --arg targetHome "$TARGET_HO
   '{schemaVersion:1,generatedAt:$generatedAt,mode:$mode,targetHome:$targetHome,result:$result,checks:.,secretValues:false}' "$RESULTS" > "$JSON"
 rm -f "$RESULTS"
 printf '\nReceipt: %s\n' "$JSON"
-if [[ "$failures" == 0 ]]; then printf 'RESULT: workstation is activation-ready\n'; exit 0; fi
+if [[ "$failures" == 0 ]]; then
+  printf 'RESULT: workstation is activation-ready; publication content clearance is separate\n'
+  exit 0
+fi
 printf 'RESULT: workstation has %d failed checks\n' "$failures"
 exit 1

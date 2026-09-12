@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MANIFEST="$ROOT/manifests/homebrew.json"
+MODE="${1:-doctor}"
+command -v jq >/dev/null 2>&1 || { printf 'FAIL: jq is required to read the tool manifest.\n' >&2; exit 2; }
+
+jq -e '
+  .schemaVersion == 1 and
+  (.packages | type == "array" and length > 0) and
+  all(.packages[];
+    (.kind == "brew" or .kind == "cask") and
+    (.name | type == "string" and test("^[a-z0-9@+._-]+$")) and
+    (if has("command") then
+      (.command | type == "string" and test("^[a-zA-Z0-9._-]+$")) and
+      (.versionArgs | type == "array" and length > 0 and all(.[]; type == "string"))
+    else true end)) and
+  ([.packages[] | .kind + ":" + .name] | length == (unique | length))
+' "$MANIFEST" >/dev/null || { printf 'FAIL: invalid tool manifest.\n' >&2; exit 2; }
+
+case "$MODE" in
+  brewfile)
+    printf '# Generated from manifests/homebrew.json by bin/workstation-toolsets brewfile.\n'
+    jq -r '.packages[] | .kind + " \"" + .name + "\""' "$MANIFEST"
+    ;;
+  doctor)
+    failures=0
+    while IFS= read -r package; do
+      tool="$(jq -r .command <<< "$package")"
+      args=()
+      while IFS= read -r argument; do args+=("$argument"); done < <(jq -r '.versionArgs[]' <<< "$package")
+      if ! command -v "$tool" >/dev/null 2>&1; then
+        printf 'FAIL  %s missing\n' "$tool"
+        failures=$((failures + 1))
+      elif version_output="$("$tool" "${args[@]}" 2>&1)"; then
+        printf 'PASS  %s: %s\n' "$tool" "$(printf '%s\n' "$version_output" | sed -n '1p')"
+        printf '      executable: %s\n' "$(command -v "$tool")"
+      else
+        printf 'FAIL  %s cannot complete its startup/version probe (%s)\n' "$tool" "$(command -v "$tool")"
+        if [[ "$version_output" == *'Library not loaded'* || "$version_output" == *'error while loading shared libraries'* ]]; then
+          printf '      A required shared library could not load. Inspect the selected runtime and its package owner before repairing it.\n'
+        fi
+        failures=$((failures + 1))
+      fi
+    done < <(jq -c '.packages[] | select(has("command"))' "$MANIFEST")
+    printf '\nThis checks executable readiness only. No login, permission qualification, PII scan, confidential-content review, or publication authorization was performed.\n'
+    [[ "$failures" == 0 ]]
+    ;;
+  *) printf 'Usage: workstation-toolsets {brewfile|doctor}\n' >&2; exit 64 ;;
+esac
