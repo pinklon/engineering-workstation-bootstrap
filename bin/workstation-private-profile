@@ -41,7 +41,7 @@ mkdir -p "$assets_dir/skills" "$assets_dir/bin"
 : > "$work/seen-skills"
 
 record_skill() {
-  local skill_file="$1" install_root="$2" managed_library="$3" name source_dir safe_name bundled_dir
+  local skill_file="$1" install_root="$2" managed_library="$3" name source_dir safe_name bundled_dir target_file depth
   [[ "$(sed -n '1p' "$skill_file")" == '---' ]] || return 0
   source_dir="$(dirname "$skill_file")"
   name="$(awk -F': *' '$1 == "name" {gsub(/^"|"$/, "", $2); print $2; exit}' "$skill_file")"
@@ -51,6 +51,22 @@ record_skill() {
   safe_name="$(printf '%s' "$name" | sed 's/[^A-Za-z0-9._-]/-/g')"
   if [[ -n "$managed_library" && -f "$managed_library/$safe_name/SKILL.md" ]]; then
     source_dir="$managed_library/$safe_name"
+  fi
+  for depth in {1..8}; do
+    if ! rg -q '^description: Managed entrypoint for the externally stored .+ skill package\.$' "$source_dir/SKILL.md"; then
+      break
+    fi
+    # shellcheck disable=SC2016
+    target_file="$(sed -n 's|^Read and follow the complete skill at `\([^`]*\/SKILL.md\)`.|\1|p' "$source_dir/SKILL.md" | sed -n '1p')"
+    case "$target_file" in
+      "$HOME/.local/share/engineering-workstation-bootstrap/versions/"*/SKILL.md) ;;
+      *) ws_die "managed skill wrapper has an unsafe or missing package target: $name" ;;
+    esac
+    [[ -f "$target_file" ]] || ws_die "managed skill wrapper package target is unavailable: $name"
+    source_dir="$(dirname "$target_file")"
+  done
+  if rg -q '^description: Managed entrypoint for the externally stored .+ skill package\.$' "$source_dir/SKILL.md"; then
+    ws_die "managed skill wrapper depth exceeded after $depth links: $name"
   fi
   bundled_dir="$assets_dir/skills/$safe_name"
   cp -R "$source_dir" "$bundled_dir"
