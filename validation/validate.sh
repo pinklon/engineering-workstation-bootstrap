@@ -7,6 +7,10 @@ printf 'Validating shell syntax...\n'
 while IFS= read -r file; do bash -n "$file"; done < <(find bin bootstrap packaging validation -maxdepth 2 -type f | sort)
 bash -n install.sh
 
+printf 'Validating generated Homebrew manifest parity...\n'
+bash bin/workstation-toolsets brewfile | cmp - Brewfile
+bash validation/toolsets-fixtures.sh
+
 if command -v shellcheck >/dev/null 2>&1; then
   printf 'Running ShellCheck...\n'
   shellcheck -e SC1090,SC1091 install.sh bin/* bootstrap/*.sh packaging/*.sh validation/*.sh

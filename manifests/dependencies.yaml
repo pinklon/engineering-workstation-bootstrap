@@ -1,8 +1,11 @@
 schema_version: 2
+macos_package_authority: manifests/homebrew.json
+generated_macos_installer: Brewfile
 profiles:
   public-macos:
-    required: [git, gh, jq, yq, ripgrep, shellcheck, mise, python3, node]
-    recommended: [gnu-tar, shfmt, actionlint, gitleaks, uv]
+    required: [git, gh, jq, yq, ripgrep, shellcheck, mise, python3, node, codex, claude, uv, shfmt, actionlint, pre-commit, gitleaks, pdftotext, tesseract, exiftool]
+    optional_deep_secrets: [trufflehog]
+    pending_qualification: [presidio-runtime, publication-content-gate, linux-cloud-profile]
   private-overlay:
     extends: public-macos
     discovered_utilities: []

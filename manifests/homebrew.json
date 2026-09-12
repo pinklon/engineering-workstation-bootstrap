@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "versionPolicy": "Homebrew stable packages; record installed versions; qualify upgrades explicitly",
+  "packages": [
+    {"kind":"brew","name":"git","command":"git","versionArgs":["--version"]},
+    {"kind":"brew","name":"gh","command":"gh","versionArgs":["--version"]},
+    {"kind":"brew","name":"jq","command":"jq","versionArgs":["--version"]},
+    {"kind":"brew","name":"yq","command":"yq","versionArgs":["--version"]},
+    {"kind":"brew","name":"ripgrep","command":"rg","versionArgs":["--version"]},
+    {"kind":"brew","name":"shellcheck","command":"shellcheck","versionArgs":["--version"]},
+    {"kind":"brew","name":"mise","command":"mise","versionArgs":["--version"]},
+    {"kind":"brew","name":"python@3.13","command":"python3","versionArgs":["--version"]},
+    {"kind":"brew","name":"node@22","command":"node","versionArgs":["--version"]},
+    {"kind":"brew","name":"coreutils"},
+    {"kind":"brew","name":"gnu-tar"},
+    {"kind":"brew","name":"openssl@3"},
+    {"kind":"brew","name":"cloudflared","command":"cloudflared","versionArgs":["--version"]},
+    {"kind":"brew","name":"uv","command":"uv","versionArgs":["--version"]},
+    {"kind":"brew","name":"shfmt","command":"shfmt","versionArgs":["--version"]},
+    {"kind":"brew","name":"actionlint","command":"actionlint","versionArgs":["-version"]},
+    {"kind":"brew","name":"pre-commit","command":"pre-commit","versionArgs":["--version"]},
+    {"kind":"brew","name":"gitleaks","command":"gitleaks","versionArgs":["version"]},
+    {"kind":"brew","name":"poppler","command":"pdftotext","versionArgs":["-v"]},
+    {"kind":"brew","name":"tesseract","command":"tesseract","versionArgs":["--version"]},
+    {"kind":"brew","name":"exiftool","command":"exiftool","versionArgs":["-ver"]},
+    {"kind":"cask","name":"visual-studio-code"},
+    {"kind":"cask","name":"codex","command":"codex","versionArgs":["--version"]},
+    {"kind":"cask","name":"claude-code","command":"claude","versionArgs":["--version"]}
+  ]
+}

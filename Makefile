@@ -1,4 +1,4 @@
-.PHONY: help status inventory private-profile dry-run validate doctor auth-doctor package package-drive install activate reconcile repair rollback
+.PHONY: help status inventory private-profile dry-run validate doctor toolsets-doctor auth-doctor package package-drive install activate reconcile repair rollback
 
 help:
 	@printf '%s\n' \
@@ -11,6 +11,7 @@ help:
 	  '  make dry-run       Preview the selected workstation profile' \
 	  '  make validate      Validate repository scripts and package output' \
 	  '  make doctor        Run the full workstation doctor' \
+	  '  make toolsets-doctor Check coding-agent and shared tool versions' \
 	  '  make auth-doctor   Validate configured authentication providers' \
 	  '  make package       Build archive and checksum; set VERSION=<version>' \
 	  '  make private-profile Generate a local, secret-free endpoint overlay' \
@@ -43,6 +44,9 @@ validate:
 
 doctor:
 	bash bin/workstation-doctor --full
+
+toolsets-doctor:
+	bash bin/workstation-toolsets doctor
 
 auth-doctor:
 	@bash bin/github-auth-doctor; github_status=$$?; \

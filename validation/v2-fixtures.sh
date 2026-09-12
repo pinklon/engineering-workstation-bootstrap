@@ -52,6 +52,8 @@ WORKSTATION_TRANSACTION_ID=fixture-v1 bash bin/workstation-activate \
   --home "$fixture_home" --version fixture-v1 >/dev/null
 activation_one="$fixture_home/.local/state/engineering-workstation-bootstrap/receipts/activation-fixture-v1.json"
 test "$(jq -r .status "$activation_one")" = active
+test -x "$fixture_home/bin/workstation-toolsets"
+bash "$fixture_home/.local/share/engineering-workstation-bootstrap/current/runtime/bin/workstation-toolsets" brewfile | cmp - Brewfile
 test "$(jq -r '.paths | length' "$(jq -r .backupManifest "$activation_one")")" -ge 10
 test "$(grep -Fxc "source \"\$HOME/.config/engineering-workstation-bootstrap/shell.zsh\"" "$fixture_home/.zshrc")" = 1
 rg -q '^export USER_SETTING=preserved$' "$fixture_home/.zshrc"
@@ -121,6 +123,8 @@ cp "$package" "$tmp/first-package.tar.gz"
 bash packaging/build-package.sh 0.2.0-fixture >/dev/null
 test "$package_sha" = "$(shasum -a 256 "$package" | awk '{print $1}')"
 if tar -tzf "$package" | rg -q 'tony-private-profile\.json|activation-.*\.json'; then exit 1; fi
+tar -tzf "$package" | rg -q '/CLAUDE\.md$'
+tar -tzf "$package" | rg -q '/manifests/homebrew\.json$'
 
 printf 'Validating contract-bound Drive current/releases/receipts layout...\n'
 mkdir -p "$tmp/drive"
