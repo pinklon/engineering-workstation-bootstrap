@@ -62,8 +62,8 @@ for skill_root in "$HOME/.codex/skills" "$HOME/.agents/skills"; do
   while IFS= read -r skill_file; do
     record_skill "$skill_file" "$install_root"
   done < <(
-    find "$skill_root" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print
-    [[ -d "$skill_root/.system" ]] && find "$skill_root/.system" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print
+    find -H "$skill_root" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print
+    [[ -d "$skill_root/.system" ]] && find -H "$skill_root/.system" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print
   )
 done
 

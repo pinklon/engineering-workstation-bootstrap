@@ -2,7 +2,8 @@
 set -euo pipefail
 
 tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
+profile_tmp="$(mktemp -d /tmp/workstation-profile-fixture.XXXXXX)"
+trap 'rm -rf "$tmp" "$profile_tmp"' EXIT
 fixture_home="$tmp/home"
 mkdir -p "$fixture_home/.codex/skills/legacy/layers/00" "$fixture_home/.agents/skills" "$fixture_home/bin" "$tmp/source-skill/layers/00"
 fixture_home="$(cd "$fixture_home" && pwd -P)"
@@ -18,6 +19,26 @@ utility_sha="$(shasum -a 256 "$tmp/reasonpack" | awk '{print $1}')"
 mkdir -p "$tmp/private-profile.assets/skills" "$tmp/private-profile.assets/bin"
 cp -R "$tmp/source-skill" "$tmp/private-profile.assets/skills/layered-fixture"
 cp "$tmp/reasonpack" "$tmp/private-profile.assets/bin/reasonpack"
+
+printf 'Validating private-profile inventory through managed skill-root symlinks...\n'
+inventory_home="$tmp/inventory-home"
+managed_roots="$tmp/managed-roots"
+mkdir -p "$inventory_home/.codex" "$inventory_home/.agents" \
+  "$managed_roots/codex-skills/linked-codex/layers/00" \
+  "$managed_roots/agent-skills/linked-agent"
+ln -s "$managed_roots/codex-skills" "$inventory_home/.codex/skills"
+ln -s "$managed_roots/agent-skills" "$inventory_home/.agents/skills"
+printf '%s\n' '---' 'name: linked-codex' 'description: symlinked root fixture' '---' \
+  > "$managed_roots/codex-skills/linked-codex/SKILL.md"
+printf '%s\n' '# internal layer remains package material' \
+  > "$managed_roots/codex-skills/linked-codex/layers/00/SKILL.md"
+printf '%s\n' '---' 'name: linked-agent' 'description: symlinked root fixture' '---' \
+  > "$managed_roots/agent-skills/linked-agent/SKILL.md"
+HOME="$inventory_home" bash bin/workstation-private-profile inventory \
+  --output "$profile_tmp/inventoried-profile.json" >/dev/null
+test "$(jq '.skills | length' "$profile_tmp/inventoried-profile.json")" = 2
+test "$(jq -r '[.skills[].name] | sort | join(",")' "$profile_tmp/inventoried-profile.json")" = 'linked-agent,linked-codex'
+test -f "$profile_tmp/inventoried-profile.assets/skills/linked-codex/layers/00/SKILL.md"
 
 jq -n --arg utilitySha "$utility_sha" \
   '{schemaVersion:1,profile:"fixture-private",secretValues:false,
