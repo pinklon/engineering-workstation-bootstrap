@@ -125,9 +125,10 @@ package_sha="$(shasum -a 256 "$package" | awk '{print $1}')"
 cp "$package" "$tmp/first-package.tar.gz"
 bash packaging/build-package.sh 0.2.0-fixture >/dev/null
 test "$package_sha" = "$(shasum -a 256 "$package" | awk '{print $1}')"
-if tar -tzf "$package" | rg -q 'tony-private-profile\.json|activation-.*\.json'; then exit 1; fi
-tar -tzf "$package" | rg -q '/CLAUDE\.md$'
-tar -tzf "$package" | rg -q '/manifests/homebrew\.json$'
+tar -tzf "$package" > "$tmp/package-entries.txt"
+if rg -q 'tony-private-profile\.json|activation-.*\.json' "$tmp/package-entries.txt"; then exit 1; fi
+rg -q '/CLAUDE\.md$' "$tmp/package-entries.txt"
+rg -q '/manifests/homebrew\.json$' "$tmp/package-entries.txt"
 mkdir -p "$tmp/unpacked"
 tar -xzf "$package" -C "$tmp/unpacked"
 unpacked="$tmp/unpacked/engineering-workstation-bootstrap-0.2.0-fixture"
