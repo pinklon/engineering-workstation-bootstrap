@@ -40,11 +40,11 @@ printf '%s\n' '---' 'name: linked-agent' 'description: managed entrypoint fixtur
   '# managed wrapper, not the package' > "$managed_release/agent-skills/linked-agent/SKILL.md"
 printf '%s\n' '---' 'name: linked-codex' \
   'description: Managed entrypoint for the externally stored linked-codex skill package.' '---' '' \
-  "Read and follow the complete skill at \`$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-codex/SKILL.md\`." \
+  "Read and follow the complete skill at \`$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-codex/SKILL.md\`. Resolve every relative reference from the package." \
   > "$managed_release/skill-library/linked-codex/SKILL.md"
 printf '%s\n' '---' 'name: linked-agent' \
   'description: Managed entrypoint for the externally stored linked-agent skill package.' '---' '' \
-  "Read and follow the complete skill at \`$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-agent/SKILL.md\`." \
+  "Read and follow the complete skill at \`$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-agent/SKILL.md\`. Resolve every relative reference from the package." \
   > "$managed_release/skill-library/linked-agent/SKILL.md"
 printf '%s\n' '---' 'name: linked-codex' 'description: full package fixture' '---' \
   '# canonical package' > "$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-codex/SKILL.md"

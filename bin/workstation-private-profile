@@ -57,7 +57,7 @@ record_skill() {
       break
     fi
     # shellcheck disable=SC2016
-    target_file="$(sed -n 's|^Read and follow the complete skill at `\([^`]*\/SKILL.md\)`.|\1|p' "$source_dir/SKILL.md" | sed -n '1p')"
+    target_file="$(sed -n 's|^Read and follow the complete skill at `\([^`]*\/SKILL.md\)`\..*$|\1|p' "$source_dir/SKILL.md" | sed -n '1p')"
     case "$target_file" in
       "$HOME/.local/share/engineering-workstation-bootstrap/versions/"*/SKILL.md) ;;
       *) ws_die "managed skill wrapper has an unsafe or missing package target: $name" ;;
