@@ -24,6 +24,7 @@ printf '%s\n' "$VERSION" > "$STAGE/VERSION"
 find "$STAGE" -exec touch -h -t 202001010000 {} +
 
 COPYFILE_DISABLE=1 tar \
+  --no-xattrs \
   --exclude='.DS_Store' \
   -cf "$TARFILE" \
   -C "$DIST" \
