@@ -9,6 +9,7 @@ import platform
 import shutil
 import subprocess
 import sys
+from cloud_apt import prepare_apt_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -68,12 +69,19 @@ def main():
     if not (python_ok and node_ok):
         raise SystemExit("Select the declared Python/Node versions in the cloud image settings. No packages were changed.")
 
+    apt_config = None
+    if args.mode in ("setup", "maintenance"):
+        apt_config = prepare_apt_profile(args.state_root)
+        if apt_config:
+            print("Bootstrap package operations exclude the unused LLVM source; global APT sources and signature checks are unchanged.")
+
     if args.mode in ("setup", "maintenance") and missing:
         prefix = [] if os.geteuid() == 0 else ["sudo", "-n"]
         if prefix and not probe(prefix + ["true"])[0]:
             raise SystemExit("Missing OS packages require provisioning with noninteractive administrator access: " + ", ".join(missing))
-        run(prefix + ["apt-get", "update"])
-        run(prefix + ["apt-get", "install", "--yes", "--no-install-recommends"] + missing)
+        apt_env = ["env", "APT_CONFIG=" + str(apt_config)] if apt_config else []
+        run(prefix + apt_env + ["apt-get", "update"])
+        run(prefix + apt_env + ["apt-get", "install", "--yes", "--no-install-recommends"] + missing)
 
     for item in packages:
         passed, version = probe([item["command"]] + item["versionArgs"])
@@ -91,6 +99,8 @@ def main():
     env["WORKSTATION_BOOTSTRAP_BROWSER_ROOT"] = str(args.state_root.resolve() / "browser")
     env["WORKSTATION_BROWSER_PYTHON"] = sys.executable
     env["WORKSTATION_BROWSER_INSTALL_DEPS"] = "1"
+    if apt_config:
+        env["APT_CONFIG"] = str(apt_config)
     browser_command = ["bash", str(ROOT / "bootstrap/configure-browser-gate.sh")]
     browser_ok = False
     if all(item["state"] == "ready" for item in checks):

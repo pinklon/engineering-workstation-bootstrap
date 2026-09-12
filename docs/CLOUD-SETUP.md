@@ -30,6 +30,15 @@ Playwright browser downloads, plus noninteractive administrator access if OS
 packages or browser system libraries are missing. Do not use those setup needs
 as a reason to grant unrestricted network access during agent work.
 
+The live universal image can include an LLVM repository that the setup proxy
+does not allow. This core profile does not use LLVM. When that source exists,
+bootstrap creates its own APT source view excluding that repository and supplies
+it through `APT_CONFIG`. Image source files, Ubuntu snapshot selection and
+signature verification remain unchanged. All other source failures still fail
+provisioning. In a fresh reviewed checkout, use `mise trust mise.toml` when the
+image's shell requires trust for that specific runtime declaration. Browser state
+comes from the selected profile, not from a repository-wide mise environment override.
+
 The state directory defaults to
 `$HOME/.local/share/engineering-workstation-bootstrap/cloud`. Set
 `WORKSTATION_CLOUD_ROOT` in environment settings to choose another persistent
