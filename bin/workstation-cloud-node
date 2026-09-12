@@ -21,7 +21,7 @@ nvm alias default 24
 node -e 'if (process.versions.node.split(".")[0] !== "24") process.exit(1)'
 mkdir -p /workspace/.codex-node24
 NODE24_BIN="$(dirname "$(command -v node)")"
-printf 'export PATH=%q:"$PATH"\n' "$NODE24_BIN" > /workspace/.codex-node24/env.sh
+printf "export PATH=%q:\"\$PATH\"\n" "$NODE24_BIN" > /workspace/.codex-node24/env.sh
 python3 - <<'PY'
 from pathlib import Path
 p = Path.home() / ".bashrc"
