@@ -21,6 +21,22 @@ ws_real_dir() {
   (cd "$1" 2>/dev/null && pwd -P)
 }
 
+ws_atomic_symlink() {
+  # mv can follow a destination symlink to a directory on supported hosts.
+  python3 - "$1" "$2" <<'PY'
+import os, pathlib, sys, uuid
+target, destination = sys.argv[1], pathlib.Path(sys.argv[2])
+if destination.exists() and not destination.is_symlink():
+    raise SystemExit('Refuse to replace a non-symlink current path.')
+temporary = destination.with_name(destination.name + '.next.' + uuid.uuid4().hex)
+try:
+    temporary.symlink_to(target)
+    os.replace(temporary, destination)
+finally:
+    temporary.unlink(missing_ok=True)
+PY
+}
+
 ws_assert_relative_path() {
   case "$1" in
     ''|/*|../*|*/../*|*/..|.) ws_die "unsafe managed relative path: $1" ;;

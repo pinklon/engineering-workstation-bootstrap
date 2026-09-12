@@ -1,7 +1,7 @@
 typeset -U path PATH
 path=("$HOME/bin" "$HOME/.local/bin" $path)
 export WORKSTATION_BOOTSTRAP_BROWSER_ROOT="$HOME/.local/share/engineering-workstation-bootstrap/browser-gate"
-export PLAYWRIGHT_BROWSERS_PATH="$WORKSTATION_BOOTSTRAP_BROWSER_ROOT/browsers"
+export PLAYWRIGHT_BROWSERS_PATH="$WORKSTATION_BOOTSTRAP_BROWSER_ROOT/current/browsers"
 for workstation_fragment in environment aliases functions prompt; do
   workstation_file="$HOME/.config/engineering-workstation-bootstrap/${workstation_fragment}.zsh"
   [[ -r "$workstation_file" ]] && source "$workstation_file"

@@ -53,14 +53,18 @@ printf 'ENGINEERING WORKSTATION DOCTOR (%s)\n\n' "$MODE"
 if [[ "$MODE" == full ]]; then
   check 'Supported host' test "$(uname -s)" = Darwin
   check 'Homebrew package manager' command -v brew
-  check 'Manifest-declared agent and shared tool versions' bash "$ROOT/bin/workstation-toolsets" doctor
+  if bash "$ROOT/bin/workstation-toolsets" doctor; then
+    record 'Manifest-declared agent and shared tool versions' pass
+  else
+    record 'Manifest-declared agent and shared tool versions' fail
+  fi
   check 'GitHub authentication' bash "$ROOT/bin/github-auth-doctor"
   if [[ "${ENABLE_CLOUDFLARE:-0}" == 1 ]]; then
     check 'Cloudflare authentication' bash "$ROOT/bin/cloudflare-auth-doctor"
   else
     record 'Optional Cloudflare capability' skipped
   fi
-  check 'Browser automation library' bash "$ROOT/bin/browser-gate-python" -c 'import playwright'
+  check 'Locked browser startup and DOM execution' bash "$ROOT/bootstrap/configure-browser-gate.sh" --check
 else
   share_root="$TARGET_HOME/.local/share/engineering-workstation-bootstrap"
   check 'Atomic current pointer' test -L "$share_root/current"

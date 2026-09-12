@@ -1,5 +1,11 @@
 # Engineering Workstation Bootstrap
 
+The portability tranche adds isolated installer source staging, executable
+distribution-launcher tests, a locked reusable Playwright runtime, and a
+[Linux cloud core adapter](docs/CLOUD-SETUP.md). These scripts do not enroll
+agent accounts or establish live cloud commissioning. The final publication
+secrets/PII/confidentiality gate remains required under issue #9.
+
 I built this because reinstalling and reconfiguring the same development tools on every computer is tedious, inconsistent, and unnecessary.
 
 Engineering Workstation Bootstrap is an open-source, cross-platform project for turning a new or drifted computer into a useful development environment with a small, understandable command surface. It automates everything that can be automated safely, pauses when administrator approval or authentication is required, stores no secrets, and reports exactly what worked and what still needs attention.
@@ -103,7 +109,7 @@ xcode-select -p >/dev/null 2>&1 || xcode-select --install
 ### 3. Install Git and the GitHub command-line client
 
 ```bash
-brew install git gh
+brew install git gh jq
 ```
 
 ### 4. Authenticate with GitHub

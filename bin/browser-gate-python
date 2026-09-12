@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="${WORKSTATION_BOOTSTRAP_BROWSER_ROOT:-$HOME/.local/share/engineering-workstation-bootstrap/browser-gate}"
+if [[ -L "$ROOT/current" ]]; then ROOT="$ROOT/current"; fi
 PYTHON="$ROOT/venv/bin/python"
 [[ -x "$PYTHON" ]] || { printf 'Browser gate is not installed. Run workstation-bootstrap reconcile.\n' >&2; exit 1; }
-export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$ROOT/browsers}"
+export PLAYWRIGHT_BROWSERS_PATH="$ROOT/browsers"
 printf 'Browser gate environment: managed-host\n' >&2
 exec "$PYTHON" "$@"

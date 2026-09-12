@@ -3,7 +3,6 @@ set -euo pipefail
 
 REPO="pinklon/engineering-workstation-bootstrap"
 BRANCH="main"
-ROOT="${HOME}/.local/share/engineering-workstation-bootstrap"
 
 [[ -f "${WORKSTATION_ACTIVATION_CONTRACT:-}" ]] || {
   printf 'REFUSE: set WORKSTATION_ACTIVATION_CONTRACT before the installer changes live workstation state.\n' >&2
@@ -17,12 +16,12 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   exit 2
 fi
 
-mkdir -p "$(dirname "$ROOT")"
-rm -rf "$ROOT.new"
-mkdir -p "$ROOT.new"
+# A source checkout must never replace the managed release/version store.
+checkout_root="$(mktemp -d "${TMPDIR:-/tmp}/workstation-source.XXXXXX")"
+trap 'rm -rf "$checkout_root"' EXIT
 
 if command -v gh >/dev/null 2>&1 && gh auth status --hostname github.com >/dev/null 2>&1; then
-  gh repo clone "$REPO" "$ROOT.new/repo" -- --branch "$BRANCH" --depth 1
+  gh repo clone "$REPO" "$checkout_root/repo" -- --branch "$BRANCH" --depth 1
 else
   printf 'GitHub CLI authentication is not available yet.\n'
   printf 'Install Homebrew and GitHub CLI first, then authenticate with:\n'
@@ -31,6 +30,4 @@ else
   exit 3
 fi
 
-rm -rf "$ROOT"
-mv "$ROOT.new/repo" "$ROOT"
-exec bash "$ROOT/bin/workstation-bootstrap" install "$@"
+bash "$checkout_root/repo/bin/workstation-bootstrap" install "$@"

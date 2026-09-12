@@ -12,7 +12,7 @@ TARFILE="$DIST/engineering-workstation-bootstrap-$VERSION.tar"
 rm -rf "$DIST"
 mkdir -p "$STAGE"
 
-for path in AGENTS.md CLAUDE.md README.md Brewfile mise.toml Makefile install.sh bin bootstrap config manifests docs lib skills validation; do
+for path in AGENTS.md CLAUDE.md CONTRIBUTING.md SECURITY.md LICENSE README.md Brewfile mise.toml Makefile install.sh bin bootstrap config manifests docs lib skills validation packaging; do
   cp -R "$ROOT/$path" "$STAGE/"
 done
 

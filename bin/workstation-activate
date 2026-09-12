@@ -22,6 +22,7 @@ done
 
 ws_need jq
 ws_need rg
+ws_need python3
 [[ -f "$CONTRACT" ]] || ws_die "--activation-contract must name a readable JSON contract"
 [[ -d "$TARGET_HOME" ]] || ws_die "target home does not exist: $TARGET_HOME"
 TARGET_HOME="$(ws_real_dir "$TARGET_HOME")"
@@ -88,9 +89,9 @@ trap cleanup_lock EXIT
 mkdir -p "$release_dir/config/codex" "$release_dir/runtime" "$release_dir/private-bin" \
   "$release_dir/codex-skills" "$release_dir/agent-skills" "$release_dir/skill-library" \
   "$release_dir/bin-links" "$release_dir/generated-home" "$backup_root/files"
-cp -R "$ROOT/bin" "$ROOT/lib" "$release_dir/runtime/"
-mkdir -p "$release_dir/runtime/manifests"
-cp "$ROOT/manifests/homebrew.json" "$release_dir/runtime/manifests/"
+for runtime_path in bin lib config manifests bootstrap packaging docs skills validation Brewfile mise.toml Makefile AGENTS.md CLAUDE.md README.md CONTRIBUTING.md SECURITY.md LICENSE install.sh; do
+  cp -R "$ROOT/$runtime_path" "$release_dir/runtime/"
+done
 cp "$ROOT/config/shell.zsh" "$ROOT/config/aliases.zsh" "$ROOT/config/functions.zsh" \
   "$ROOT/config/environment.zsh" "$ROOT/config/prompt.zsh" "$release_dir/config/"
 cp "$ROOT/config/codex/AGENTS.md" "$release_dir/config/codex/AGENTS.md"
@@ -165,7 +166,8 @@ EOF
   done < <(jq -c '.skills[]?' "$PRIVATE_PROFILE")
 fi
 
-for command_name in workstation-activate workstation-rollback workstation-doctor workstation-toolsets workstation-publish-drive workstation-private-profile environment-inventory; do
+managed_commands=(workstation-bootstrap workstation-activate workstation-rollback workstation-doctor workstation-toolsets workstation-publish-drive workstation-private-profile environment-inventory browser-gate-python github-auth-doctor cloudflare-auth-doctor)
+for command_name in "${managed_commands[@]}"; do
   cat > "$release_dir/bin-links/$command_name" <<EOF
 #!/usr/bin/env bash
 exec bash "\$HOME/.local/share/engineering-workstation-bootstrap/current/runtime/bin/$command_name" "\$@"
@@ -175,7 +177,11 @@ done
 
 zshrc_source="$TARGET_HOME/.zshrc"
 zshrc_rendered="$release_dir/generated-home/.zshrc"
-[[ -f "$zshrc_source" ]] && cp "$zshrc_source" "$zshrc_rendered" || : > "$zshrc_rendered"
+if [[ -f "$zshrc_source" ]]; then
+  cp "$zshrc_source" "$zshrc_rendered"
+else
+  : > "$zshrc_rendered"
+fi
 # shellcheck disable=SC2016
 managed_source='source "$HOME/.config/engineering-workstation-bootstrap/shell.zsh"'
 grep -Fqx "$managed_source" "$zshrc_rendered" 2>/dev/null || printf '\n%s\n' "$managed_source" >> "$zshrc_rendered"
@@ -192,7 +198,7 @@ if [[ "$manage_skill_roots" == true ]]; then
 else
   add_link '.agents/skills/workstation-operations' 'agent-skills/workstation-operations'
 fi
-for command_name in workstation-activate workstation-rollback workstation-doctor workstation-toolsets workstation-publish-drive workstation-private-profile environment-inventory; do
+for command_name in "${managed_commands[@]}"; do
   add_link "bin/$command_name" "bin-links/$command_name"
 done
 if [[ -n "$PRIVATE_PROFILE" ]]; then
@@ -243,9 +249,7 @@ jq -n --arg transactionId "$transaction_id" --arg version "$VERSION" --arg targe
     releaseDir:$releaseDir,backupManifest:$backupManifest,previousCurrent:$previousCurrent,previousTransaction:$previousTransaction,status:"applying",startedAt:$startedAt,
     secretValues:false,liveHomeActivated:false}' > "$receipt"
 
-next_pointer="$share_root/current.next.$transaction_id"
-ln -s "$release_dir" "$next_pointer"
-mv -f "$next_pointer" "$share_root/current"
+ws_atomic_symlink "$release_dir" "$share_root/current"
 applied=1
 while IFS=$'\t' read -r relative kind source; do
   live="$TARGET_HOME/$relative"

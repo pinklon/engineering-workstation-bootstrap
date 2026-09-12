@@ -1,4 +1,4 @@
-.PHONY: help status inventory private-profile dry-run validate doctor toolsets-doctor auth-doctor package package-drive install activate reconcile repair rollback
+.PHONY: help status inventory private-profile dry-run validate doctor toolsets-doctor cloud-plan cloud-setup cloud-maintenance cloud-doctor auth-doctor package package-drive install activate reconcile repair rollback
 
 help:
 	@printf '%s\n' \
@@ -12,6 +12,8 @@ help:
 	  '  make validate      Validate repository scripts and package output' \
 	  '  make doctor        Run the full workstation doctor' \
 	  '  make toolsets-doctor Check coding-agent and shared tool versions' \
+	  '  make cloud-plan    Inspect missing Linux cloud tools without changes' \
+	  '  make cloud-doctor  Check configured Linux runtimes and browser startup' \
 	  '  make auth-doctor   Validate configured authentication providers' \
 	  '  make package       Build archive and checksum; set VERSION=<version>' \
 	  '  make private-profile Generate a local, secret-free endpoint overlay' \
@@ -19,6 +21,8 @@ help:
 	  '' \
 	  'Mutating commands:' \
 	  '  make install       Run prerequisites, then require an activation contract' \
+	  '  make cloud-setup   Provision the declared Linux cloud core profile' \
+	  '  make cloud-maintenance Reuse or refresh the cloud dependency state' \
 	  '  make activate      Transactionally activate with ACTIVATION_CONTRACT=<file>' \
 	  '  make reconcile     Reconcile a disposable staged target only' \
 	  '  make repair        Validate and reconcile a staged target only' \
@@ -47,6 +51,18 @@ doctor:
 
 toolsets-doctor:
 	bash bin/workstation-toolsets doctor
+
+cloud-plan:
+	bash bin/workstation-cloud plan
+
+cloud-setup:
+	bash bin/workstation-cloud setup
+
+cloud-maintenance:
+	bash bin/workstation-cloud maintenance
+
+cloud-doctor:
+	bash bin/workstation-cloud doctor
 
 auth-doctor:
 	@bash bin/github-auth-doctor; github_status=$$?; \
