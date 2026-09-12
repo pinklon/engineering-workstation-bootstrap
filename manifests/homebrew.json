@@ -10,7 +10,7 @@
     {"kind":"brew","name":"shellcheck","command":"shellcheck","versionArgs":["--version"]},
     {"kind":"brew","name":"mise","command":"mise","versionArgs":["--version"]},
     {"kind":"brew","name":"python@3.13","command":"python3","versionArgs":["--version"]},
-    {"kind":"brew","name":"node@22","command":"node","versionArgs":["--version"]},
+    {"kind":"brew","name":"node@24","command":"node","versionArgs":["--version"]},
     {"kind":"brew","name":"coreutils"},
     {"kind":"brew","name":"gnu-tar"},
     {"kind":"brew","name":"openssl@3"},

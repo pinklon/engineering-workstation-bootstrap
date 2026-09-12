@@ -58,7 +58,7 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Qualify browser cold and warm setup
         shell: bash
         run: bash validation/browser-runtime-fixtures.sh

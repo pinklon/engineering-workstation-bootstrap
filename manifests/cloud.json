@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "profile": "linux-cloud-core",
   "supportedUbuntu": ["24.04"],
-  "nodeMajor": 22,
+  "nodeMajor": 24,
   "pythonMinor": "3.13",
   "packagePolicy": "Use the selected Ubuntu image repositories; record actual versions. These are not immutable apt package pins.",
   "packages": [
