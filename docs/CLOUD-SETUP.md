@@ -2,7 +2,7 @@
 
 This adapter provisions the `linux-cloud-core` profile in a supported Ubuntu
 container. It does not create an account or a Codex cloud environment. Cloud
-settings must select Python 3.13 and Node 22 before setup runs. The doctor refuses
+settings must select Python 3.13 and Node 24 before setup runs. The doctor refuses
 a mismatched or broken runtime instead of installing another copy behind it.
 
 For this repository, configure these commands in the environment:
@@ -11,10 +11,29 @@ For this repository, configure these commands in the environment:
 |---|---|
 | Image | Supported Ubuntu image; versions are declared in `manifests/cloud.json` |
 | Python | 3.13 |
-| Node | 22 |
-| Setup script | `bash bin/workstation-cloud setup` |
-| Maintenance script | `bash bin/workstation-cloud maintenance` |
+| Node | 24 |
+| Setup script | `bash bin/workstation-cloud-node` then `mise trust mise.toml` then `bash bin/workstation-cloud setup` |
+| Maintenance script | `bash bin/workstation-cloud-node` then `mise trust mise.toml` then `bash bin/workstation-cloud maintenance` |
+| Environment variable | `BASH_ENV=/workspace/.codex-node24/env.sh` |
 | Verification | `bash bin/workstation-cloud doctor` then `make validate` |
+
+Node 24 is the shared supported development baseline. Node 22 was the earlier
+qualified baseline, not a Codex requirement. Existing activation receipts retain
+their original runtime versions; changing this repository does not upgrade a live
+Mac. Qualify and activate a new release before claiming workstation parity.
+
+Some cloud version pickers currently offer only Node 18, 20 and 22 even when the
+universal image contains Node 24. In that case, `workstation-cloud-node` selects an
+existing NVM Node 24 installation, installs it only if absent, and verifies fresh
+login and noninteractive Bash sessions. It writes a scoped PATH setup file and
+preserves existing `.bashrc` contents. The environment variable above carries that
+selection into subsequent setup and agent shells. This helper is restricted to
+managed Linux containers. It does not alter repository lockfiles or install Node
+on a Mac. Agent internet access can remain off.
+
+These relative commands apply only when this bootstrap repository is checked out.
+Other repositories need their own setup, or an explicitly pinned bootstrap
+checkout. Repository-specific package and browser versions remain authoritative.
 
 Setup installs only missing declared OS tools. It uses the selected Ubuntu
 repositories and records actual versions; these packages are not byte-pinned.
