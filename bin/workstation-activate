@@ -88,9 +88,9 @@ trap cleanup_lock EXIT
 mkdir -p "$release_dir/config/codex" "$release_dir/runtime" "$release_dir/private-bin" \
   "$release_dir/codex-skills" "$release_dir/agent-skills" "$release_dir/skill-library" \
   "$release_dir/bin-links" "$release_dir/generated-home" "$backup_root/files"
-cp -R "$ROOT/bin" "$ROOT/lib" "$release_dir/runtime/"
-mkdir -p "$release_dir/runtime/manifests"
-cp "$ROOT/manifests/homebrew.json" "$release_dir/runtime/manifests/"
+for runtime_path in bin lib config manifests bootstrap packaging docs skills validation Brewfile mise.toml Makefile AGENTS.md CLAUDE.md README.md CONTRIBUTING.md SECURITY.md LICENSE install.sh; do
+  cp -R "$ROOT/$runtime_path" "$release_dir/runtime/"
+done
 cp "$ROOT/config/shell.zsh" "$ROOT/config/aliases.zsh" "$ROOT/config/functions.zsh" \
   "$ROOT/config/environment.zsh" "$ROOT/config/prompt.zsh" "$release_dir/config/"
 cp "$ROOT/config/codex/AGENTS.md" "$release_dir/config/codex/AGENTS.md"
@@ -165,7 +165,8 @@ EOF
   done < <(jq -c '.skills[]?' "$PRIVATE_PROFILE")
 fi
 
-for command_name in workstation-activate workstation-rollback workstation-doctor workstation-toolsets workstation-publish-drive workstation-private-profile environment-inventory; do
+managed_commands=(workstation-bootstrap workstation-activate workstation-rollback workstation-doctor workstation-toolsets workstation-publish-drive workstation-private-profile environment-inventory browser-gate-python github-auth-doctor cloudflare-auth-doctor)
+for command_name in "${managed_commands[@]}"; do
   cat > "$release_dir/bin-links/$command_name" <<EOF
 #!/usr/bin/env bash
 exec bash "\$HOME/.local/share/engineering-workstation-bootstrap/current/runtime/bin/$command_name" "\$@"
@@ -192,7 +193,7 @@ if [[ "$manage_skill_roots" == true ]]; then
 else
   add_link '.agents/skills/workstation-operations' 'agent-skills/workstation-operations'
 fi
-for command_name in workstation-activate workstation-rollback workstation-doctor workstation-toolsets workstation-publish-drive workstation-private-profile environment-inventory; do
+for command_name in "${managed_commands[@]}"; do
   add_link "bin/$command_name" "bin-links/$command_name"
 done
 if [[ -n "$PRIVATE_PROFILE" ]]; then

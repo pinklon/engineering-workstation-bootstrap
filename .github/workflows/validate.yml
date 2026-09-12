@@ -10,12 +10,23 @@ permissions:
 
 jobs:
   validate:
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install validation dependencies
-        run: brew install shellcheck ripgrep
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            brew install shellcheck ripgrep
+          else
+            sudo apt-get update
+            sudo apt-get install --yes shellcheck ripgrep jq
+          fi
 
       - name: Validate repository
         id: validate
@@ -29,7 +40,41 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: validation-diagnostics
+          name: validation-diagnostics-${{ matrix.os }}
           path: validation-output/validate.log
           if-no-files-found: error
+          retention-days: 14
+
+  browser-runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Qualify browser cold and warm setup
+        shell: bash
+        run: bash validation/browser-runtime-fixtures.sh
+      - name: Qualify Linux cloud adapter
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          export WORKSTATION_CLOUD_ROOT="$RUNNER_TEMP/workstation-cloud"
+          bash bin/workstation-cloud setup
+          PIP_NO_INDEX=1 PLAYWRIGHT_DOWNLOAD_HOST=http://127.0.0.1:9 bash bin/workstation-cloud maintenance
+          bash bin/workstation-cloud doctor
+      - name: Upload cloud readiness
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-cloud-readiness
+          path: ${{ runner.temp }}/workstation-cloud/readiness.json
+          if-no-files-found: warn
           retention-days: 14

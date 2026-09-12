@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "profile": "linux-cloud-core",
+  "supportedUbuntu": ["22.04", "24.04"],
+  "nodeMajor": 22,
+  "pythonMinor": "3.13",
+  "packagePolicy": "Use the selected Ubuntu image repositories; record actual versions. These are not immutable apt package pins.",
+  "packages": [
+    {"package": "git", "command": "git", "versionArgs": ["--version"]},
+    {"package": "gh", "command": "gh", "versionArgs": ["--version"]},
+    {"package": "jq", "command": "jq", "versionArgs": ["--version"]},
+    {"package": "ripgrep", "command": "rg", "versionArgs": ["--version"]},
+    {"package": "shellcheck", "command": "shellcheck", "versionArgs": ["--version"]},
+    {"package": "make", "command": "make", "versionArgs": ["--version"]},
+    {"package": "gitleaks", "command": "gitleaks", "versionArgs": ["version"]},
+    {"package": "poppler-utils", "command": "pdftotext", "versionArgs": ["-v"]},
+    {"package": "tesseract-ocr", "command": "tesseract", "versionArgs": ["--version"]},
+    {"package": "libimage-exiftool-perl", "command": "exiftool", "versionArgs": ["-ver"]}
+  ],
+  "optionalAgentCommands": ["codex", "claude"],
+  "pendingCapabilities": ["agent-account-enrollment", "pii-model-runtime", "mandatory-publication-gate", "provider-capability-qualification"]
+}

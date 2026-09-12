@@ -53,6 +53,8 @@ WORKSTATION_TRANSACTION_ID=fixture-v1 bash bin/workstation-activate \
 activation_one="$fixture_home/.local/state/engineering-workstation-bootstrap/receipts/activation-fixture-v1.json"
 test "$(jq -r .status "$activation_one")" = active
 test -x "$fixture_home/bin/workstation-toolsets"
+for command in workstation-bootstrap browser-gate-python github-auth-doctor cloudflare-auth-doctor; do test -x "$fixture_home/bin/$command"; done
+test -f "$fixture_home/.local/share/engineering-workstation-bootstrap/current/runtime/bootstrap/configure-browser-gate.sh"
 bash "$fixture_home/.local/share/engineering-workstation-bootstrap/current/runtime/bin/workstation-toolsets" brewfile | cmp - Brewfile
 test "$(jq -r '.paths | length' "$(jq -r .backupManifest "$activation_one")")" -ge 10
 test "$(grep -Fxc "source \"\$HOME/.config/engineering-workstation-bootstrap/shell.zsh\"" "$fixture_home/.zshrc")" = 1
@@ -125,6 +127,12 @@ test "$package_sha" = "$(shasum -a 256 "$package" | awk '{print $1}')"
 if tar -tzf "$package" | rg -q 'tony-private-profile\.json|activation-.*\.json'; then exit 1; fi
 tar -tzf "$package" | rg -q '/CLAUDE\.md$'
 tar -tzf "$package" | rg -q '/manifests/homebrew\.json$'
+mkdir -p "$tmp/unpacked"
+tar -xzf "$package" -C "$tmp/unpacked"
+unpacked="$tmp/unpacked/engineering-workstation-bootstrap-0.2.0-fixture"
+make -C "$unpacked" help >/dev/null
+bash "$unpacked/packaging/build-package.sh" extracted-fixture >/dev/null
+test -s "$unpacked/dist/engineering-workstation-bootstrap-extracted-fixture.tar.gz"
 
 printf 'Validating contract-bound Drive current/releases/receipts layout...\n'
 mkdir -p "$tmp/drive"

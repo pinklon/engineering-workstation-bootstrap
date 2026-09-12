@@ -66,7 +66,7 @@ do not configure Claude. Native workstation qualification is still pending.
 | Secret detection | Gitleaks | Installed by baseline; release workflow integration pending |
 | PDF text and metadata | Poppler, ExifTool | Installed by baseline; extraction coverage needs validation |
 | Image text | Tesseract | Installed by baseline; language selection and OCR accuracy need qualification |
-| Browser execution | Existing Playwright/Chromium environment | Implemented; version locking and warm reconciliation still need repair |
+| Browser execution | Locked Playwright/Chromium environment | Exact Python dependency pins and wheel hashes; unchanged healthy runtime reused |
 | Deeper secret detection | TruffleHog | Optional installation; local no-verification mode required |
 | PII recognition and redaction | Presidio plus an explicit local NLP model | Pending isolated runtime and representative qualification |
 | Confidential business information | Private source-classification rules and disclosure review | Content-owner responsibility; no universal detector |
@@ -74,8 +74,9 @@ do not configure Claude. Native workstation qualification is still pending.
 Application repositories continue to own framework, package-manager, browser,
 and build-tool versions in their own manifests and lockfiles. Browser package
 versions and browser binaries must match. Cloud execution needs its own Linux
-setup and maintenance profile; neither CLI installation nor desktop credentials
-provision a cloud environment.
+setup and maintenance profile. The core adapter is described in
+[Cloud setup](CLOUD-SETUP.md); neither CLI installation nor desktop credentials
+provision a cloud environment. Actual account commissioning remains pending.
 
 ## Publication contract
 

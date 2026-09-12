@@ -23,7 +23,7 @@ Apply the shell initialization line printed by Homebrew.
 ## 4. Install GitHub CLI
 
 ```bash
-brew install git gh
+brew install git gh jq
 ```
 
 ## 5. Authenticate GitHub
@@ -63,7 +63,7 @@ checksum-bound every active skill entrypoint.
 
 ```bash
 WORKSTATION_ACTIVATION_CONTRACT="$HOME/Downloads/workstation-activation.json" \
-  ./bin/workstation-bootstrap install
+  bash bin/workstation-bootstrap install
 ```
 
 The bootstrap installs declared packages, configures managed fragments, enrolls required providers, configures Playwright, clones declared repositories, and runs the full doctor.
@@ -83,9 +83,8 @@ No script should bypass or persist those approvals in Git.
 
 ```bash
 workstation-doctor --full
-github-auth-doctor
-cloudflare-auth-doctor
-browser-gate-python -c 'import playwright; print("Playwright import OK")'
+workstation-toolsets doctor
+browser-gate-python -m playwright --version
 ```
 
 ## 11. Reconcile or roll back later

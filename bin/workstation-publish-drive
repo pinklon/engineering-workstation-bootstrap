@@ -68,11 +68,18 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd -P)"
 contract="${1:?pass the activation contract as the first argument}"
 shift
+command -v jq >/dev/null 2>&1 || { printf 'Install the documented jq prerequisite before running this launcher.\n' >&2; exit 2; }
 (cd "$here" && shasum -a 256 -c checksums.sha256)
+archive="$(jq -er '.archive | select(type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._-]*\\.tar\\.gz$"))' "$here/manifest.json")"
+[[ "$(awk 'NR==1 {print $2}' "$here/checksums.sha256")" == "$archive" ]] || { printf 'Archive manifest/checksum disagreement.\n' >&2; exit 2; }
 extract_root="$(mktemp -d)"
-tar -xzf "$here/$(awk '{print $2}' "$here/checksums.sha256")" -C "$extract_root"
+trap 'rm -rf "$extract_root"' EXIT
+tar -xzf "$here/$archive" -C "$extract_root"
 package_root="$(find "$extract_root" -mindepth 1 -maxdepth 1 -type d -print -quit)"
-private_profile="$(find "$here/private" -maxdepth 1 -type f -name '*.json' -print -quit 2>/dev/null || true)"
+[[ -f "$package_root/bin/workstation-bootstrap" ]] || { printf 'Package entrypoint is missing.\n' >&2; exit 2; }
+private_ref="$(jq -er 'if .privateProfile == null then "" else .privateProfile | select(type == "string" and test("^private/[A-Za-z0-9][A-Za-z0-9._-]*[.]json$")) end' "$here/manifest.json")"
+private_profile=''
+[[ -z "$private_ref" ]] || private_profile="$here/$private_ref"
 if [[ -n "$private_profile" ]]; then
   WORKSTATION_ACTIVATION_CONTRACT="$contract" WORKSTATION_PRIVATE_PROFILE="$private_profile" \
     bash "$package_root/bin/workstation-bootstrap" install "$@"
