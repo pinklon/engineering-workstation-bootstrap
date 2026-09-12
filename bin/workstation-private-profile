@@ -41,7 +41,7 @@ mkdir -p "$assets_dir/skills" "$assets_dir/bin"
 : > "$work/seen-skills"
 
 record_skill() {
-  local skill_file="$1" install_root="$2" name source_dir safe_name bundled_dir
+  local skill_file="$1" install_root="$2" managed_library="$3" name source_dir safe_name bundled_dir
   [[ "$(sed -n '1p' "$skill_file")" == '---' ]] || return 0
   source_dir="$(dirname "$skill_file")"
   name="$(awk -F': *' '$1 == "name" {gsub(/^"|"$/, "", $2); print $2; exit}' "$skill_file")"
@@ -49,18 +49,34 @@ record_skill() {
   grep -Fqx "$name" "$work/seen-skills" 2>/dev/null && return 0
   printf '%s\n' "$name" >> "$work/seen-skills"
   safe_name="$(printf '%s' "$name" | sed 's/[^A-Za-z0-9._-]/-/g')"
+  if [[ -n "$managed_library" && -f "$managed_library/$safe_name/SKILL.md" ]]; then
+    source_dir="$managed_library/$safe_name"
+  fi
   bundled_dir="$assets_dir/skills/$safe_name"
   cp -R "$source_dir" "$bundled_dir"
   jq -cn --arg name "$name" --arg sourceDir "$assets_ref/skills/$safe_name" --arg installRoot "$install_root" \
     '{name:$name,sourceDir:$sourceDir,installRoot:$installRoot,state:"enabled"}' >> "$work/skills.ndjson"
 }
 
+current_release=''
+if [[ -d "$HOME/.local/share/engineering-workstation-bootstrap/current" ]]; then
+  current_release="$(cd "$HOME/.local/share/engineering-workstation-bootstrap/current" && pwd -P)"
+fi
 for skill_root in "$HOME/.codex/skills" "$HOME/.agents/skills"; do
   [[ -d "$skill_root" ]] || continue
   install_root=agent-skills
   [[ "$skill_root" == "$HOME/.codex/skills" ]] && install_root=codex-skills
+  resolved_skill_root="$(cd "$skill_root" && pwd -P)"
+  managed_library=''
+  if [[ -n "$current_release" ]]; then
+    case "$resolved_skill_root" in
+      "$current_release/codex-skills"|"$current_release/agent-skills")
+        managed_library="$current_release/skill-library"
+        ;;
+    esac
+  fi
   while IFS= read -r skill_file; do
-    record_skill "$skill_file" "$install_root"
+    record_skill "$skill_file" "$install_root" "$managed_library"
   done < <(
     find -H "$skill_root" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print
     [[ -d "$skill_root/.system" ]] && find -H "$skill_root/.system" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print
