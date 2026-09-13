@@ -14,7 +14,7 @@ For this repository, configure these commands in the environment:
 | Node | 24 |
 | Setup script | `bash bin/workstation-cloud-node` then `mise trust mise.toml` then `bash bin/workstation-cloud setup` |
 | Maintenance script | `bash bin/workstation-cloud-node` then `mise trust mise.toml` then `bash bin/workstation-cloud maintenance` |
-| Environment variable | `BASH_ENV=/workspace/.codex-node24/env.sh` |
+| Environment variable | `BASH_ENV=/workspace/.codex-node/env.sh` |
 | Verification | `bash bin/workstation-cloud doctor` then `make validate` |
 
 Node 24 is the shared supported development baseline. Node 22 was the earlier
@@ -23,10 +23,11 @@ their original runtime versions; changing this repository does not upgrade a liv
 Mac. Qualify and activate a new release before claiming workstation parity.
 
 Some cloud version pickers currently offer only Node 18, 20 and 22 even when the
-universal image contains Node 24. In that case, `workstation-cloud-node` selects an
-existing NVM Node 24 installation, installs it only if absent, and verifies fresh
-login and noninteractive Bash sessions. It writes a scoped PATH setup file and
-preserves existing `.bashrc` contents. The environment variable above carries that
+universal image contains Node 24. In that case, `workstation-cloud-node` reads the
+repository's declared major, selects the matching NVM installation, installs it
+only if absent, and verifies fresh login and noninteractive Bash sessions. It
+writes a scoped PATH setup file and preserves existing `.bashrc` contents. The
+environment variable above carries that
 selection into subsequent setup and agent shells. This helper is restricted to
 managed Linux containers. It does not alter repository lockfiles or install Node
 on a Mac. Agent internet access can remain off.
