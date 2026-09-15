@@ -18,7 +18,7 @@
   "activation_status": "EXTERNAL_PREREQUISITES_PENDING",
   "bootstrap_source": {
     "client_adapter_sha256": "9fcd1816b6a4392418693cd6417542afa6a0eb23d6c5834debf9fa7ba83465fb",
-    "head": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
+    "head": "360039e5e9a352f00053160d2fc98660d5071ba4",
     "implementation_sha256": "e275c49ba025f6abf139a87ddd182b7c9650dcc13e5ee1dac7bc443a84ceaca7",
     "root": "/Users/tonymalott/Documents/GitHub/worktrees/bootstrap-mesh-connectors-18"
   },
@@ -1971,7 +1971,7 @@
     "secret_scan_passed": true,
     "successful_qualified_admission_proven": false
   },
-  "generated_at": "2026-09-15T21:55:59.439594+00:00",
+  "generated_at": "2026-09-15T23:37:44Z",
   "git": {
     "amendment_initial_ahead_behind": [
       0,
@@ -2668,7 +2668,144 @@
       "production_mutation_attempted": false,
       "projects": 4
     },
+    "supabase_development_canary": {
+      "base_project_id": "rijegozirtwmuihdpvnz",
+      "branch_deleted": true,
+      "branch_id": "91a37655-99b3-4e79-8b49-665ff688d17d",
+      "branch_project_ref": "uyvkklxhdezqgncfvdjc",
+      "cleanup_readback_remaining_rows": 0,
+      "collected_at": "2026-09-15T23:36:26.356152+00:00",
+      "forbidden_tools_declared": [],
+      "production_data_copied": false,
+      "production_mutation_performed": false,
+      "relation_cleanup_readback": null,
+      "write_canary": true,
+      "write_readback": true
+    },
     "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
+  },
+  "executor_handoff_continuation": {
+    "authority": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/18#issuecomment-5688732456",
+    "collected_at": "2026-09-15T23:37:44Z",
+    "desktop_restart": {
+      "current_config_sha256": "1321945916bf6acd20450980649be0d9611b9eba0d81079f0267930f3421c26c",
+      "prior_process_baseline_preserved": true,
+      "restart_performed": false,
+      "supported_control_attempt": "computer-use sky.get_app_state ChatGPT",
+      "supported_control_result": "Computer Use is not allowed to use the app com.openai.codex for safety reasons.",
+      "unsafe_cross-task_host_termination_attempted": false,
+      "status": "UNPROVEN"
+    },
+    "hosted_binding_inspection": {
+      "environment_id": "6aa9a539484c819182f5afc7e203644f",
+      "environment_secret_values_read": false,
+      "local_credentials_copied": false,
+      "provider_binding_mutation_performed": false,
+      "supported_connector_settings": [
+        "GitHub",
+        "GitLab (Beta)",
+        "Slack",
+        "Linear"
+      ],
+      "required_non_github_provider_binding_control_found": false,
+      "settings_url": "https://chatgpt.com/codex/cloud/settings/connectors"
+    },
+    "hosted_requalification": {
+      "exact_source_head": "360039e5e9a352f00053160d2fc98660d5071ba4",
+      "exact_source_tree": "4f2461dc49fe074485f3c3d527c1da7408cbfb97",
+      "manifest_sha256": "5ecad70c919ae165baa78f5cf9f12772e966596be3289e7eece2ba23c29babcf",
+      "codex_cli_to_cloud": {
+        "task_id": "task_e_6aa9c357e26083259b941dcf95e4cdb0",
+        "thread_id": "01a0a723-80da-7ae1-b39d-c2aea3512524",
+        "surface": "codex-cli-to-cloud",
+        "doctor_exit_status": 1,
+        "required_provider_adapters_exposed": [],
+        "required_connectors_qualified": 0,
+        "admitted": false,
+        "result": "DENIED_FAIL_CLOSED"
+      },
+      "codex_cloud": {
+        "task_id": "task_e_6aa9c38e0bec8325ae383857ab990809",
+        "thread_id": "01a0a724-534f-7643-9fd5-24eb0084bb63",
+        "surface": "codex-cloud",
+        "doctor_exit_status": 1,
+        "required_provider_adapters_exposed": [],
+        "required_connectors_qualified": 0,
+        "admitted": false,
+        "result": "DENIED_FAIL_CLOSED"
+      },
+      "repository_mutation_performed": false,
+      "provider_mutation_performed": false,
+      "secret_values_printed": false
+    },
+    "development_canaries": {
+      "cloudflare_api": {
+        "account_id": "5c8a037d78c37953b3bb8e84615c8d74",
+        "read_status": 200,
+        "read_authenticated": true,
+        "existing_issue18_canary_namespaces": [],
+        "write_operation": "POST /accounts/{account_id}/storage/kv/namespaces",
+        "write_result": "DENIED",
+        "write_error_code": 10000,
+        "write_error": "Authentication error",
+        "post_attempt_issue18_canary_namespaces": [],
+        "production_application_mutation": false,
+        "dns_mutation": false,
+        "access_policy_mutation": false
+      },
+      "supabase": {
+        "base_project_id": "rijegozirtwmuihdpvnz",
+        "base_project_name": "tony@crysco.com's Project",
+        "branch_cost": {
+          "amount": 0.01344,
+          "recurrence": "hourly",
+          "type": "branch"
+        },
+        "branch_deleted": true,
+        "branch_id": "91a37655-99b3-4e79-8b49-665ff688d17d",
+        "branch_name": "issue18-connector-canary-20260915",
+        "branch_project_ref": "uyvkklxhdezqgncfvdjc",
+        "cleanup_readback_remaining_rows": 0,
+        "organization_id": "gnpwthuqemukopetmork",
+        "organization_name": "ViCompiler",
+        "healthy_projects": 4,
+        "development_branch_created": true,
+        "development_branch_persistent": false,
+        "cost_confirmation_required": true,
+        "cost_confirmation_obtained": true,
+        "forbidden_canary_executed": false,
+        "forbidden_canary_reason": "The canonical manifest declares no Supabase forbidden tools; no production or destructive operation was invented.",
+        "forbidden_tools_declared": [],
+        "post_delete_branches": [
+          "main"
+        ],
+        "production_data_copied": false,
+        "production_mutation_performed": false,
+        "relation_cleanup_readback": null,
+        "row_cleanup_proven": true,
+        "table_cleanup_proven": true,
+        "write_canary": true,
+        "write_readback": {
+          "canary_id": "issue18-20260915T2335Z",
+          "created_at": "2026-09-15 23:36:26.356152+00",
+          "payload": "issue18-supabase-development-canary-v1"
+        }
+      },
+      "completed_github_and_drive_canaries_repeated": false,
+      "gmail_draft_created": false,
+      "gmail_cleanup_transport_available": false,
+      "higgsfield_generation_started": false,
+      "higgsfield_cleanup_transport_available": false
+    },
+    "fresh_repository": {
+      "attempted": false,
+      "reason": "Deferred by the ordered handoff until all REQUIRED applicable capabilities above qualify."
+    },
+    "issue_state": {
+      "reopened": true,
+      "reason": "Terminal target remains false; the governing handoff permits closure only after every required criterion passes."
+    },
+    "terminal_target_active": false
   },
   "owner_scope_amendments": [
     {
@@ -4532,23 +4669,37 @@
         "restart": false,
         "secret_exclusion": true,
         "tool_inventory": true,
-        "write_canary": false,
+        "write_canary": true,
         "write_capability": true
       },
       "connector": "supabase",
-      "evidence_evaluated_at": "2026-09-15T20:56:55.261516+00:00",
+      "evidence_evaluated_at": "2026-09-15T23:37:44Z",
       "execution": {
         "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
       },
-      "health": "READ_PROVEN",
-      "observed_at": "2026-09-15T20:15:09.556Z",
+      "health": "WRITE_PROVEN",
+      "observed_at": "2026-09-15T23:36:26.356152+00:00",
       "qualified": false,
-      "reason": "independent Desktop read and tool inventory; restart and applicable governed boundaries remain unproven",
+      "reason": "independent Desktop read plus bounded isolated-branch write, exact readback and cleanup; restart and fail-closed proof remain unproven",
       "surface": "codex-desktop",
       "tier": "REQUIRED",
       "tool_count": 28,
       "tool_inventory_observed_at": "2026-09-15T20:54:55.005Z",
-      "tool_inventory_sha256": "3be444c85c4c0735506d2a66f0615554ef7567556d7d718b817e45a0942a5cd1"
+      "tool_inventory_sha256": "3be444c85c4c0735506d2a66f0615554ef7567556d7d718b817e45a0942a5cd1",
+      "write_evidence": {
+        "base_project_id": "rijegozirtwmuihdpvnz",
+        "branch_deleted": true,
+        "branch_id": "91a37655-99b3-4e79-8b49-665ff688d17d",
+        "branch_project_ref": "uyvkklxhdezqgncfvdjc",
+        "cleanup_readback_remaining_rows": 0,
+        "forbidden_canary": false,
+        "forbidden_tools_declared": [],
+        "production_data_copied": false,
+        "production_mutation_performed": false,
+        "relation_cleanup_readback": null,
+        "write_canary": true,
+        "write_readback": true
+      }
     },
     {
       "check_applicability": {
@@ -13000,23 +13151,23 @@
   "unresolved_gaps": [
     {
       "criterion": "Issue #18: authenticated equivalent REQUIRED capabilities independently on Codex Cloud and CLI-to-Cloud",
-      "evidence": "Accepted hosted tasks expose no REQUIRED provider bindings. No new binding identity has been provided.",
+      "evidence": "Exact-head tasks task_e_6aa9c357e26083259b941dcf95e4cdb0 and task_e_6aa9c38e0bec8325ae383857ab990809 ran at merged main 360039e5e9a352f00053160d2fc98660d5071ba4. Each exposed zero REQUIRED provider adapters, qualified zero REQUIRED connectors, and denied admission fail-closed. Hosted settings still expose no supported non-GitHub REQUIRED provider binding control.",
       "id": "hosted-provider-custody",
       "required_action": "Provide platform-supported per-provider binding references for environment 6aa9a539484c819182f5afc7e203644f, keeping secrets in hosted custody; then execute independent conformance.",
       "status": "EXTERNAL_PREREQUISITE_PENDING"
     },
     {
       "criterion": "Issue #18: independently qualified Desktop capabilities and restart/new-session persistence",
-      "evidence": "Accepted direct reads and Drive write remain valid; current Desktop host process starts do not prove a restart. Computer-use refusal remains preserved.",
+      "evidence": "Accepted direct reads and Drive write remain valid; current Desktop host process starts still do not prove a restart. The supported computer-use surface again refused com.openai.codex, and no unsafe host-wide process termination was attempted because it would interrupt unrelated active tasks.",
       "id": "desktop-restart",
       "required_action": "Make an authorized independent Desktop restart/session surface available, then collect post-restart provider and GitHub read-only evidence against the saved baseline.",
       "status": "EXTERNAL_PREREQUISITE_PENDING"
     },
     {
       "criterion": "Issue #18 conformance steps 6-8: bounded governed writes, cleanup and forbidden-operation enforcement where declared",
-      "evidence": "Cloudflare write error 10000 preserved; all four Supabase project branch lists are empty; required Gmail/Higgsfield cleanup realizations remain unspecified.",
+      "evidence": "Cloudflare read authentication now succeeds, but the bounded Development KV namespace create remains denied with error 10000 and post-attempt cleanup inspection found no canary namespace. Owner-confirmed Supabase branch cost was 0.01344 USD/hour. Ephemeral branch 91a37655-99b3-4e79-8b49-665ff688d17d contained no production data; bounded write, exact readback, row cleanup, zero-row readback, relation cleanup and branch deletion passed. The Supabase manifest declares no forbidden tools, so no destructive or Production operation was invented. Required Gmail/Higgsfield cleanup realizations remain absent.",
       "id": "development-canaries",
-      "required_action": "Designate existing least-privilege Development targets and write/cleanup transports. If a paid Supabase Development branch is needed, follow the owner-required cost/organization confirmation before creation. Run only declared governed-write and forbidden checks.",
+      "required_action": "Provide an authorized Cloudflare Development writer and exact cleanup transport, plus Gmail/Higgsfield cleanup realizations. Resolve fail-closed proof only through explicitly declared safe forbidden checks; do not invent Production or destructive canaries.",
       "status": "EXTERNAL_PREREQUISITE_PENDING"
     },
     {
