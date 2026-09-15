@@ -11,13 +11,15 @@
     "final_code_run_id": 35018772173,
     "initial_run_id": 35016579014,
     "pr_created_at": "2026-09-15T19:55:00Z",
+    "repair_code_run_id": 35027112980,
     "repair_required": false,
     "run_created_at": "2026-09-15T19:56:35Z"
   },
+  "activation_status": "EXTERNAL_PREREQUISITES_PENDING",
   "bootstrap_source": {
-    "client_adapter_sha256": "caaf6cbf2d85f70e7b855e570c0efad304422521a0ecee881cf84a23a1fbf096",
-    "head": "9a60706d2f9f7ce84144502279b33955922c9c12",
-    "implementation_sha256": "b87fdb31eaacd077466445f4769f738288d65f27db728fc12c8a1a07c1dd66c9",
+    "client_adapter_sha256": "9fcd1816b6a4392418693cd6417542afa6a0eb23d6c5834debf9fa7ba83465fb",
+    "head": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
+    "implementation_sha256": "e275c49ba025f6abf139a87ddd182b7c9650dcc13e5ee1dac7bc443a84ceaca7",
     "root": "/Users/tonymalott/Documents/GitHub/worktrees/bootstrap-mesh-connectors-18"
   },
   "check_semantics": {
@@ -1858,6 +1860,24 @@
     "gitleaks_managed_config": "PASS",
     "gitleaks_repository": "PASS",
     "known_secret_formats_and_inherited_values": "PASS",
+    "post_merge_delta": {
+      "collected_at": "2026-09-15T21:56:55.818334+00:00",
+      "configuration_and_packages": "Unchanged; accepted previous scans preserved.",
+      "inherited_values_scan": "PASS",
+      "reports": {
+        "local": {
+          "findings": 0,
+          "report_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+          "result": "PASS"
+        },
+        "receipt": {
+          "findings": 0,
+          "report_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+          "result": "PASS"
+        }
+      },
+      "scope": "New qualification receipts, CI logs, process metadata and canonical receipt."
+    },
     "scan_log_sha256": {
       "issue18-config-gitleaks.log": "54b5e99f850034c10a46ced9ae1ce032872dcb3be902e694598e3edc53f79c1d",
       "issue18-dist-gitleaks.log": "21a209949a3b00f28df43a78c84a692ba7092d30fb8c538e1a2e9470114b105c",
@@ -1876,8 +1896,10 @@
     "previous_terminal_sha256": "901ed22778ac75a66d17221a08c6aa92872a18a82821bab5d2c41d6fe145c72a"
   },
   "external_boundary": {
-    "blocker": "Required platform authentication, Desktop restart access, and Development write/cleanup realizations are unavailable from the present execution surface.",
-    "not_claimed": "Remaining qualification and adapter work is recorded explicitly; this receipt does not claim that one external action alone completes acceptance.",
+    "architecture_rework_required": false,
+    "authority": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/18#issuecomment-5688537199",
+    "blocker": "Hosted credential bindings, independent Desktop restart access and explicitly designated least-privilege Development canary resources remain absent.",
+    "implementation_state": "IMPLEMENTATION_READY",
     "single_external_blocker_claimed": false
   },
   "fresh_repository": {
@@ -1949,7 +1971,7 @@
     "secret_scan_passed": true,
     "successful_qualified_admission_proven": false
   },
-  "generated_at": "2026-09-15T20:56:55.261516+00:00",
+  "generated_at": "2026-09-15T21:55:59.439594+00:00",
   "git": {
     "amendment_initial_ahead_behind": [
       0,
@@ -1957,7 +1979,16 @@
     ],
     "amendment_initial_verified_head": "0238ca8c5874a9a43a2b8a44cbb2f92b7bb3e184",
     "amendment_initial_worktree_clean": true,
-    "branch": "codex/issue-18-mesh-connector-parity",
+    "branch": "codex/issue-18-terminal-followup",
+    "followup": {
+      "base_head": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
+      "branch": "codex/issue-18-terminal-followup",
+      "containing_receipt_commit": "resolve from commit containing this file; exact identity pinned in follow-up PR and issue #18 comment",
+      "prior_worktree_head": "d8c70c20974e86149aa02418d410be3afe336a87",
+      "prior_worktree_matched_origin": true,
+      "purpose": "post-merge evidence reconciliation only",
+      "worktree_matched_repaired_main_before_mutation": true
+    },
     "initial_ahead_behind": [
       0,
       0
@@ -1966,10 +1997,21 @@
     "initial_worktree_clean": true,
     "issue": 18,
     "issue_closed": false,
-    "merge_commit": null,
-    "pr_head_at_evidence_collection": "9a60706d2f9f7ce84144502279b33955922c9c12",
+    "main_head_at_collection": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
+    "merge_commit": "b1b66f2cc8399462ea57b0af5931bc8651579d11",
+    "merged_at": "2026-09-15T21:05:11Z",
+    "pr_head_at_evidence_collection": "d8c70c20974e86149aa02418d410be3afe336a87",
     "pull_request": 19,
+    "pull_request_state": "MERGED",
     "receipt_commit_resolution": "Use the commit containing this file; qualification source above excludes this evidence-only commit.",
+    "repair": {
+      "issue": 20,
+      "merge_commit": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
+      "merged_at": "2026-09-15T21:46:37Z",
+      "pull_request": 21,
+      "reviewed_head": "ab02c5a0cf4dd414a8a783a7fe0ddf220dc015a3",
+      "state": "MERGED"
+    },
     "repository": "pinklon/engineering-workstation-bootstrap"
   },
   "github": {
@@ -2535,6 +2577,7 @@
       "template_name": "ghostmesh-connector-fabric-v1"
     }
   },
+  "implementation_status": "IMPLEMENTATION_READY",
   "legacy_provenance": {
     "all_15_recorded_files_still_match": true,
     "legacy_precommit_source_head": "5087f8ab9efefb2c6baac653f941846de0239af6",
@@ -2559,6 +2602,7 @@
   },
   "manifest_sha256": "5ecad70c919ae165baa78f5cf9f12772e966596be3289e7eece2ba23c29babcf",
   "merge_authorized_by_evidence": false,
+  "merge_gate_semantics": "Terminal parity remains unproven. Historical implementation-only merges were authorized separately by the owner and do not satisfy this terminal gate.",
   "new_observations": {
     "cloudflare_write": {
       "account_id": "5c8a037d78c37953b3bb8e84615c8d74",
@@ -2654,6 +2698,127 @@
       "unsupported_claimed": false
     }
   ],
+  "post_merge_provider_observations": {
+    "desktop_restart_baseline": {
+      "collected_at": "2026-09-15T21:53:57.079913+00:00",
+      "config_sha256": "e7b8d36180f67ad42f9c3b91dec1b62e72c56c82f40cefbe8fab0b2ee111552c",
+      "credential_store_read": false,
+      "processes": [
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Frameworks/Codex Framework.framework/Versions/152.0.7977.83/Helpers/Codex (Service).app/Contents/MacOS/Codex (Service)",
+          "pid": 175,
+          "started_local": "Sat Sep 12 14:05:32 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Frameworks/Codex Framework.framework/Versions/152.0.7977.83/Helpers/Codex (Service).app/Contents/MacOS/Codex (Service)",
+          "pid": 2556,
+          "started_local": "Sat Sep 12 07:18:32 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Frameworks/Codex Framework.framework/Versions/152.0.7977.83/Helpers/Codex (Service).app/Contents/MacOS/Codex (Service)",
+          "pid": 2557,
+          "started_local": "Sat Sep 12 07:18:32 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/MacOS/ChatGPT",
+          "pid": 7927,
+          "started_local": "Fri Sep 11 17:40:29 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Frameworks/Codex Framework.framework/Versions/152.0.7977.83/Helpers/Codex (Service).app/Contents/MacOS/Codex (Service)",
+          "pid": 7949,
+          "started_local": "Fri Sep 11 17:40:32 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Frameworks/Codex Framework.framework/Versions/152.0.7977.83/Helpers/Codex (Service).app/Contents/MacOS/Codex (Service)",
+          "pid": 7950,
+          "started_local": "Fri Sep 11 17:40:32 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "pid": 7976,
+          "started_local": "Fri Sep 11 17:40:33 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/codex-code-mode-host",
+          "pid": 8411,
+          "started_local": "Fri Sep 11 17:40:51 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "pid": 91075,
+          "started_local": "Tue Sep 15 12:58:43 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "pid": 67758,
+          "started_local": "Tue Sep 15 12:31:00 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "pid": 67759,
+          "started_local": "Tue Sep 15 12:31:00 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "pid": 67762,
+          "started_local": "Tue Sep 15 12:31:00 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "pid": 41799,
+          "started_local": "Tue Sep 15 11:16:38 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "pid": 41800,
+          "started_local": "Tue Sep 15 11:16:38 2026"
+        },
+        {
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "pid": 41814,
+          "started_local": "Tue Sep 15 11:16:39 2026"
+        }
+      ],
+      "purpose": "baseline for a later independently observed Desktop restart; process identity alone does not qualify provider persistence",
+      "restart_proven": false,
+      "timezone": "America/Los_Angeles"
+    },
+    "supabase": {
+      "branches": [
+        {
+          "branches": [],
+          "project_id": "rijegozirtwmuihdpvnz"
+        },
+        {
+          "branches": [],
+          "project_id": "iwnmtzcujtamdjeizhbj"
+        },
+        {
+          "branches": [],
+          "project_id": "czbhikkappezyxhtyvqu"
+        },
+        {
+          "branches": [],
+          "project_id": "yixchrutvofosmwublyo"
+        }
+      ],
+      "collected_at": "2026-09-15T21:53:18.605Z",
+      "development_mutation": false,
+      "prior_502_observation_preserved": true,
+      "project_count": 4,
+      "project_discovery_recovered": true
+    }
+  },
+  "post_merge_reconciliation": {
+    "accepted_observations_preserved": true,
+    "old_forbidden_proof_limit": "Prior source checked only forbidden_tools[0]. Those rows are superseded by independently executed all-tools checks on repaired source, with their original receipts preserved.",
+    "previous_terminal_commit": "d8c70c20974e86149aa02418d410be3afe336a87",
+    "previous_terminal_sha256": "18c6f446c04b23bae3294d27413c3b51463b819d2a346844e87f23bc83d52f35",
+    "previous_terminal_url": "https://github.com/pinklon/engineering-workstation-bootstrap/blob/d8c70c20974e86149aa02418d410be3afe336a87/docs/receipts/issue-18-terminal.json",
+    "retested_scope": "Only GitHub read-only fail-closed observations invalidated by the all-forbidden-tools defect; new Supabase read-only availability discovery and Desktop process baseline.",
+    "state_authority": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/18#issuecomment-5688537199"
+  },
   "profiles": {
     "design-os": {
       "required": [
@@ -2709,9 +2874,9 @@
     "codex_cli": "independent native Codex client processes; same read identity and inventory",
     "codex_cli_to_cloud": "UNPROVEN",
     "codex_cloud": "UNPROVEN",
-    "codex_desktop": "UNPROVEN: supported computer-use interface explicitly refused access to Codex; no bypass attempted.",
+    "codex_desktop": "UNPROVEN: no observed restart; recorded Desktop host process starts predate accepted reads. Prior computer-use refusal preserved.",
     "fresh_repository": "independent native client processes in fresh repository",
-    "github_readonly": "Independent two-process runs passed separately for local-shell, codex-cli and fresh-repository on amended source.",
+    "github_readonly": "All declared forbidden tools and two-process persistence requalified independently on shell, CLI and fresh repository using merged repaired source 71c7aca43244f5d066d17e796a6d6a4f2de41985.",
     "local_shell": "independent native Codex client processes; same read identity and inventory",
     "qualification_limit": "read persistence does not establish missing writes or forbidden-operation enforcement"
   },
@@ -2719,10 +2884,12 @@
     "amendment_code_commit": "9a60706d2f9f7ce84144502279b33955922c9c12",
     "amendment_predecessor": "0238ca8c5874a9a43a2b8a44cbb2f92b7bb3e184",
     "canary_branch_cleanup_proven": true,
+    "followup_scope": "Evidence-only receipt update; no provider mutation, live activation or configuration change.",
     "hosted_environment_created": "6aa9a539484c819182f5afc7e203644f",
     "installed_release": "0.2.0-native-mac-bd0cae7-final-20260912T1858Z",
     "live_workstation_activated": false,
     "method": "Revert scoped convergence commits; remove the new hosted environment and disposable repository only when requested. Existing installed release and its rollback receipts remain unchanged.",
+    "post_merge_base": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
     "source_head": "b654714607f1154e534b6e11484b10e2bc2929ea"
   },
   "schema_version": 1,
@@ -2735,9 +2902,9 @@
         "user_profile_required": false
       },
       "bootstrap_source": {
-        "client_adapter_sha256": "caaf6cbf2d85f70e7b855e570c0efad304422521a0ecee881cf84a23a1fbf096",
-        "head": "9a60706d2f9f7ce84144502279b33955922c9c12",
-        "implementation_sha256": "b87fdb31eaacd077466445f4769f738288d65f27db728fc12c8a1a07c1dd66c9",
+        "client_adapter_sha256": "9fcd1816b6a4392418693cd6417542afa6a0eb23d6c5834debf9fa7ba83465fb",
+        "head": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
+        "implementation_sha256": "e275c49ba025f6abf139a87ddd182b7c9650dcc13e5ee1dac7bc443a84ceaca7",
         "root": "/Users/tonymalott/Documents/GitHub/worktrees/bootstrap-mesh-connectors-18"
       },
       "check_applicability": {
@@ -2765,20 +2932,27 @@
         "write_capability": false
       },
       "connector": "github-readonly",
-      "evidence": "amended-github-readonly-shell.json",
+      "evidence": "post-merge/github-readonly-shell.json",
       "execution": {
         "executable": "/Users/tonymalott/.codex/packages/standalone/releases/0.154.0-aarch64-apple-darwin/bin/codex",
-        "pid": 26514,
-        "thread_id": "01a0a6d9-91c8-73f2-990e-8474ae13bfc7",
+        "pid": 48513,
+        "thread_id": "01a0a70f-002a-7de2-b132-8a07d5b128c9",
         "user_agent": "Codex Desktop/0.154.0 (Mac OS 26.6.1; arm64) dumb (connector-doctor; 1)"
       },
+      "forbidden_proof_semantics": "Every listed tool independently returned accepted unknown-tool semantics in the qualifying process; read persistence was proved across two native client processes. Repaired all-tools harness returned fail_closed=true.",
+      "forbidden_tools_rejected": [
+        "create_issue",
+        "create_pull_request",
+        "push_files",
+        "delete_file"
+      ],
       "health": "RESTART_PERSISTENT",
       "manifest_sha256": "5ecad70c919ae165baa78f5cf9f12772e966596be3289e7eece2ba23c29babcf",
-      "observed_at": "2026-09-15T20:54:34.281188+00:00",
+      "observed_at": "2026-09-15T21:52:56.510735+00:00",
       "prior_execution": {
         "executable": "/Users/tonymalott/.codex/packages/standalone/releases/0.154.0-aarch64-apple-darwin/bin/codex",
-        "pid": 26408,
-        "thread_id": "01a0a6d9-8495-7700-b6f2-e2466fb5a7fd",
+        "pid": 48413,
+        "thread_id": "01a0a70e-f0e1-7180-8f9a-3ee12b3007db",
         "user_agent": "Codex Desktop/0.154.0 (Mac OS 26.6.1; arm64) dumb (connector-doctor; 1)"
       },
       "qualified": true,
@@ -2804,9 +2978,9 @@
         "user_profile_required": false
       },
       "bootstrap_source": {
-        "client_adapter_sha256": "caaf6cbf2d85f70e7b855e570c0efad304422521a0ecee881cf84a23a1fbf096",
-        "head": "9a60706d2f9f7ce84144502279b33955922c9c12",
-        "implementation_sha256": "b87fdb31eaacd077466445f4769f738288d65f27db728fc12c8a1a07c1dd66c9",
+        "client_adapter_sha256": "9fcd1816b6a4392418693cd6417542afa6a0eb23d6c5834debf9fa7ba83465fb",
+        "head": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
+        "implementation_sha256": "e275c49ba025f6abf139a87ddd182b7c9650dcc13e5ee1dac7bc443a84ceaca7",
         "root": "/Users/tonymalott/Documents/GitHub/worktrees/bootstrap-mesh-connectors-18"
       },
       "check_applicability": {
@@ -2834,20 +3008,27 @@
         "write_capability": false
       },
       "connector": "github-readonly",
-      "evidence": "amended-github-readonly-cli.json",
+      "evidence": "post-merge/github-readonly-cli.json",
       "execution": {
         "executable": "/Users/tonymalott/.codex/packages/standalone/releases/0.154.0-aarch64-apple-darwin/bin/codex",
-        "pid": 26061,
-        "thread_id": "01a0a6d8-ffbc-71c0-a859-6d2a005c3821",
+        "pid": 48205,
+        "thread_id": "01a0a70e-ba18-77b0-a8be-bc5ff4d11faa",
         "user_agent": "Codex Desktop/0.154.0 (Mac OS 26.6.1; arm64) dumb (connector-doctor; 1)"
       },
+      "forbidden_proof_semantics": "Every listed tool independently returned accepted unknown-tool semantics in the qualifying process; read persistence was proved across two native client processes. Repaired all-tools harness returned fail_closed=true.",
+      "forbidden_tools_rejected": [
+        "create_issue",
+        "create_pull_request",
+        "push_files",
+        "delete_file"
+      ],
       "health": "RESTART_PERSISTENT",
       "manifest_sha256": "5ecad70c919ae165baa78f5cf9f12772e966596be3289e7eece2ba23c29babcf",
-      "observed_at": "2026-09-15T20:53:56.573971+00:00",
+      "observed_at": "2026-09-15T21:52:38.127668+00:00",
       "prior_execution": {
         "executable": "/Users/tonymalott/.codex/packages/standalone/releases/0.154.0-aarch64-apple-darwin/bin/codex",
-        "pid": 25994,
-        "thread_id": "01a0a6d8-f139-7272-b00e-27c01f980852",
+        "pid": 48148,
+        "thread_id": "01a0a70e-ab42-71f0-ad9d-ae15e6c7165e",
         "user_agent": "Codex Desktop/0.154.0 (Mac OS 26.6.1; arm64) dumb (connector-doctor; 1)"
       },
       "qualified": true,
@@ -2984,9 +3165,9 @@
         "user_profile_required": false
       },
       "bootstrap_source": {
-        "client_adapter_sha256": "caaf6cbf2d85f70e7b855e570c0efad304422521a0ecee881cf84a23a1fbf096",
-        "head": "9a60706d2f9f7ce84144502279b33955922c9c12",
-        "implementation_sha256": "b87fdb31eaacd077466445f4769f738288d65f27db728fc12c8a1a07c1dd66c9",
+        "client_adapter_sha256": "9fcd1816b6a4392418693cd6417542afa6a0eb23d6c5834debf9fa7ba83465fb",
+        "head": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
+        "implementation_sha256": "e275c49ba025f6abf139a87ddd182b7c9650dcc13e5ee1dac7bc443a84ceaca7",
         "root": "/Users/tonymalott/Documents/GitHub/worktrees/bootstrap-mesh-connectors-18"
       },
       "check_applicability": {
@@ -3014,20 +3195,27 @@
         "write_capability": false
       },
       "connector": "github-readonly",
-      "evidence": "amended-github-readonly-fresh.json",
+      "evidence": "post-merge/github-readonly-fresh.json",
       "execution": {
         "executable": "/Users/tonymalott/.codex/packages/standalone/releases/0.154.0-aarch64-apple-darwin/bin/codex",
-        "pid": 26550,
-        "thread_id": "01a0a6d9-940f-7bf1-832d-33305f25c385",
+        "pid": 48548,
+        "thread_id": "01a0a70f-0138-7931-855f-13a2dc3b425c",
         "user_agent": "Codex Desktop/0.154.0 (Mac OS 26.6.1; arm64) dumb (connector-doctor; 1)"
       },
+      "forbidden_proof_semantics": "Every listed tool independently returned accepted unknown-tool semantics in the qualifying process; read persistence was proved across two native client processes. Repaired all-tools harness returned fail_closed=true.",
+      "forbidden_tools_rejected": [
+        "create_issue",
+        "create_pull_request",
+        "push_files",
+        "delete_file"
+      ],
       "health": "RESTART_PERSISTENT",
       "manifest_sha256": "5ecad70c919ae165baa78f5cf9f12772e966596be3289e7eece2ba23c29babcf",
-      "observed_at": "2026-09-15T20:54:34.625846+00:00",
+      "observed_at": "2026-09-15T21:52:55.697220+00:00",
       "prior_execution": {
         "executable": "/Users/tonymalott/.codex/packages/standalone/releases/0.154.0-aarch64-apple-darwin/bin/codex",
-        "pid": 26409,
-        "thread_id": "01a0a6d9-84a6-7ad3-9662-4c0bb5ffe652",
+        "pid": 48414,
+        "thread_id": "01a0a70e-f0e0-7a91-a477-c93187c02a2e",
         "user_agent": "Codex Desktop/0.154.0 (Mac OS 26.6.1; arm64) dumb (connector-doctor; 1)"
       },
       "qualified": true,
@@ -12692,6 +12880,50 @@
         "root": "/Users/tonymalott/Documents/GitHub/worktrees/bootstrap-mesh-connectors-18"
       }
     },
+    "post-merge/desktop-baseline.json": {
+      "collected_at": "2026-09-15T21:53:57.079913+00:00",
+      "sha256": "5f05ba81dffe1bbf46c374d3ce220c2ee5c403da19950fb4a9a905ae540ade7d"
+    },
+    "post-merge/github-readonly-cli.json": {
+      "admitted": false,
+      "generated_at": "2026-09-15T21:52:39.413010+00:00",
+      "qualification_scope": "github-readonly only; whole profile remains unadmitted",
+      "sha256": "e5d550e3fc9df37b2edd2748d6e3d69813d5931ff350794edbff5f26828a66db",
+      "source": {
+        "client_adapter_sha256": "9fcd1816b6a4392418693cd6417542afa6a0eb23d6c5834debf9fa7ba83465fb",
+        "head": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
+        "implementation_sha256": "e275c49ba025f6abf139a87ddd182b7c9650dcc13e5ee1dac7bc443a84ceaca7",
+        "root": "/Users/tonymalott/Documents/GitHub/worktrees/bootstrap-mesh-connectors-18"
+      }
+    },
+    "post-merge/github-readonly-fresh.json": {
+      "admitted": false,
+      "generated_at": "2026-09-15T21:52:56.993236+00:00",
+      "qualification_scope": "github-readonly only; whole profile remains unadmitted",
+      "sha256": "f5d8ffc13331ba5dd3e40b03ec2aa0e3b7a15c231a602160234dc7faf48d72c3",
+      "source": {
+        "client_adapter_sha256": "9fcd1816b6a4392418693cd6417542afa6a0eb23d6c5834debf9fa7ba83465fb",
+        "head": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
+        "implementation_sha256": "e275c49ba025f6abf139a87ddd182b7c9650dcc13e5ee1dac7bc443a84ceaca7",
+        "root": "/Users/tonymalott/Documents/GitHub/worktrees/bootstrap-mesh-connectors-18"
+      }
+    },
+    "post-merge/github-readonly-shell.json": {
+      "admitted": false,
+      "generated_at": "2026-09-15T21:52:58.346309+00:00",
+      "qualification_scope": "github-readonly only; whole profile remains unadmitted",
+      "sha256": "2f208576ba3b23d935a93f21fd78ca05028539af7eb3bb4babe90511f6f3a4db",
+      "source": {
+        "client_adapter_sha256": "9fcd1816b6a4392418693cd6417542afa6a0eb23d6c5834debf9fa7ba83465fb",
+        "head": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
+        "implementation_sha256": "e275c49ba025f6abf139a87ddd182b7c9650dcc13e5ee1dac7bc443a84ceaca7",
+        "root": "/Users/tonymalott/Documents/GitHub/worktrees/bootstrap-mesh-connectors-18"
+      }
+    },
+    "post-merge/supabase-availability.json": {
+      "collected_at": "2026-09-15T21:53:18.605Z",
+      "sha256": "6cfe2555a2864b16bf6001e763135f0c8aeb0a838f71fee38dfe7a67a2a8ae58"
+    },
     "terminal-amendment-observations.json": {
       "collected_at": "2026-09-15T20:51:02.044592+00:00",
       "sha256": "3ff616b65f19398bf223db33c227963e120a19862499665443d3bbc582f2ce04"
@@ -12767,42 +12999,64 @@
   "tranche": "terminal-qualification-and-convergence",
   "unresolved_gaps": [
     {
-      "criterion": "Required provider transports and authenticated conformance on codex-cloud and codex-cli-to-cloud",
-      "evidence": "Accepted independent hosted tasks expose no required provider transports; Cloud connector settings expose only repository/task integrations; environment secrets are setup-only.",
+      "criterion": "Issue #18: authenticated equivalent REQUIRED capabilities independently on Codex Cloud and CLI-to-Cloud",
+      "evidence": "Accepted hosted tasks expose no REQUIRED provider bindings. No new binding identity has been provided.",
       "id": "hosted-provider-custody",
-      "required_action": "Provide a supported hosted provider-credential binding for this exact environment without exporting local credentials; then execute remaining hosted conformance."
+      "required_action": "Provide platform-supported per-provider binding references for environment 6aa9a539484c819182f5afc7e203644f, keeping secrets in hosted custody; then execute independent conformance.",
+      "status": "EXTERNAL_PREREQUISITE_PENDING"
     },
     {
-      "criterion": "Independent Codex Desktop qualification and restart/new-session persistence",
-      "evidence": "Direct provider reads and Drive write succeeded; computer-use refused Codex app access. No independent Desktop restart proof or Desktop GitHub read-only transport exists.",
+      "criterion": "Issue #18: independently qualified Desktop capabilities and restart/new-session persistence",
+      "evidence": "Accepted direct reads and Drive write remain valid; current Desktop host process starts do not prove a restart. Computer-use refusal remains preserved.",
       "id": "desktop-restart",
-      "required_action": "Use an authorized Desktop session/restart surface to expose GitHub read-only and collect pre/post-restart conformance."
+      "required_action": "Make an authorized independent Desktop restart/session surface available, then collect post-restart provider and GitHub read-only evidence against the saved baseline.",
+      "status": "EXTERNAL_PREREQUISITE_PENDING"
     },
     {
-      "criterion": "Bounded write/readback/cleanup and forbidden-operation enforcement for declared governed writers",
-      "evidence": "GitHub accepted canary preserved; Desktop Drive create/update/read/delete/404 proved. Cloudflare KV creation rejected with code 10000; no canary namespace exists. No explicitly designated development Supabase database was identified; Gmail draft-deletion and Higgsfield generation-cleanup paths are not exposed in the available tool catalog. Remaining provider governance is not qualified.",
-      "id": "governed-provider-boundaries",
-      "required_action": "Supply existing least-privilege Development write/cleanup realizations and an explicit Supabase Development target; do not broaden credentials. Complete and independently execute missing canary/forbidden-operation adapters."
+      "criterion": "Issue #18 conformance steps 6-8: bounded governed writes, cleanup and forbidden-operation enforcement where declared",
+      "evidence": "Cloudflare write error 10000 preserved; all four Supabase project branch lists are empty; required Gmail/Higgsfield cleanup realizations remain unspecified.",
+      "id": "development-canaries",
+      "required_action": "Designate existing least-privilege Development targets and write/cleanup transports. If a paid Supabase Development branch is needed, follow the owner-required cost/organization confirmation before creation. Run only declared governed-write and forbidden checks.",
+      "status": "EXTERNAL_PREREQUISITE_PENDING"
     },
     {
-      "criterion": "Successful fresh-repository admission after all required capability health is established",
-      "evidence": "Inherited reads and separate-process GitHub read-only pass; required governed checks still absent, so admission is false.",
+      "criterion": "Issue #18: successful fresh-repository admission after all REQUIRED applicable health checks pass",
+      "evidence": "Profile-only inheritance and targeted repaired GitHub checks pass, but whole-profile admission remains false.",
       "id": "fresh-admission",
-      "required_action": "Complete required local conformance above, then run the existing fail-closed admission against the profile-only repository."
+      "required_action": "After the required provider conformance above succeeds, run profile admission; no credentials or provider endpoints may be copied to the repository.",
+      "status": "DEPENDENT_ON_EXTERNAL_PREREQUISITES"
     }
   ],
   "unsupported_gaps": [],
   "validation": {
+    "accepted_pre_repair": {
+      "browser_runtime_fixtures": "PASS",
+      "connector_tests": 26,
+      "evidence_sha256": {
+        "issue18-browser.log": "176e9b833fd1ab917e5677d6b55e55b4a553070adf395925acf26f6df7cdda6a",
+        "issue18-convergence-validate.log": "8b0698f14e242b9338bf9f32333094a90724d21d8ae65c92a21db1a6e08489de"
+      },
+      "make_validate": "PASS",
+      "package_reproducibility": "PASS",
+      "source_head": "9a60706d2f9f7ce84144502279b33955922c9c12",
+      "staged_activation_rollback": "PASS",
+      "validation_log_sha256": "38e992e3e298a31cc8ef8f5fdc88141218a6aae42021b6bfe9c491b0da8f8c00"
+    },
+    "actions_run_id": 35027112980,
+    "all_four_jobs": "PASS",
     "browser_runtime_fixtures": "PASS",
-    "connector_tests": 26,
+    "connector_tests": 30,
+    "evidence_origin": "Accepted PR #21 GitHub Actions logs; completed suites were not re-run",
     "evidence_sha256": {
       "issue18-browser.log": "176e9b833fd1ab917e5677d6b55e55b4a553070adf395925acf26f6df7cdda6a",
       "issue18-convergence-validate.log": "8b0698f14e242b9338bf9f32333094a90724d21d8ae65c92a21db1a6e08489de"
     },
     "make_validate": "PASS",
     "package_reproducibility": "PASS",
-    "source_head": "9a60706d2f9f7ce84144502279b33955922c9c12",
+    "reviewed_head": "ab02c5a0cf4dd414a8a783a7fe0ddf220dc015a3",
+    "reviewed_tree_identical_to_merged_tree": true,
+    "source_head": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
     "staged_activation_rollback": "PASS",
-    "validation_log_sha256": "38e992e3e298a31cc8ef8f5fdc88141218a6aae42021b6bfe9c491b0da8f8c00"
+    "validation_log_sha256": "fa9311b163197837cc5d07fdbabe492e3c4b61e5c03da54fe111b2ad04d124d8"
   }
 }
