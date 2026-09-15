@@ -169,7 +169,7 @@ class FabricTests(unittest.TestCase):
             servers = {'fixture': {'runtimeStatus': 'connected', 'tools': {'read': {}}}}
             def call(self, server, tool, arguments):
                 if tool == 'create_issue':
-                    raise fabric.Refusal('Codex MCP operation rejected')
+                    raise fabric.RPCRefusal(-32601)
                 return {'content': [{'type': 'text', 'text': 'bounded fixture read'}]}
         row = native.observe(Client(), self.connector, 'codex-cli')
         self.assertTrue(row['checks']['read_canary'])
@@ -186,6 +186,23 @@ class FabricTests(unittest.TestCase):
         row = native.observe(Client(), self.connector, 'codex-cli')
         self.assertFalse(row['checks']['read_canary'])
         self.assertNotIn('private-error', json.dumps(row))
+
+    def test_auth_and_argument_errors_do_not_prove_unknown_tool(self):
+        client = fabric.MCP(self.config)
+        for code in [-32602, -32001, -32003, None]:
+            with patch.object(client, 'rpc', side_effect=fabric.RPCRefusal(code)):
+                self.assertFalse(client.rejects_unconfigured_write('create_issue'))
+        with patch.object(client, 'rpc', return_value={'isError': True}):
+            self.assertFalse(client.rejects_unconfigured_write('create_issue'))
+
+    def test_render_rejects_disabled_or_wrong_auth_reference(self):
+        source = self.home / 'config.toml'
+        base = '[mcp_servers.github-readonly]\nurl = "https://api.githubcopilot.com/mcp/x/all/readonly"\n'
+        for settings in ['enabled = false\n', 'bearer_token_env_var = "WRONG"\n', '']:
+            source.write_text(base + settings)
+            result = self.cli('render', '--source', str(source), '--output', str(self.home / 'candidate'))
+            self.assertEqual(result.returncode, 64)
+            self.assertFalse((self.home / 'candidate').exists())
 
     def test_complete_matrix_and_required_admission(self):
         m = fabric.load_manifest()

@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import time
 
-from connector_fabric import CHECKS, MCP, Refusal, now, secrets_present
+from connector_fabric import CHECKS, MCP, Refusal, RPCRefusal, now, secrets_present
 
 APP_PREFIX = {'supabase': 'supabase', 'google-drive': 'google_drive',
               'gmail': 'gmail', 'google-contacts': 'google_contacts',
@@ -90,7 +90,7 @@ class CodexClient:
             if message.get('id') != request_id:
                 continue
             if 'error' in message:
-                raise Refusal('Codex MCP operation rejected')
+                raise RPCRefusal(message['error'].get('code'))
             return message['result']
         raise Refusal('Codex client response timeout')
 
@@ -168,11 +168,7 @@ def observe(client, connector, surface):
         checks['write_canary'] = not writes
         forbidden = connector.get('forbidden_tools', [])
         if forbidden and not set(forbidden).intersection(names):
-            try:
-                rejected = reader.rpc('tools/call', {'name': forbidden[0], 'arguments': {}}).get('isError') is True
-            except Refusal as exc:
-                rejected = str(exc) == 'Codex MCP operation rejected'
-            checks['fail_closed'] = rejected
+            checks['fail_closed'] = reader.rejects_unconfigured_write(forbidden[0])
         checks['secret_exclusion'] = not secrets_present(json.dumps(row))
         row['reason'] = 'read observed; waiting for independent process restart and remaining checks'
     except (Refusal, OSError, ValueError, KeyError) as exc:

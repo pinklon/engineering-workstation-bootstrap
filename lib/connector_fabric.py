@@ -36,6 +36,12 @@ class Refusal(Exception):
     pass
 
 
+class RPCRefusal(Refusal):
+    def __init__(self, code):
+        super().__init__('MCP operation rejected')
+        self.code = code
+
+
 def digest(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -214,7 +220,7 @@ class MCP:
             if data.get('id') != self.seq or data.get('jsonrpc') != '2.0':
                 raise Refusal('MCP response identity mismatch')
             if 'error' in data:
-                raise Refusal('MCP operation rejected')
+                raise RPCRefusal(data['error'].get('code'))
             return data['result']
 
     def start(self):
@@ -268,9 +274,9 @@ class MCP:
         # This is only used after proving the named mutation tool is absent.
         try:
             result = self.rpc('tools/call', {'name': name, 'arguments': {}})
-            return result.get('isError') is True
-        except Refusal as exc:
-            return str(exc) == 'MCP operation rejected'
+            return result.get('isError') is True and result.get('error', {}).get('code') == -32601
+        except RPCRefusal as exc:
+            return exc.code == -32601
 
 
 def restart_read(connector_id, home, expected):
@@ -503,6 +509,11 @@ def main():
             if name in existing:
                 if existing[name].get('url') != endpoint:
                     raise Refusal('existing endpoint contradicts canonical identity')
+                if not existing[name].get('enabled', True):
+                    raise Refusal('required connector is disabled in existing configuration')
+                expected_auth = c.get('bearer_token_env_var')
+                if expected_auth and existing[name].get('bearer_token_env_var') != expected_auth:
+                    raise Refusal('required connector authentication reference mismatch')
                 continue
             additions.extend(['', '[mcp_servers.' + json.dumps(name) + ']',
                               'url = ' + json.dumps(endpoint), 'enabled = true'])
