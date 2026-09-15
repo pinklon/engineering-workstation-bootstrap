@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "template_name": "ghostmesh-connector-fabric-v1",
+  "capability_manifest": "manifests/connector-capabilities.json",
+  "profile": "ghostmesh-core",
+  "runtime_manifest": "manifests/cloud.json",
+  "bootstrap_source": "same-reviewed-engineering-workstation-bootstrap-release",
+  "setup": [
+    "bash bin/workstation-cloud-node",
+    "mise trust mise.toml",
+    "bash bin/workstation-cloud setup"
+  ],
+  "maintenance": [
+    "bash bin/workstation-cloud-node",
+    "mise trust mise.toml",
+    "bash bin/workstation-cloud maintenance"
+  ],
+  "admission": "bash bin/connector-doctor admit --surface codex-cloud --profile ghostmesh-core",
+  "cli_to_cloud_interface": "codex cloud exec --env ENVIRONMENT_ID",
+  "credential_custody": "platform-supported-per-surface-references-only",
+  "copy_local_credentials": false,
+  "network_policy": "existing-runtime-package-destinations-plus-required-connector-endpoint-hosts",
+  "hosted_environment_id": "6aa9a539484c819182f5afc7e203644f",
+  "provisioned_date": "2026-09-15",
+  "repository": "pinklon/engineering-workstation-bootstrap",
+  "image": "universal",
+  "image_python_selection": "3.13",
+  "node_selection": "24-via-workstation-cloud-node",
+  "environment_variables": {
+    "WORKSTATION_CLOUD_ROOT": "/workspace/.bootstrap-runtime",
+    "WORKSTATION_BOOTSTRAP_BROWSER_ROOT": "/workspace/.bootstrap-runtime/browser",
+    "BASH_ENV": "/workspace/.codex-node24/env.sh"
+  },
+  "configured_secrets": [],
+  "agent_network_preset": "common-dependencies",
+  "agent_network_additional_domains": [
+    "api.github.com",
+    "api.githubcopilot.com",
+    "mcp.cloudflare.com",
+    "docs.mcp.cloudflare.com",
+    "observability.mcp.cloudflare.com",
+    "mcp.supabase.com",
+    "developers.openai.com"
+  ],
+  "agent_network_methods": "all",
+  "commissioned": false,
+  "qualification_required": [
+    "exact-source-head-and-manifest-digest",
+    "hosted-environment-id-and-settings-receipt",
+    "independent-cloud-execution-id",
+    "all-required-connector-conformance-checks",
+    "cold-and-warm-session-receipts",
+    "cli-to-cloud-task-id",
+    "fresh-repository-admission"
+  ]
+}

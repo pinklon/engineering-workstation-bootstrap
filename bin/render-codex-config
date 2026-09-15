@@ -8,13 +8,15 @@ source "$ROOT/lib/workstation-common.sh"
 SOURCE_FILE=''
 OUTPUT_FILE=''
 OPTIONAL_MCP_FILE=''
+CONNECTOR_PROFILE=''
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --source) SOURCE_FILE="${2:-}"; shift 2 ;;
     --output) OUTPUT_FILE="${2:-}"; shift 2 ;;
     --optional-mcp-file) OPTIONAL_MCP_FILE="${2:-}"; shift 2 ;;
-    *) ws_die "usage: render-codex-config --source <file> --output <file> [--optional-mcp-file <file>]" ;;
+    --connector-profile) CONNECTOR_PROFILE="${2:-}"; shift 2 ;;
+    *) ws_die "usage: render-codex-config --source <file> --output <file> [--optional-mcp-file <file>] [--connector-profile <name>]" ;;
   esac
 done
 
@@ -85,3 +87,7 @@ awk -v optional_file="$optional" '
 ' "$input" > "$OUTPUT_FILE"
 
 rm -f "$input" "$optional"
+
+if [[ -n "$CONNECTOR_PROFILE" ]]; then
+  bash "$ROOT/bin/connector-doctor" render --profile "$CONNECTOR_PROFILE" --source "$OUTPUT_FILE" --output "$OUTPUT_FILE"
+fi

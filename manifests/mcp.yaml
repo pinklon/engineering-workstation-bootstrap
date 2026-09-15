@@ -1,4 +1,7 @@
 schema_version: 2
+capability_contract: manifests/connector-capabilities.json
+conformance_entrypoint: bin/connector-doctor
+legacy_server_policy: compatibility-only-not-parity-evidence
 servers:
   github: {state: required, auth: oauth-enrolled, unhealthy_action: stop}
   supabase: {state: optional, auth: oauth-enrolled, startup: disabled-until-enrolled, unhealthy_action: disable-auth-required}

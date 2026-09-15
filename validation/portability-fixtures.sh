@@ -69,10 +69,10 @@ for overlay in public private; do
   args=()
   [[ "$overlay" != private ]] || args=(--private-profile "$fixture_root/profile.json")
   bash bin/workstation-publish-drive --publication-contract "$fixture_root/publication.json" \
-    --drive-root "$drive" --version fixture --archive "$fixture_root/launcher.tar.gz" "${args[@]}" >/dev/null
+    --drive-root "$drive" --version fixture --archive "$fixture_root/launcher.tar.gz" ${args[@]+"${args[@]}"} >/dev/null
   jq '.version="fixture-2"' "$fixture_root/publication.json" > "$fixture_root/publication-2.json"
   bash bin/workstation-publish-drive --publication-contract "$fixture_root/publication-2.json" \
-    --drive-root "$drive" --version fixture-2 --archive "$fixture_root/launcher.tar.gz" "${args[@]}" >/dev/null
+    --drive-root "$drive" --version fixture-2 --archive "$fixture_root/launcher.tar.gz" ${args[@]+"${args[@]}"} >/dev/null
   [[ "$(readlink "$drive/Tony Workstation Bootstrap/current")" == releases/fixture-2 ]]
   release="$drive/Tony Workstation Bootstrap/current"
   bash "$release/START_TONY_WORKSTATION_BOOTSTRAP.command" "$fixture_root/activation.json" >/dev/null
