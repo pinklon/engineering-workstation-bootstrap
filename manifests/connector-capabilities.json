@@ -1,0 +1,1929 @@
+{
+  "schema_version": 1,
+  "contract": "MESH_CONNECTOR_FABRIC_PARITY_ACTIVE_V1",
+  "health_vocabulary": [
+    "CONFIGURED",
+    "HANDSHAKE_PROVEN",
+    "AUTHENTICATED",
+    "READ_PROVEN",
+    "WRITE_CAPABLE",
+    "WRITE_PROVEN",
+    "RESTART_PERSISTENT",
+    "DEGRADED",
+    "UNAVAILABLE",
+    "UNSUPPORTED_ON_SURFACE"
+  ],
+  "credential_policy": {
+    "manager": "existing-provider-and-platform-custody",
+    "copy_credentials": false,
+    "github_mutation_transport": [
+      "agent-codex",
+      "gh"
+    ],
+    "github_governed_mcp_qualified": false
+  },
+  "connectors": [
+    {
+      "id": "github-readonly",
+      "tier": "REQUIRED",
+      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "existing-client-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "existing-client-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "existing-client-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "existing-client-auth-reference",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "get_me",
+        "issue_read"
+      ],
+      "governed_write_capabilities": [],
+      "read_canary": {
+        "tool": "get_me",
+        "arguments": {},
+        "json_keys": [
+          "login",
+          "id"
+        ],
+        "identity_keys": [
+          "login",
+          "id"
+        ]
+      },
+      "write_canary": null,
+      "forbidden_tools": [
+        "create_issue",
+        "create_pull_request",
+        "push_files",
+        "delete_file"
+      ],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity",
+      "endpoint": "https://api.githubcopilot.com/mcp/x/all/readonly",
+      "bearer_token_env_var": "GITHUB_PAT_TOKEN"
+    },
+    {
+      "id": "github-governed",
+      "tier": "REQUIRED",
+      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "repository-scoped-github-app-child-process",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "repository-scoped-github-app-child-process",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "repository-scoped-github-app-child-process",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "repository-scoped-github-app-child-process",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "repository-metadata"
+      ],
+      "governed_write_capabilities": [
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "read_canary": null,
+      "write_canary": {
+        "resource": "explicit-development-canary-contract-required",
+        "cleanup_required": true
+      },
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "cloudflare-api",
+      "tier": "REQUIRED",
+      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "search",
+        "execute"
+      ],
+      "governed_write_capabilities": [
+        "execute"
+      ],
+      "read_canary": {
+        "tool": "execute",
+        "arguments": {
+          "code": "async () => { const r = await cloudflare.request({method:'GET',path:'/accounts',query:{per_page:1}}); return {success:r.success,status:r.status,account_ids:r.result.map(a=>a.id)}; }"
+        },
+        "json_keys": [
+          "success",
+          "status",
+          "account_ids"
+        ]
+      },
+      "write_canary": {
+        "resource": "explicit-development-canary-contract-required",
+        "cleanup_required": true
+      },
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity",
+      "endpoint": "https://mcp.cloudflare.com/mcp"
+    },
+    {
+      "id": "cloudflare-docs",
+      "tier": "REQUIRED",
+      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "none-public",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "none-public",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "none-public",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "none-public",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "search_cloudflare_documentation"
+      ],
+      "governed_write_capabilities": [],
+      "read_canary": {
+        "tool": "search_cloudflare_documentation",
+        "arguments": {
+          "query": "Workers observability"
+        },
+        "contains": "https://developers.cloudflare.com/"
+      },
+      "write_canary": null,
+      "forbidden_tools": [
+        "create_issue",
+        "create_pull_request",
+        "push_files",
+        "delete_file"
+      ],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity",
+      "endpoint": "https://docs.mcp.cloudflare.com/mcp"
+    },
+    {
+      "id": "cloudflare-observability",
+      "tier": "REQUIRED",
+      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "workers_list"
+      ],
+      "governed_write_capabilities": [],
+      "read_canary": {
+        "tool": "workers_list",
+        "arguments": {},
+        "json_keys": [
+          "workers",
+          "count"
+        ]
+      },
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity",
+      "endpoint": "https://observability.mcp.cloudflare.com/mcp"
+    },
+    {
+      "id": "supabase",
+      "tier": "REQUIRED",
+      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "list_organizations"
+      ],
+      "governed_write_capabilities": [
+        "execute_sql"
+      ],
+      "read_canary": {
+        "tool": "list_organizations",
+        "arguments": {},
+        "realization": "platform-session-adapter-required"
+      },
+      "write_canary": {
+        "resource": "explicit-development-canary-contract-required",
+        "cleanup_required": true
+      },
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "google-drive",
+      "tier": "REQUIRED",
+      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "get_profile"
+      ],
+      "governed_write_capabilities": [
+        "create_file",
+        "update_file"
+      ],
+      "read_canary": {
+        "tool": "get_profile",
+        "arguments": {},
+        "realization": "platform-session-adapter-required"
+      },
+      "write_canary": {
+        "resource": "explicit-development-canary-contract-required",
+        "cleanup_required": true
+      },
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "gmail",
+      "tier": "REQUIRED",
+      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "get_profile"
+      ],
+      "governed_write_capabilities": [
+        "create_draft"
+      ],
+      "read_canary": {
+        "tool": "get_profile",
+        "arguments": {},
+        "realization": "platform-session-adapter-required"
+      },
+      "write_canary": {
+        "resource": "explicit-development-canary-contract-required",
+        "cleanup_required": true
+      },
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "google-contacts",
+      "tier": "REQUIRED",
+      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "get_profile"
+      ],
+      "governed_write_capabilities": [],
+      "read_canary": {
+        "tool": "get_profile",
+        "arguments": {},
+        "realization": "platform-session-adapter-required"
+      },
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "higgsfield",
+      "tier": "REQUIRED",
+      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "balance"
+      ],
+      "governed_write_capabilities": [
+        "generate_image"
+      ],
+      "read_canary": {
+        "tool": "balance",
+        "arguments": {},
+        "realization": "platform-session-adapter-required"
+      },
+      "write_canary": {
+        "resource": "explicit-development-canary-contract-required",
+        "cleanup_required": true
+      },
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "figma",
+      "tier": "REQUIRED",
+      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [
+        "design-write"
+      ],
+      "read_canary": null,
+      "write_canary": {
+        "resource": "explicit-development-canary-contract-required",
+        "cleanup_required": true
+      },
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "canva",
+      "tier": "REQUIRED",
+      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [
+        "design-write"
+      ],
+      "read_canary": null,
+      "write_canary": {
+        "resource": "explicit-development-canary-contract-required",
+        "cleanup_required": true
+      },
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "github-app",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "dropbox",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "who_am_i"
+      ],
+      "governed_write_capabilities": [
+        "upload_file"
+      ],
+      "read_canary": {
+        "tool": "who_am_i",
+        "arguments": {},
+        "realization": "platform-session-adapter-required"
+      },
+      "write_canary": {
+        "resource": "explicit-development-canary-contract-required",
+        "cleanup_required": true
+      },
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "atlassian-rovo",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "atlassianUserInfo"
+      ],
+      "governed_write_capabilities": [
+        "createJiraIssue"
+      ],
+      "read_canary": {
+        "tool": "atlassianUserInfo",
+        "arguments": {},
+        "realization": "platform-session-adapter-required"
+      },
+      "write_canary": {
+        "resource": "explicit-development-canary-contract-required",
+        "cleanup_required": true
+      },
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "sites",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "list_sites"
+      ],
+      "governed_write_capabilities": [
+        "save_site_version"
+      ],
+      "read_canary": {
+        "tool": "list_sites",
+        "arguments": {},
+        "realization": "platform-session-adapter-required"
+      },
+      "write_canary": {
+        "resource": "explicit-development-canary-contract-required",
+        "cleanup_required": true
+      },
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "openaiDeveloperDocs",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "none-public",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "none-public",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "none-public",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "none-public",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [
+        "search_openai_docs"
+      ],
+      "governed_write_capabilities": [],
+      "read_canary": {
+        "tool": "search_openai_docs",
+        "arguments": {
+          "query": "Codex MCP",
+          "limit": 1
+        }
+      },
+      "write_canary": null,
+      "forbidden_tools": [
+        "create_issue",
+        "create_pull_request",
+        "push_files",
+        "delete_file"
+      ],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity",
+      "endpoint": "https://developers.openai.com/mcp"
+    },
+    {
+      "id": "node_repl",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "computer-use",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "cua_repl",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "codex_app",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "documents",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "spreadsheets",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "presentations",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "pdf",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "template-creator",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "chrome",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "browser",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "visualize",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "codex-app-tools",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "finances",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "openai-templates",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "plugin-management",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "codex-document-control",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "hotline",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "safety-settings",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    },
+    {
+      "id": "supabase-tony-brain-corpus-readonly",
+      "tier": "OPTIONAL",
+      "classification_reason": "additional discovered capability; retained explicitly; not a substitute for required inventory",
+      "surfaces": {
+        "local-shell": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-desktop": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "codex-cli-to-cloud": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "surface-isolated-platform-auth-reference",
+          "health": "UNAVAILABLE"
+        },
+        "fresh-repository": {
+          "support": "UNQUALIFIED",
+          "auth_mode": "client-managed-oauth",
+          "health": "UNAVAILABLE"
+        }
+      },
+      "read_capabilities": [],
+      "governed_write_capabilities": [],
+      "read_canary": null,
+      "write_canary": null,
+      "forbidden_tools": [],
+      "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
+      "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+    }
+  ],
+  "profiles": {
+    "ghostmesh-core": {
+      "required": [
+        "github-readonly",
+        "github-governed",
+        "cloudflare-api",
+        "cloudflare-docs",
+        "cloudflare-observability",
+        "supabase",
+        "google-drive",
+        "gmail",
+        "google-contacts",
+        "higgsfield",
+        "figma",
+        "canva"
+      ]
+    },
+    "shareplane-publisher": {
+      "required": [
+        "github-readonly",
+        "github-governed",
+        "cloudflare-api",
+        "cloudflare-docs",
+        "cloudflare-observability",
+        "supabase",
+        "google-drive",
+        "gmail",
+        "google-contacts",
+        "higgsfield",
+        "figma",
+        "canva"
+      ]
+    },
+    "design-os": {
+      "required": [
+        "github-readonly",
+        "github-governed",
+        "cloudflare-api",
+        "cloudflare-docs",
+        "cloudflare-observability",
+        "supabase",
+        "google-drive",
+        "gmail",
+        "google-contacts",
+        "higgsfield",
+        "figma",
+        "canva"
+      ]
+    },
+    "read-only-audit": {
+      "required": [
+        "github-readonly",
+        "cloudflare-docs",
+        "openaiDeveloperDocs"
+      ]
+    }
+  }
+}

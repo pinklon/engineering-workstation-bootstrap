@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "template_name": "ghostmesh-connector-fabric-v1",
+  "capability_manifest": "manifests/connector-capabilities.json",
+  "profile": "ghostmesh-core",
+  "runtime_manifest": "manifests/cloud.json",
+  "bootstrap_source": "same-reviewed-engineering-workstation-bootstrap-release",
+  "setup": [
+    "bash bin/workstation-cloud-node",
+    "mise trust mise.toml",
+    "bash bin/workstation-cloud setup"
+  ],
+  "maintenance": [
+    "bash bin/workstation-cloud-node",
+    "mise trust mise.toml",
+    "bash bin/workstation-cloud maintenance"
+  ],
+  "admission": "bash bin/connector-doctor admit --surface codex-cloud --profile ghostmesh-core",
+  "cli_to_cloud_interface": "codex cloud exec --env ENVIRONMENT_ID",
+  "credential_custody": "platform-supported-per-surface-references-only",
+  "copy_local_credentials": false,
+  "network_policy": "existing-runtime-package-destinations-plus-required-connector-endpoint-hosts",
+  "hosted_environment_id": null,
+  "commissioned": false,
+  "qualification_required": [
+    "exact-source-head-and-manifest-digest",
+    "hosted-environment-id-and-settings-receipt",
+    "independent-cloud-execution-id",
+    "all-required-connector-conformance-checks",
+    "cold-and-warm-session-receipts",
+    "cli-to-cloud-task-id",
+    "fresh-repository-admission"
+  ]
+}

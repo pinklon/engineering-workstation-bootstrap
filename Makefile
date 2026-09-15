@@ -1,4 +1,4 @@
-.PHONY: help status inventory private-profile dry-run validate doctor toolsets-doctor cloud-plan cloud-setup cloud-maintenance cloud-doctor auth-doctor package package-drive install activate reconcile repair rollback
+.PHONY: help status inventory private-profile dry-run validate doctor connector-inventory connector-doctor connector-matrix toolsets-doctor cloud-plan cloud-setup cloud-maintenance cloud-doctor auth-doctor package package-drive install activate reconcile repair rollback
 
 help:
 	@printf '%s\n' \
@@ -11,6 +11,9 @@ help:
 	  '  make dry-run       Preview the selected workstation profile' \
 	  '  make validate      Validate repository scripts and package output' \
 	  '  make doctor        Run the full workstation doctor' \
+	  '  make connector-inventory Inventory MCP and plugin metadata without secrets' \
+	  '  make connector-doctor Probe required connector capabilities; fail closed' \
+	  '  make connector-matrix Emit every connector and surface health row' \
 	  '  make toolsets-doctor Check coding-agent and shared tool versions' \
 	  '  make cloud-plan    Inspect missing Linux cloud tools without changes' \
 	  '  make cloud-doctor  Check configured Linux runtimes and browser startup' \
@@ -48,6 +51,15 @@ validate:
 
 doctor:
 	bash bin/workstation-doctor --full
+
+connector-inventory:
+	bash bin/connector-doctor inventory
+
+connector-doctor:
+	bash bin/connector-doctor probe --profile "$${CONNECTOR_PROFILE:-ghostmesh-core}" --surface "$${CONNECTOR_SURFACE:-local-shell}"
+
+connector-matrix:
+	bash bin/connector-doctor matrix
 
 toolsets-doctor:
 	bash bin/workstation-toolsets doctor

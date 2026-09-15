@@ -17,6 +17,7 @@ bash bin/workstation-toolsets brewfile | cmp - Brewfile
 bash validation/toolsets-fixtures.sh
 bash validation/portability-fixtures.sh
 bash validation/cloud-apt-fixtures.sh
+bash validation/connector-fixtures.sh
 
 if command -v shellcheck >/dev/null 2>&1; then
   printf 'Running ShellCheck...\n'

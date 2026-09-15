@@ -59,6 +59,7 @@ if [[ "$MODE" == full ]]; then
     record 'Manifest-declared agent and shared tool versions' fail
   fi
   check 'GitHub authentication' bash "$ROOT/bin/github-auth-doctor"
+  check 'Required connector capability conformance' bash "$ROOT/bin/connector-doctor" probe --home "$TARGET_HOME" --surface local-shell --output "$RECEIPT_ROOT/connectors-$STAMP-$$.json"
   if [[ "${ENABLE_CLOUDFLARE:-0}" == 1 ]]; then
     check 'Cloudflare authentication' bash "$ROOT/bin/cloudflare-auth-doctor"
   else

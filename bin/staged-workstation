@@ -17,6 +17,7 @@ render_stage() {
   sed -i.bak "s#{{STAGE_ROOT}}#$STAGE_ROOT#g" "$STAGE_ROOT/config/codex/config.toml" && rm -f "$STAGE_ROOT/config/codex/config.toml.bak"
   cp "$ROOT/config/codex/AGENTS.md" "$STAGE_ROOT/config/codex/AGENTS.md"
   cp "$ROOT/manifests/skills.yaml" "$ROOT/manifests/mcp.yaml" "$ROOT/manifests/environment.yaml" "$STAGE_ROOT/manifests/"
+  cp "$ROOT/manifests/connector-capabilities.json" "$ROOT/manifests/connector-hosted-template.json" "$STAGE_ROOT/manifests/"
   cp -R "$ROOT/skills/workstation-operations" "$STAGE_ROOT/skills/"
   printf '{"schema_version":1,"mode":"staged","status":"ready","secret_values":false}\n' > "$STAGE_ROOT/receipt.json"
 }
