@@ -37,9 +37,11 @@ class Refusal(Exception):
 
 
 class RPCRefusal(Refusal):
-    def __init__(self, code):
+    def __init__(self, code, message=''):
         super().__init__('MCP operation rejected')
         self.code = code
+        match = re.fullmatch(r'unknown tool "([A-Za-z0-9_.-]+)"', message)
+        self.unknown_tool = match.group(1) if match else None
 
 
 def digest(data):
@@ -220,7 +222,7 @@ class MCP:
             if data.get('id') != self.seq or data.get('jsonrpc') != '2.0':
                 raise Refusal('MCP response identity mismatch')
             if 'error' in data:
-                raise RPCRefusal(data['error'].get('code'))
+                raise RPCRefusal(data['error'].get('code'), data['error'].get('message', ''))
             return data['result']
 
     def start(self):
@@ -276,7 +278,7 @@ class MCP:
             result = self.rpc('tools/call', {'name': name, 'arguments': {}})
             return result.get('isError') is True and result.get('error', {}).get('code') == -32601
         except RPCRefusal as exc:
-            return exc.code == -32601
+            return exc.code == -32601 or (exc.code == -32602 and exc.unknown_tool == name)
 
 
 def restart_read(connector_id, home, expected):

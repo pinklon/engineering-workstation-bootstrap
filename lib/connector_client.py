@@ -90,7 +90,7 @@ class CodexClient:
             if message.get('id') != request_id:
                 continue
             if 'error' in message:
-                raise RPCRefusal(message['error'].get('code'))
+                raise RPCRefusal(message['error'].get('code'), message['error'].get('message', ''))
             return message['result']
         raise Refusal('Codex client response timeout')
 

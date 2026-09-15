@@ -24,6 +24,8 @@
   "provisioned_at": "2026-09-15T20:06:17Z",
   "repository": "pinklon/engineering-workstation-bootstrap",
   "image": "universal",
+  "image_python_selection": "3.13",
+  "node_selection": "24-via-workstation-cloud-node",
   "environment_variables": {
     "WORKSTATION_CLOUD_ROOT": "/workspace/.bootstrap-runtime",
     "WORKSTATION_BOOTSTRAP_BROWSER_ROOT": "/workspace/.bootstrap-runtime/browser",

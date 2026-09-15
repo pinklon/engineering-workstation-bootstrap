@@ -194,6 +194,10 @@ class FabricTests(unittest.TestCase):
                 self.assertFalse(client.rejects_unconfigured_write('create_issue'))
         with patch.object(client, 'rpc', return_value={'isError': True}):
             self.assertFalse(client.rejects_unconfigured_write('create_issue'))
+        with patch.object(client, 'rpc', side_effect=fabric.RPCRefusal(-32602, 'unknown tool "create_issue"')):
+            self.assertTrue(client.rejects_unconfigured_write('create_issue'))
+        with patch.object(client, 'rpc', side_effect=fabric.RPCRefusal(-32602, 'unknown tool "different_tool"')):
+            self.assertFalse(client.rejects_unconfigured_write('create_issue'))
 
     def test_render_rejects_disabled_or_wrong_auth_reference(self):
         source = self.home / 'config.toml'
