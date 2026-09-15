@@ -26,7 +26,7 @@
     {
       "id": "github-readonly",
       "tier": "REQUIRED",
-      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "classification_reason": "issue-18 required inventory; owner scope amendment preserves this requirement",
       "surfaces": {
         "local-shell": {
           "support": "UNQUALIFIED",
@@ -60,21 +60,27 @@
         }
       },
       "read_capabilities": [
-        "get_me",
         "issue_read"
       ],
       "governed_write_capabilities": [],
       "read_canary": {
-        "tool": "get_me",
-        "arguments": {},
+        "tool": "issue_read",
+        "arguments": {
+          "method": "get",
+          "owner": "pinklon",
+          "repo": "engineering-workstation-bootstrap",
+          "issue_number": 18
+        },
         "json_keys": [
-          "login",
-          "id"
+          "number",
+          "title"
         ],
         "identity_keys": [
-          "login",
-          "id"
-        ]
+          "number"
+        ],
+        "expected_values": {
+          "number": 18
+        }
       },
       "write_canary": null,
       "forbidden_tools": [
@@ -87,12 +93,22 @@
       "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
       "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity",
       "endpoint": "https://api.githubcopilot.com/mcp/x/all/readonly",
-      "bearer_token_env_var": "GITHUB_PAT_TOKEN"
+      "bearer_token_env_var": "GH_TOKEN",
+      "canary_contract_correction": {
+        "reason": "A bounded authenticated issue read plus hard read-only tool boundary establishes the required invariant; get_me is a user-profile operation absent under installation tokens and is not required.",
+        "prior_required_read_capabilities": [
+          "get_me",
+          "issue_read"
+        ],
+        "prior_canary": "get_me",
+        "accepted_evidence": "docs/receipts/issue-18-terminal.json#/github/readonly_app_canary",
+        "credential_custody": "existing repository-scoped short-lived GitHub App token; no PAT introduced"
+      }
     },
     {
       "id": "github-governed",
       "tier": "REQUIRED",
-      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "classification_reason": "issue-18 required inventory; owner scope amendment preserves this requirement",
       "surfaces": {
         "local-shell": {
           "support": "UNQUALIFIED",
@@ -145,7 +161,7 @@
     {
       "id": "cloudflare-api",
       "tier": "REQUIRED",
-      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "classification_reason": "issue-18 required inventory; owner scope amendment preserves this requirement",
       "surfaces": {
         "local-shell": {
           "support": "UNQUALIFIED",
@@ -209,7 +225,7 @@
     {
       "id": "cloudflare-docs",
       "tier": "REQUIRED",
-      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "classification_reason": "issue-18 required inventory; owner scope amendment preserves this requirement",
       "surfaces": {
         "local-shell": {
           "support": "UNQUALIFIED",
@@ -254,21 +270,19 @@
         "contains": "https://developers.cloudflare.com/"
       },
       "write_canary": null,
-      "forbidden_tools": [
-        "create_issue",
-        "create_pull_request",
-        "push_files",
-        "delete_file"
-      ],
+      "forbidden_tools": [],
       "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
       "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
       "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity",
-      "endpoint": "https://docs.mcp.cloudflare.com/mcp"
+      "endpoint": "https://docs.mcp.cloudflare.com/mcp",
+      "canary_contract_correction": {
+        "reason": "Public documentation connector declares no governed write capability. GitHub mutation tool names were unrelated to this provider; no write or forbidden-write canary is applicable."
+      }
     },
     {
       "id": "cloudflare-observability",
       "tier": "REQUIRED",
-      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "classification_reason": "issue-18 required inventory; owner scope amendment preserves this requirement",
       "surfaces": {
         "local-shell": {
           "support": "UNQUALIFIED",
@@ -323,7 +337,7 @@
     {
       "id": "supabase",
       "tier": "REQUIRED",
-      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "classification_reason": "issue-18 required inventory; owner scope amendment preserves this requirement",
       "surfaces": {
         "local-shell": {
           "support": "UNQUALIFIED",
@@ -379,7 +393,7 @@
     {
       "id": "google-drive",
       "tier": "REQUIRED",
-      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "classification_reason": "issue-18 required inventory; owner scope amendment preserves this requirement",
       "surfaces": {
         "local-shell": {
           "support": "UNQUALIFIED",
@@ -436,7 +450,7 @@
     {
       "id": "gmail",
       "tier": "REQUIRED",
-      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "classification_reason": "issue-18 required inventory; owner scope amendment preserves this requirement",
       "surfaces": {
         "local-shell": {
           "support": "UNQUALIFIED",
@@ -492,7 +506,7 @@
     {
       "id": "google-contacts",
       "tier": "REQUIRED",
-      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "classification_reason": "issue-18 required inventory; owner scope amendment preserves this requirement",
       "surfaces": {
         "local-shell": {
           "support": "UNQUALIFIED",
@@ -543,7 +557,7 @@
     {
       "id": "higgsfield",
       "tier": "REQUIRED",
-      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "classification_reason": "issue-18 required inventory; owner scope amendment preserves this requirement",
       "surfaces": {
         "local-shell": {
           "support": "UNQUALIFIED",
@@ -598,8 +612,8 @@
     },
     {
       "id": "figma",
-      "tier": "REQUIRED",
-      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "tier": "OPTIONAL",
+      "classification_reason": "OWNER_SCOPE_AMENDMENT issue-18-owner-scope-amendment-2026-09-15",
       "surfaces": {
         "local-shell": {
           "support": "UNQUALIFIED",
@@ -644,12 +658,13 @@
       "forbidden_tools": [],
       "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
       "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
-      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity",
+      "configuration_state": "NOT_CONFIGURED"
     },
     {
       "id": "canva",
-      "tier": "REQUIRED",
-      "classification_reason": "issue-18 required inventory; design candidates retained required pending qualification",
+      "tier": "OPTIONAL",
+      "classification_reason": "OWNER_SCOPE_AMENDMENT issue-18-owner-scope-amendment-2026-09-15",
       "surfaces": {
         "local-shell": {
           "support": "UNQUALIFIED",
@@ -694,7 +709,8 @@
       "forbidden_tools": [],
       "restart_requirement": "independent-new-shell-or-client-session-with-same-config-and-identity",
       "fail_closed": "deny admission if any required proof is absent, stale, unhealthy, or unsupported",
-      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity"
+      "provenance": "inventory receipt + manifest SHA-256 + exact surface execution identity",
+      "configuration_state": "NOT_CONFIGURED"
     },
     {
       "id": "github-app",
@@ -1881,9 +1897,7 @@
         "google-drive",
         "gmail",
         "google-contacts",
-        "higgsfield",
-        "figma",
-        "canva"
+        "higgsfield"
       ]
     },
     "shareplane-publisher": {
@@ -1897,9 +1911,7 @@
         "google-drive",
         "gmail",
         "google-contacts",
-        "higgsfield",
-        "figma",
-        "canva"
+        "higgsfield"
       ]
     },
     "design-os": {
@@ -1913,9 +1925,7 @@
         "google-drive",
         "gmail",
         "google-contacts",
-        "higgsfield",
-        "figma",
-        "canva"
+        "higgsfield"
       ]
     },
     "read-only-audit": {
@@ -1925,5 +1935,31 @@
         "openaiDeveloperDocs"
       ]
     }
-  }
+  },
+  "owner_scope_amendments": [
+    {
+      "id": "issue-18-owner-scope-amendment-2026-09-15",
+      "type": "OWNER_SCOPE_AMENDMENT",
+      "authority": "Explicit issue #18 owner instruction in Codex task 01a0a6a5-03b9-78e1-93e9-12e22a12614d",
+      "recorded_at": "2026-09-15T20:46:07.726932+00:00",
+      "previous_manifest_sha256": "ae69a7204a6d08f39482a970819e34ca168d56364bceb2bf74dfcf73c7fb4648",
+      "changes": {
+        "figma": {
+          "previous_tier": "REQUIRED",
+          "tier": "OPTIONAL",
+          "configuration_state": "NOT_CONFIGURED",
+          "observed_health": "UNAVAILABLE"
+        },
+        "canva": {
+          "previous_tier": "REQUIRED",
+          "tier": "OPTIONAL",
+          "configuration_state": "NOT_CONFIGURED",
+          "observed_health": "UNAVAILABLE"
+        }
+      },
+      "higgsfield_remains": "REQUIRED",
+      "unsupported_claimed": false,
+      "instruction": "Do not connect, authenticate, install, or perform additional qualification work on Figma or Canva."
+    }
+  ]
 }

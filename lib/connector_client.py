@@ -4,6 +4,7 @@ No model turn, credential export, auth enrollment, or provider write is requeste
 Two independent client processes establish read persistence, never GUI restart.
 """
 import json
+import datetime as dt
 import os
 from pathlib import Path
 import selectors
@@ -11,7 +12,8 @@ import shutil
 import subprocess
 import time
 
-from connector_fabric import CHECKS, MCP, Refusal, RPCRefusal, now, secrets_present
+from connector_fabric import (CHECKS, MCP, Refusal, RPCRefusal, now, secrets_present,
+                              check_applicability, required_checks_pass)
 
 APP_PREFIX = {'supabase': 'supabase', 'google-drive': 'google_drive',
               'gmail': 'gmail', 'google-contacts': 'google_contacts',
@@ -20,11 +22,14 @@ APP_PREFIX = {'supabase': 'supabase', 'google-drive': 'google_drive',
 
 
 class CodexClient:
-    def __init__(self, cwd):
+    def __init__(self, cwd, overrides=None):
         executable = shutil.which('codex')
         if not executable:
             raise Refusal('installed Codex client unavailable')
-        self.process = subprocess.Popen([executable, 'app-server', '--stdio'],
+        command = [executable]
+        for override in overrides or []:
+            command.extend(['-c', override])
+        self.process = subprocess.Popen(command + ['app-server', '--stdio'],
                                         cwd=cwd, stdin=subprocess.PIPE,
                                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         self.selector = selectors.DefaultSelector()
@@ -126,6 +131,7 @@ class ClientRead(MCP):
 def observe(client, connector, surface):
     checks = dict.fromkeys(CHECKS, False)
     row = {'connector': connector['id'], 'surface': surface, 'checks': checks,
+           'check_applicability': check_applicability(connector),
            'observed_at': now(), 'health': 'UNAVAILABLE', 'qualified': False,
            'execution': client.identity, 'reason': 'connector not exposed by this client'}
     name = connector.get('mcp_server', connector['id'])
@@ -164,8 +170,7 @@ def observe(client, connector, surface):
         row['health'] = 'READ_PROVEN'
         row['authentication_identity'] = reader.read_identity
         writes = connector['governed_write_capabilities']
-        checks['write_capability'] = not writes or set(writes).issubset(names)
-        checks['write_canary'] = not writes
+        checks['write_capability'] = bool(writes) and set(writes).issubset(names)
         forbidden = connector.get('forbidden_tools', [])
         if forbidden and not set(forbidden).intersection(names):
             checks['fail_closed'] = reader.rejects_unconfigured_write(forbidden[0])
@@ -177,17 +182,45 @@ def observe(client, connector, surface):
     return row
 
 
-def probe_clients(manifest, surface, repository):
+def github_app_overrides(connector):
+    """Use the existing launcher only; never inherit an unrelated GH credential."""
+    repo = connector['read_canary']['arguments']['owner'] + '/' + connector['read_canary']['arguments']['repo']
+    if os.environ.get('TONY_AGENT_REPOSITORY') != repo or not os.environ.get('GH_TOKEN'):
+        raise Refusal('GitHub read-only requires the existing repository-scoped App launcher')
+    try:
+        expiry = dt.datetime.fromisoformat(os.environ['TONY_AGENT_TOKEN_EXPIRES_AT'].replace('Z', '+00:00'))
+        remaining = (expiry - dt.datetime.now(dt.timezone.utc)).total_seconds()
+    except (KeyError, ValueError, TypeError):
+        raise Refusal('GitHub App expiry unavailable') from None
+    if not 0 < remaining <= 3700:
+        raise Refusal('GitHub App expiry outside short-lived boundary')
+    result = subprocess.run(['gh', 'api', '/installation/repositories'], capture_output=True, text=True, timeout=30)
+    if result.returncode or secrets_present(result.stdout):
+        raise Refusal('GitHub App repository scope could not be verified')
+    scope = json.loads(result.stdout)
+    if scope.get('total_count') != 1 or [r['full_name'] for r in scope['repositories']] != [repo]:
+        raise Refusal('GitHub App token is not scoped to exactly the canary repository')
+    # Command-line config contains only canonical endpoint and auth reference.
+    return ['mcp_servers.github-readonly.url=' + json.dumps(connector['endpoint']),
+            'mcp_servers.github-readonly.bearer_token_env_var="GH_TOKEN"',
+            'mcp_servers.github-readonly.enabled=true']
+
+
+def probe_clients(manifest, surface, repository, connector_id=None):
     if surface not in ['local-shell', 'codex-cli', 'fresh-repository']:
         raise Refusal('native local client cannot assert Desktop or hosted execution')
     if surface == 'fresh-repository' and not repository:
         raise Refusal('fresh repository qualification requires its directory')
     cwd = Path(repository or Path.cwd()).resolve()
+    connectors = [c for c in manifest['connectors'] if not connector_id or c['id'] == connector_id]
+    if not connectors:
+        raise Refusal('unknown connector')
+    overrides = github_app_overrides(connectors[0]) if connector_id == 'github-readonly' else []
     runs, inventories = [], []
     for _ in range(2):
-        client = CodexClient(cwd)
+        client = CodexClient(cwd, overrides=overrides)
         try:
-            runs.append([observe(client, c, surface) for c in manifest['connectors']])
+            runs.append([observe(client, c, surface) for c in connectors])
             inventories.append({'execution': client.identity,
                 'servers': [{'name': n, 'runtime_status': s.get('runtimeStatus'),
                              'auth_status': s.get('authStatus'),
@@ -196,7 +229,7 @@ def probe_clients(manifest, surface, repository):
         finally:
             client.close()
     rows = runs[1]
-    for before, after in zip(runs[0], rows):
+    for connector, before, after in zip(connectors, runs[0], rows):
         after['prior_execution'] = before['execution']
         after['checks']['restart'] = (
             before['checks']['read_canary'] and after['checks']['read_canary']
@@ -204,10 +237,10 @@ def probe_clients(manifest, surface, repository):
             and before.get('server_identity') == after.get('server_identity')
             and before.get('tool_names') == after.get('tool_names')
             and before['execution']['thread_id'] != after['execution']['thread_id'])
-        after['qualified'] = all(after['checks'].values())
+        after['qualified'] = required_checks_pass(connector, after['checks'])
         if after['qualified']:
             after['health'] = 'RESTART_PERSISTENT'
             after['reason'] = 'independent native client processes passed all checks'
         elif after['checks']['read_canary']:
-            after['reason'] = 'missing checks: ' + ', '.join(k for k,v in after['checks'].items() if not v)
+            after['reason'] = 'missing checks: ' + ', '.join(k for k,v in after['checks'].items() if not v and after['check_applicability'][k])
     return rows, inventories

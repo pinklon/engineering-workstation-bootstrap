@@ -1,5 +1,6 @@
 """Deterministic protocol fixtures; never evidence of a live provider."""
 import json
+import datetime as dt
 import os
 from pathlib import Path
 import subprocess
@@ -125,6 +126,60 @@ class FabricTests(unittest.TestCase):
         self.assertTrue(row['checks']['write_capability'])
         self.assertFalse(row['checks']['write_canary'])
         self.assertFalse(row['qualified'])
+
+    def test_read_only_checks_do_not_invent_governed_writes(self):
+        self.connector['forbidden_tools'] = []
+        row, fixture = self.probe()
+        self.assertTrue(row['qualified'])
+        for check in ['write_capability', 'write_canary', 'fail_closed']:
+            self.assertFalse(row['check_applicability'][check])
+            self.assertFalse(row['checks'][check])
+        self.assertFalse(any(c.get('params', {}).get('name') == 'create_issue' for c in fixture.calls))
+        row['checks']['read_canary'] = False
+        self.assertFalse(fabric.required_checks_pass(self.connector, row['checks']))
+
+    def test_issue_canary_rejects_wrong_resource_without_get_me(self):
+        connector = next(c for c in fabric.load_manifest()['connectors'] if c['id'] == 'github-readonly')
+        self.assertEqual(connector['read_capabilities'], ['issue_read'])
+        client = fabric.MCP(self.config)
+        for number, passes in [(18, True), (19, False)]:
+            response = {'structuredContent': {'number': number, 'title': 'fixture issue'}}
+            with patch.object(client, 'rpc', return_value=response):
+                if passes:
+                    self.assertTrue(client.read(connector['read_canary']))
+                else:
+                    with self.assertRaises(fabric.Refusal):
+                        client.read(connector['read_canary'])
+
+    def test_owner_amendment_preserves_inventory_and_separates_tier(self):
+        manifest = fabric.load_manifest()
+        rows = fabric.matrix(manifest, [])
+        for connector in ['figma', 'canva']:
+            matches = [r for r in rows if r['connector'] == connector]
+            self.assertEqual(len(matches), 6)
+            self.assertTrue(all(r['tier'] == 'OPTIONAL' and r['health'] == 'UNAVAILABLE' for r in matches))
+            self.assertTrue(all(connector not in p['required'] for p in manifest['profiles'].values()))
+        self.assertIn('higgsfield', manifest['profiles']['ghostmesh-core']['required'])
+
+    def test_native_app_reference_refuses_wrong_expired_or_wide_scope(self):
+        connector = next(c for c in fabric.load_manifest()['connectors'] if c['id'] == 'github-readonly')
+        repo = 'pinklon/engineering-workstation-bootstrap'
+        env = {'TONY_AGENT_REPOSITORY': repo, 'GH_TOKEN': 'fixture-app-token',
+               'TONY_AGENT_TOKEN_EXPIRES_AT': (dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=30)).isoformat()}
+        narrow = subprocess.CompletedProcess([], 0, json.dumps({'total_count': 1, 'repositories': [{'full_name': repo}]}))
+        wide = subprocess.CompletedProcess([], 0, json.dumps({'total_count': 2, 'repositories': [{'full_name': repo}, {'full_name': 'other/repo'}]}))
+        with patch.dict(os.environ, env, clear=True), patch.object(native.subprocess, 'run', return_value=narrow):
+            overrides = native.github_app_overrides(connector)
+            self.assertIn('mcp_servers.github-readonly.bearer_token_env_var="GH_TOKEN"', overrides)
+            self.assertNotIn(env['GH_TOKEN'], str(overrides))
+        for changed in [{'TONY_AGENT_REPOSITORY': 'other/repo'}, {'TONY_AGENT_TOKEN_EXPIRES_AT': '2020-01-01T00:00:00Z'}]:
+            with patch.dict(os.environ, {**env, **changed}, clear=True), patch.object(native.subprocess, 'run') as run:
+                with self.assertRaises(fabric.Refusal):
+                    native.github_app_overrides(connector)
+                run.assert_not_called()
+        with patch.dict(os.environ, env, clear=True), patch.object(native.subprocess, 'run', return_value=wide):
+            with self.assertRaises(fabric.Refusal):
+                native.github_app_overrides(connector)
 
     def test_auth_reference_is_required(self):
         self.config['bearer_token_env_var'] = 'CONNECTOR_FIXTURE_MISSING_AUTH'

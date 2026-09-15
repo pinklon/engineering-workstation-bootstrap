@@ -52,6 +52,21 @@ def now():
     return dt.datetime.now(dt.timezone.utc).isoformat()
 
 
+def check_applicability(connector):
+    """Tier is admission policy; write checks depend on declared capabilities."""
+    applies = dict.fromkeys(CHECKS, True)
+    if not connector['governed_write_capabilities']:
+        applies['write_capability'] = False
+        applies['write_canary'] = False
+        # A read-only security boundary may still require inventory exclusion.
+        applies['fail_closed'] = bool(connector.get('forbidden_tools'))
+    return applies
+
+
+def required_checks_pass(connector, checks):
+    return all(checks.get(k) is True for k, applies in check_applicability(connector).items() if applies)
+
+
 def source_identity():
     result = subprocess.run(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'],
                             capture_output=True, text=True, timeout=10)
@@ -266,6 +281,9 @@ class MCP:
             raise Refusal('read canary identity/schema mismatch')
         if canary.get('contains') and canary['contains'] not in json.dumps(result):
             raise Refusal('read canary content mismatch')
+        if canary.get('expected_values') and (not isinstance(value, dict) or
+                any(value.get(k) != v for k, v in canary['expected_values'].items())):
+            raise Refusal('read canary resource mismatch')
         self.read_identity = {k: value[k] for k in canary.get('identity_keys', []) if k in value}
         if len(self.read_identity) != len(canary.get('identity_keys', [])):
             raise Refusal('read canary authentication identity missing')
@@ -300,7 +318,8 @@ def restart_read(connector_id, home, expected):
 def probe(connector, config, surface, home=None):
     checks = {k: False for k in CHECKS}
     row = {'connector': connector['id'], 'surface': surface, 'health': 'UNAVAILABLE',
-           'checks': checks, 'qualified': False, 'observed_at': now(), 'reason': 'not configured'}
+           'checks': checks, 'check_applicability': check_applicability(connector),
+           'qualified': False, 'observed_at': now(), 'reason': 'not configured'}
     if surface != 'local-shell':
         row['reason'] = 'requires independent execution on this surface'
         return row
@@ -328,8 +347,7 @@ def probe(connector, config, surface, home=None):
         checks['read_canary'] = True
         row['health'] = 'READ_PROVEN'
         write = connector['governed_write_capabilities']
-        checks['write_capability'] = not write or set(write).issubset(names)
-        checks['write_canary'] = not write
+        checks['write_capability'] = bool(write) and set(write).issubset(names)
         forbidden = connector.get('forbidden_tools', [])
         checks['fail_closed'] = (bool(forbidden) and not set(forbidden).intersection(names)
                                  and client.rejects_unconfigured_write(forbidden[0]))
@@ -344,12 +362,12 @@ def probe(connector, config, surface, home=None):
                     'config_sha256': digest(json.dumps(config, sort_keys=True).encode())}
         checks['restart'] = restart_read(connector['id'], home, expected) if home else False
         checks['secret_exclusion'] = not secrets_present(json.dumps(config))
-        row['qualified'] = all(checks.values())
+        row['qualified'] = required_checks_pass(connector, checks)
         if row['qualified']:
             row['health'] = 'RESTART_PERSISTENT'
             row['reason'] = 'local shell conformance checks passed'
         else:
-            row['reason'] = 'missing checks: ' + ', '.join(k for k, v in checks.items() if not v)
+            row['reason'] = 'missing checks: ' + ', '.join(k for k, v in checks.items() if not v and row['check_applicability'][k])
     except (Refusal, OSError, ValueError, KeyError, StopIteration, subprocess.TimeoutExpired) as exc:
         row['health'] = 'DEGRADED'
         # Never return provider errors, command output, URLs, or credential data.
@@ -364,9 +382,12 @@ def matrix(m, rows):
     for c in m['connectors']:
         for s in SURFACES:
             found = [r for r in rows if r['connector'] == c['id'] and r['surface'] == s]
-            result.append(found[-1] if found else {
+            row = dict(found[-1]) if found else {
                 'connector': c['id'], 'surface': s, 'health': 'UNAVAILABLE',
-                'qualified': False, 'reason': 'no independent surface evidence'})
+                'qualified': False, 'reason': 'no independent surface evidence'}
+            row['tier'] = c['tier']
+            row['check_applicability'] = check_applicability(c)
+            result.append(row)
     return result
 
 
@@ -374,9 +395,10 @@ def admission(m, rows, profile, surface):
     required = set(m['profiles'][profile]['required'])
     found = {r['connector']: r for r in rows if r['surface'] == surface}
     # Caller-supplied qualified=true is insufficient. Evidence must come from a
-    # live doctor run, and all ten checks are required, including restart.
+    # live doctor run, and every applicable check is required, including restart.
+    connectors = {c['id']: c for c in m['connectors']}
     return all(found.get(c, {}).get('qualified') is True and
-               all(found[c].get('checks', {}).get(k) is True for k in CHECKS)
+               required_checks_pass(connectors[c], found[c].get('checks', {}))
                for c in required)
 
 
@@ -557,7 +579,7 @@ def main():
     client_inventories = []
     if args.command == 'client-probe':
         from connector_client import probe_clients
-        rows, client_inventories = probe_clients(m, args.surface, args.repository)
+        rows, client_inventories = probe_clients(m, args.surface, args.repository, args.connector)
     if args.command in ['probe', 'admit']:
         for c in m['connectors']:
             rows.append(probe(c, config.get(c.get('mcp_server', c['id'])), args.surface, args.home))

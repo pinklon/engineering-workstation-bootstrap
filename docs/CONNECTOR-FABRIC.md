@@ -11,9 +11,11 @@ keeps incomplete rows unhealthy. Do not close issue #18
 or claim `MESH_CONNECTOR_FABRIC_PARITY_ACTIVE_V1` from these changes.
 
 The contract includes every connector discovered during issue #18 inventory,
-including cached plugins with no active tools. Required design candidates remain
-REQUIRED until qualification resolves their status. OPTIONAL applies to the
-additional discovered capabilities, never as a fallback for a required one.
+including cached plugins with no active tools. The explicit issue #18
+OWNER_SCOPE_AMENDMENT makes Figma and Canva OPTIONAL while retaining their
+NOT_CONFIGURED / UNAVAILABLE inventory rows. Higgsfield remains REQUIRED.
+Tier and health are independent fields; unavailable OPTIONAL connectors do not
+block admission. The amendment and previous manifest digest remain in the manifest.
 UNQUALIFIED describes an unresolved surface realization; its health is UNAVAILABLE.
 Only documented platform limitations justify UNSUPPORTED_ON_SURFACE. Neither state
 passes required-profile admission.
@@ -37,7 +39,11 @@ lists surfaces it cannot inspect. Never treat it as a complete hosted inventory.
 
 Rendering preserves existing config and adds required canonical remote MCP entries
 with auth references only. Conflicting endpoint identities stop rendering. Existing
-GitHub read-only auth references are reused; this code does not create a PAT.
+GitHub read-only uses the short-lived `GH_TOKEN` reference supplied by the
+existing repository-scoped App launcher; this code does not create a PAT.
+Its canary reads issue #18 and verifies its number. The prior `get_me` requirement
+was removed because a user-profile operation is not necessary to prove an
+authenticated installation-token read. Existing evidence is retained.
 Provider OAuth enrollment stays with the client. Do not activate a live home to
 test repository changes. Review the candidate through the existing activation and
 rollback contract. Repository validation exercises disposable targets only.
@@ -48,6 +54,13 @@ a read in a fresh login shell. It refuses redirects and credential-bearing URLs,
 limits response sizes and timeouts, and suppresses provider response/error bodies.
 Credentials remain in memory. Secret checks cover known formats and inherited
 secret values. Public documentation authentication is explicitly inapplicable.
+Write capability, write canaries and forbidden-write canaries apply only when
+the canonical connector declares them. Read-only connectors do not acquire
+artificial write requirements; the explicit GitHub hard read-only boundary still
+requires mutation-tool exclusion. Receipts expose `check_applicability` separately
+from check outcomes so an inapplicable check is never presented as an executed
+canary. All applicable checks, including restart, must pass.
+
 These checks establish local shell evidence only. MCP reconnect does not prove a
 Desktop restart. MCP-client-managed OAuth is not exported to a shell adapter;
 missing supported auth custody leaves that adapter unhealthy.
@@ -75,6 +88,18 @@ never exports the client's OAuth state, runs a model turn, or accepts an importe
 healthy receipt. It rejects server approval/authentication requests and records
 missing write or forbidden-canary evidence as unhealthy. A native client process
 is not a GUI restart or a hosted task; this command refuses those surface labels.
+
+For a targeted GitHub read-only run, use the existing App launcher:
+
+```bash
+agent-codex pinklon/engineering-workstation-bootstrap bash bin/connector-doctor client-probe --connector github-readonly --surface codex-cli --output .local/github-readonly.json
+```
+
+The adapter verifies a future short-lived expiry and exactly one repository in
+`/installation/repositories` before starting the native client. Its temporary
+command-line override supplies only the canonical MCP URL and `GH_TOKEN` reference.
+It changes no installed configuration. Each targeted run still starts two separate
+client processes. Untested rows remain unavailable in that run's complete matrix.
 
 The installed client protocol must expose `mcpServerStatus/list` and
 `mcpServer/tool/call`; missing methods fail closed. Every receipt retains the two
