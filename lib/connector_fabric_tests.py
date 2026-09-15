@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 import connector_fabric as fabric
+import connector_client as native
 
 
 class Headers(dict):
@@ -148,6 +149,44 @@ class FabricTests(unittest.TestCase):
             with self.assertRaises(fabric.Refusal):
                 fabric.MCP(config)
 
+    def test_canary_expiry_metadata_is_not_a_secret(self):
+        with patch.dict(os.environ, {'TONY_AGENT_TOKEN_EXPIRES_AT': '2099-01-01T00:00:00Z',
+                                     'GH_TOKEN': 'fixture-private-token-123456'}):
+            self.assertFalse(fabric.secrets_present('2099-01-01T00:00:00Z'))
+            self.assertTrue(fabric.secrets_present('fixture-private-token-123456'))
+        with patch.dict(os.environ, {'TONY_AGENT_TOKEN_EXPIRES_AT': 'not-a-time-but-sensitive'}):
+            self.assertTrue(fabric.secrets_present('not-a-time-but-sensitive'))
+
+    def test_native_client_does_not_claim_desktop_or_cloud(self):
+        for surface in ['codex-desktop', 'codex-cloud', 'codex-cli-to-cloud']:
+            with self.assertRaises(fabric.Refusal), patch.object(native, 'CodexClient') as client:
+                native.probe_clients(fabric.load_manifest(), surface, None)
+            client.assert_not_called()
+
+    def test_native_client_read_and_forbidden_call_are_distinct(self):
+        class Client:
+            identity = {'thread_id': 'fixture-native-thread', 'pid': 1}
+            servers = {'fixture': {'runtimeStatus': 'connected', 'tools': {'read': {}}}}
+            def call(self, server, tool, arguments):
+                if tool == 'create_issue':
+                    raise fabric.Refusal('Codex MCP operation rejected')
+                return {'content': [{'type': 'text', 'text': 'bounded fixture read'}]}
+        row = native.observe(Client(), self.connector, 'codex-cli')
+        self.assertTrue(row['checks']['read_canary'])
+        self.assertTrue(row['checks']['fail_closed'])
+        self.assertFalse(row['checks']['restart'])
+        self.assertFalse(row['qualified'])
+
+    def test_native_client_rejects_provider_error(self):
+        class Client:
+            identity = {'thread_id': 'fixture-native-thread', 'pid': 1}
+            servers = {'fixture': {'runtimeStatus': 'connected', 'tools': {'read': {}}}}
+            def call(self, *args):
+                return {'isError': True, 'content': [{'type': 'text', 'text': 'private-error'}]}
+        row = native.observe(Client(), self.connector, 'codex-cli')
+        self.assertFalse(row['checks']['read_canary'])
+        self.assertNotIn('private-error', json.dumps(row))
+
     def test_complete_matrix_and_required_admission(self):
         m = fabric.load_manifest()
         rows = fabric.matrix(m, [])
@@ -223,6 +262,8 @@ class FabricTests(unittest.TestCase):
             elif '/contents/' in path:
                 value = {'sha': 'blob-sha', 'content': fabric.base64.b64encode(
                     b'Connector fabric development canary; no credentials.\n').decode()}
+            elif '/git/matching-refs/' in path:
+                value = []
             else:
                 value = {}
             return subprocess.CompletedProcess(command, 0, json.dumps(value), '')
@@ -233,7 +274,9 @@ class FabricTests(unittest.TestCase):
             result = fabric.github_canary(contract)
         self.assertTrue(result['cleanup'])
         self.assertTrue(result['write_canary'])
-        self.assertEqual(calls[-1][0][4], 'DELETE')
+        self.assertEqual(calls[-2][0][4], 'DELETE')
+        self.assertEqual(calls[-1][0][4], 'GET')
+        self.assertTrue(result['cleanup_readback'])
         self.assertTrue(calls[-1][0][2].endswith(contract['branch']))
         payload = json.loads(next(body for cmd, body in calls if cmd[4] == 'PUT'))
         self.assertEqual(payload['branch'], contract['branch'])

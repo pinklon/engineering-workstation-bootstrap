@@ -20,7 +20,27 @@
   "credential_custody": "platform-supported-per-surface-references-only",
   "copy_local_credentials": false,
   "network_policy": "existing-runtime-package-destinations-plus-required-connector-endpoint-hosts",
-  "hosted_environment_id": null,
+  "hosted_environment_id": "6aa9a539484c819182f5afc7e203644f",
+  "provisioned_at": "2026-09-15T20:06:17Z",
+  "repository": "pinklon/engineering-workstation-bootstrap",
+  "image": "universal",
+  "environment_variables": {
+    "WORKSTATION_CLOUD_ROOT": "/workspace/.bootstrap-runtime",
+    "WORKSTATION_BOOTSTRAP_BROWSER_ROOT": "/workspace/.bootstrap-runtime/browser",
+    "BASH_ENV": "/workspace/.codex-node24/env.sh"
+  },
+  "configured_secrets": [],
+  "agent_network_preset": "common-dependencies",
+  "agent_network_additional_domains": [
+    "api.github.com",
+    "api.githubcopilot.com",
+    "mcp.cloudflare.com",
+    "docs.mcp.cloudflare.com",
+    "observability.mcp.cloudflare.com",
+    "mcp.supabase.com",
+    "developers.openai.com"
+  ],
+  "agent_network_methods": "all",
   "commissioned": false,
   "qualification_required": [
     "exact-source-head-and-manifest-digest",

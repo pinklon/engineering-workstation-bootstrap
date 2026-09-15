@@ -49,7 +49,8 @@ def source_identity():
                             capture_output=True, text=True, timeout=10)
     head = result.stdout.strip() if result.returncode == 0 else None
     return {'root': str(ROOT), 'head': head,
-            'implementation_sha256': digest(Path(__file__).read_bytes())}
+            'implementation_sha256': digest(Path(__file__).read_bytes()),
+            'client_adapter_sha256': digest((ROOT / 'lib/connector_client.py').read_bytes())}
 
 
 def secrets_present(data):
@@ -58,7 +59,9 @@ def secrets_present(data):
         return True
     # Match actual inherited secret values, not only familiar token prefixes.
     return any(len(v) >= 8 and v in text for k, v in os.environ.items()
-               if re.search(r'(TOKEN|SECRET|PASSWORD|API_KEY)', k))
+               if re.search(r'(TOKEN|SECRET|PASSWORD|API_KEY)', k)
+               and not (k == 'TONY_AGENT_TOKEN_EXPIRES_AT'
+                        and re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', v)))
 
 
 def emit(data, output):
@@ -343,6 +346,8 @@ def probe(connector, config, surface, home=None):
         row['health'] = 'DEGRADED'
         # Never return provider errors, command output, URLs, or credential data.
         row['reason'] = str(exc) if isinstance(exc, Refusal) else type(exc).__name__
+        if isinstance(exc, urllib.error.HTTPError):
+            row['http_status'] = exc.code
     return row
 
 
@@ -415,15 +420,20 @@ def github_canary(contract):
         if created:
             api(prefix + '/git/refs/heads/' + branch, 'DELETE')
             cleaned = True
+    # A successful DELETE alone is not independent cleanup readback.
+    remaining = api(prefix + '/git/matching-refs/heads/' + branch)
+    if any(ref.get('ref') == 'refs/heads/' + branch for ref in remaining):
+        raise Refusal('canary branch remains after cleanup')
     return {'repository': repo, 'branch': branch, 'blob_sha': blob_sha,
             'cleanup': cleaned, 'write_canary': bool(blob_sha),
+            'cleanup_readback': True, 'observed_at': now(),
             'repository_scope_proven': True,
             'token_expires_at': os.environ['TONY_AGENT_TOKEN_EXPIRES_AT']}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['inventory', 'probe', 'matrix', 'init-repository', 'admit', 'render', 'github-canary', '_github-canary', '_restart'])
+    parser.add_argument('command', choices=['inventory', 'probe', 'client-probe', 'matrix', 'init-repository', 'admit', 'render', 'github-canary', '_github-canary', '_restart'])
     parser.add_argument('--home', default=str(Path.home()))
     parser.add_argument('--surface', choices=SURFACES, default='local-shell')
     parser.add_argument('--profile', default='ghostmesh-core')
@@ -531,6 +541,10 @@ def main():
             raise Refusal('unknown repository capability profile')
     config = tomllib.loads(config_path.read_text()).get('mcp_servers', {}) if config_path.exists() else {}
     rows = []
+    client_inventories = []
+    if args.command == 'client-probe':
+        from connector_client import probe_clients
+        rows, client_inventories = probe_clients(m, args.surface, args.repository)
     if args.command in ['probe', 'admit']:
         for c in m['connectors']:
             rows.append(probe(c, config.get(c.get('mcp_server', c['id'])), args.surface, args.home))
@@ -540,11 +554,13 @@ def main():
           'bootstrap_source': source_identity(),
           'manifest_sha256': digest(MANIFEST.read_bytes()), 'profile': args.profile,
           'surface': args.surface, 'admitted': admitted, 'target_active': False,
-          'secret_values': False, 'matrix': rows}, args.output)
+          'secret_values': False, 'client_inventories': client_inventories,
+          'matrix': rows}, args.output)
     return 0 if args.command == 'matrix' or admitted else 1
 
 
 if __name__ == '__main__':
+    sys.modules.setdefault('connector_fabric', sys.modules[__name__])
     try:
         sys.exit(main())
     except (Refusal, OSError, ValueError, KeyError, subprocess.TimeoutExpired) as error:

@@ -4,10 +4,10 @@
 capability authority; `manifests/mcp.yaml` retains the older activation policy for
 compatibility. A legacy doctor pass does not qualify connector parity.
 
-This is an incomplete qualification implementation. The HTTP and scoped GitHub
-canary adapters are implemented; platform app, stdio, Desktop, CLI and hosted
-execution adapters still need implementation and independent evidence. The doctor
-keeps those rows unhealthy. The template is uncommissioned. Do not close issue #18
+This is an incomplete qualification implementation. The HTTP, native Codex client,
+and scoped GitHub canary adapters are implemented. Desktop restart and hosted
+execution still require independent evidence. The doctor
+keeps incomplete rows unhealthy. Do not close issue #18
 or claim `MESH_CONNECTOR_FABRIC_PARITY_ACTIVE_V1` from these changes.
 
 The contract includes every connector discovered during issue #18 inventory,
@@ -66,6 +66,21 @@ is evidence of that operation; it does not independently prove all surface check
 
 ## Repository admission
 
+`connector-doctor client-probe --surface codex-cli` starts two independent installed
+Codex client processes, uses their native MCP transport and platform-managed app
+credentials, then compares read identity, server identity and tool inventory.
+The same adapter can be invoked independently from `local-shell`, or with
+`--surface fresh-repository --repository DIR` after profile initialization. It
+never exports the client's OAuth state, runs a model turn, or accepts an imported
+healthy receipt. It rejects server approval/authentication requests and records
+missing write or forbidden-canary evidence as unhealthy. A native client process
+is not a GUI restart or a hosted task; this command refuses those surface labels.
+
+The installed client protocol must expose `mcpServerStatus/list` and
+`mcpServer/tool/call`; missing methods fail closed. Every receipt retains the two
+process/task identities and actual tool inventory. Configuration-only auth status
+does not establish authentication: the canonical provider read must succeed.
+
 ```bash
 bash bin/connector-doctor init-repository --repository . --profile ghostmesh-core
 bash bin/connector-doctor admit --repository . --surface local-shell
@@ -81,8 +96,9 @@ accept caller-asserted healthy receipts.
 
 ## Hosted realization and evidence
 
-`manifests/connector-hosted-template.json` is a prepared template contract, not an
-enrolled hosted environment. Reuse the existing Linux runtime setup and maintenance
+`manifests/connector-hosted-template.json` is the hosted template contract. An
+environment ID records provisioning only; `commissioned` remains false until
+qualification succeeds. Reuse the existing Linux runtime setup and maintenance
 commands from a pinned bootstrap release. The repository checkout supplies the
 same capability manifest, skills, and commands; provider credential realizations
 belong to the hosted platform. Bind actual environment settings and an exact
