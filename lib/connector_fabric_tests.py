@@ -263,6 +263,68 @@ class FabricTests(unittest.TestCase):
             self.assertEqual(result.returncode, 64)
             self.assertFalse((self.home / 'candidate').exists())
 
+    def test_all_forbidden_tools_receive_independent_negative_calls(self):
+        self.connector['forbidden_tools'] = ['create_issue', 'delete_file']
+        calls = []
+
+        def reject(_client, name):
+            calls.append(name)
+            return True
+
+        with patch.object(fabric.MCP, 'rejects_unconfigured_write', autospec=True, side_effect=reject):
+            row, _ = self.probe()
+        self.assertTrue(row['qualified'])
+        self.assertEqual(calls, ['create_issue', 'delete_file'])
+
+    def test_any_non_rejecting_forbidden_tool_fails_qualification(self):
+        self.connector['forbidden_tools'] = ['create_issue', 'delete_file']
+
+        def reject(_client, name):
+            return name == 'create_issue'
+
+        with patch.object(fabric.MCP, 'rejects_unconfigured_write', autospec=True, side_effect=reject):
+            row, _ = self.probe()
+        self.assertFalse(row['checks']['fail_closed'])
+        self.assertFalse(row['qualified'])
+
+    def test_native_client_checks_every_forbidden_tool(self):
+        self.connector['forbidden_tools'] = ['create_issue', 'delete_file']
+        calls = []
+
+        class Client:
+            identity = {'thread_id': 'fixture-native-thread', 'pid': 1}
+            servers = {'fixture': {'runtimeStatus': 'connected', 'tools': {'read': {}}}}
+
+            def call(self, server, tool, arguments):
+                calls.append(tool)
+                if tool == 'read':
+                    return {'content': [{'type': 'text', 'text': 'bounded fixture read'}]}
+                if tool == 'create_issue':
+                    raise fabric.RPCRefusal(-32601)
+                return {'content': [{'type': 'text', 'text': 'unexpected mutation surface'}]}
+
+        row = native.observe(Client(), self.connector, 'codex-cli')
+        self.assertFalse(row['checks']['fail_closed'])
+        self.assertFalse(row['qualified'])
+        self.assertIn('create_issue', calls)
+        self.assertIn('delete_file', calls)
+
+    def test_render_rejects_literal_headers_on_existing_required_connector(self):
+        source = self.home / 'config.toml'
+        source.write_text(
+            '[mcp_servers.github-readonly]\n'
+            'url = "https://api.githubcopilot.com/mcp/x/all/readonly"\n'
+            'enabled = true\n'
+            'bearer_token_env_var = "GH_TOKEN"\n'
+            '[mcp_servers.github-readonly.http_headers]\n'
+            'Authorization = "opaque-literal"\n'
+        )
+        target = self.home / 'candidate'
+        result = self.cli('render', '--source', str(source), '--output', str(target))
+        self.assertEqual(result.returncode, 64)
+        self.assertFalse(target.exists())
+        self.assertNotIn('opaque-literal', result.stdout + result.stderr)
+
     def test_complete_matrix_and_required_admission(self):
         m = fabric.load_manifest()
         rows = fabric.matrix(m, [])
