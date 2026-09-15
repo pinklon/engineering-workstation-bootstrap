@@ -1875,10 +1875,10 @@
     },
     "live_privileged_read_denial": {
       "auth": "existing-repository-scoped-short-lived-App-token",
+      "collected_at": "2026-09-15T20:14:28.890321+00:00",
       "endpoint": "/repos/pinklon/engineering-workstation-bootstrap/actions/secrets",
       "http_status": 403,
       "method": "GET",
-      "observed_at": "2026-09-15T20:14:28.890321+00:00",
       "passed": true,
       "repository": "pinklon/engineering-workstation-bootstrap",
       "scope": "privileged read denied; no attempted production or default-branch mutation",
@@ -2388,7 +2388,7 @@
       "network_policy": "existing-runtime-package-destinations-plus-required-connector-endpoint-hosts",
       "node_selection": "24-via-workstation-cloud-node",
       "profile": "ghostmesh-core",
-      "provisioned_at": "2026-09-15T20:06:17Z",
+      "provisioned_date": "2026-09-15",
       "qualification_required": [
         "exact-source-head-and-manifest-digest",
         "hosted-environment-id-and-settings-receipt",

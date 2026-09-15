@@ -21,7 +21,7 @@
   "copy_local_credentials": false,
   "network_policy": "existing-runtime-package-destinations-plus-required-connector-endpoint-hosts",
   "hosted_environment_id": "6aa9a539484c819182f5afc7e203644f",
-  "provisioned_at": "2026-09-15T20:06:17Z",
+  "provisioned_date": "2026-09-15",
   "repository": "pinklon/engineering-workstation-bootstrap",
   "image": "universal",
   "image_python_selection": "3.13",
