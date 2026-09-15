@@ -2671,7 +2671,7 @@
     "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
   },
   "executor_handoff_continuation": {
-    "authority": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/18#issuecomment-5688660958",
+    "authority": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/18#issuecomment-5688732456",
     "collected_at": "2026-09-15T22:18:33Z",
     "desktop_restart": {
       "current_config_sha256": "1321945916bf6acd20450980649be0d9611b9eba0d81079f0267930f3421c26c",
