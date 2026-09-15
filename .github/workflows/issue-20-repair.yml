@@ -22,6 +22,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import textwrap
 
           def replace_once(path, old, new):
               p = Path(path)
@@ -54,7 +55,8 @@ jobs:
           anchor = "    def test_complete_matrix_and_required_admission(self):\n"
           if text.count(anchor) != 1:
               raise SystemExit('test insertion anchor mismatch')
-          addition = r'''    def test_all_forbidden_tools_receive_independent_negative_calls(self):
+          addition = textwrap.indent(textwrap.dedent(r'''
+          def test_all_forbidden_tools_receive_independent_negative_calls(self):
               self.connector['forbidden_tools'] = ['create_issue', 'delete_file']
               calls = []
 
@@ -116,7 +118,7 @@ jobs:
               self.assertFalse(target.exists())
               self.assertNotIn('opaque-literal', result.stdout + result.stderr)
 
-          '''
+          ''').lstrip('\n'), '    ')
           tests.write_text(text.replace(anchor, addition + anchor, 1))
 
           Path('.github/workflows/issue-20-repair.yml').unlink()
