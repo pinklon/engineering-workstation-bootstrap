@@ -1971,7 +1971,7 @@
     "secret_scan_passed": true,
     "successful_qualified_admission_proven": false
   },
-  "generated_at": "2026-09-15T22:18:33Z",
+  "generated_at": "2026-09-15T23:37:44Z",
   "git": {
     "amendment_initial_ahead_behind": [
       0,
@@ -2668,11 +2668,25 @@
       "production_mutation_attempted": false,
       "projects": 4
     },
+    "supabase_development_canary": {
+      "base_project_id": "rijegozirtwmuihdpvnz",
+      "branch_deleted": true,
+      "branch_id": "91a37655-99b3-4e79-8b49-665ff688d17d",
+      "branch_project_ref": "uyvkklxhdezqgncfvdjc",
+      "cleanup_readback_remaining_rows": 0,
+      "collected_at": "2026-09-15T23:36:26.356152+00:00",
+      "forbidden_tools_declared": [],
+      "production_data_copied": false,
+      "production_mutation_performed": false,
+      "relation_cleanup_readback": null,
+      "write_canary": true,
+      "write_readback": true
+    },
     "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
   },
   "executor_handoff_continuation": {
     "authority": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/18#issuecomment-5688732456",
-    "collected_at": "2026-09-15T22:18:33Z",
+    "collected_at": "2026-09-15T23:37:44Z",
     "desktop_restart": {
       "current_config_sha256": "1321945916bf6acd20450980649be0d9611b9eba0d81079f0267930f3421c26c",
       "prior_process_baseline_preserved": true,
@@ -2740,13 +2754,42 @@
         "access_policy_mutation": false
       },
       "supabase": {
+        "base_project_id": "rijegozirtwmuihdpvnz",
+        "base_project_name": "tony@crysco.com's Project",
+        "branch_cost": {
+          "amount": 0.01344,
+          "recurrence": "hourly",
+          "type": "branch"
+        },
+        "branch_deleted": true,
+        "branch_id": "91a37655-99b3-4e79-8b49-665ff688d17d",
+        "branch_name": "issue18-connector-canary-20260915",
+        "branch_project_ref": "uyvkklxhdezqgncfvdjc",
+        "cleanup_readback_remaining_rows": 0,
         "organization_id": "gnpwthuqemukopetmork",
         "organization_name": "ViCompiler",
         "healthy_projects": 4,
-        "development_branch_created": false,
+        "development_branch_created": true,
+        "development_branch_persistent": false,
         "cost_confirmation_required": true,
-        "cost_confirmation_obtained": false,
-        "production_mutation_performed": false
+        "cost_confirmation_obtained": true,
+        "forbidden_canary_executed": false,
+        "forbidden_canary_reason": "The canonical manifest declares no Supabase forbidden tools; no production or destructive operation was invented.",
+        "forbidden_tools_declared": [],
+        "post_delete_branches": [
+          "main"
+        ],
+        "production_data_copied": false,
+        "production_mutation_performed": false,
+        "relation_cleanup_readback": null,
+        "row_cleanup_proven": true,
+        "table_cleanup_proven": true,
+        "write_canary": true,
+        "write_readback": {
+          "canary_id": "issue18-20260915T2335Z",
+          "created_at": "2026-09-15 23:36:26.356152+00",
+          "payload": "issue18-supabase-development-canary-v1"
+        }
       },
       "completed_github_and_drive_canaries_repeated": false,
       "gmail_draft_created": false,
@@ -4626,23 +4669,37 @@
         "restart": false,
         "secret_exclusion": true,
         "tool_inventory": true,
-        "write_canary": false,
+        "write_canary": true,
         "write_capability": true
       },
       "connector": "supabase",
-      "evidence_evaluated_at": "2026-09-15T20:56:55.261516+00:00",
+      "evidence_evaluated_at": "2026-09-15T23:37:44Z",
       "execution": {
         "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
       },
-      "health": "READ_PROVEN",
-      "observed_at": "2026-09-15T20:15:09.556Z",
+      "health": "WRITE_PROVEN",
+      "observed_at": "2026-09-15T23:36:26.356152+00:00",
       "qualified": false,
-      "reason": "independent Desktop read and tool inventory; restart and applicable governed boundaries remain unproven",
+      "reason": "independent Desktop read plus bounded isolated-branch write, exact readback and cleanup; restart and fail-closed proof remain unproven",
       "surface": "codex-desktop",
       "tier": "REQUIRED",
       "tool_count": 28,
       "tool_inventory_observed_at": "2026-09-15T20:54:55.005Z",
-      "tool_inventory_sha256": "3be444c85c4c0735506d2a66f0615554ef7567556d7d718b817e45a0942a5cd1"
+      "tool_inventory_sha256": "3be444c85c4c0735506d2a66f0615554ef7567556d7d718b817e45a0942a5cd1",
+      "write_evidence": {
+        "base_project_id": "rijegozirtwmuihdpvnz",
+        "branch_deleted": true,
+        "branch_id": "91a37655-99b3-4e79-8b49-665ff688d17d",
+        "branch_project_ref": "uyvkklxhdezqgncfvdjc",
+        "cleanup_readback_remaining_rows": 0,
+        "forbidden_canary": false,
+        "forbidden_tools_declared": [],
+        "production_data_copied": false,
+        "production_mutation_performed": false,
+        "relation_cleanup_readback": null,
+        "write_canary": true,
+        "write_readback": true
+      }
     },
     {
       "check_applicability": {
@@ -13108,9 +13165,9 @@
     },
     {
       "criterion": "Issue #18 conformance steps 6-8: bounded governed writes, cleanup and forbidden-operation enforcement where declared",
-      "evidence": "Cloudflare read authentication now succeeds, but the bounded Development KV namespace create remains denied with error 10000 and post-attempt cleanup inspection found no canary namespace. Supabase exposes one organization and four healthy projects, but branch creation remains gated by the platform-required organization-specific cost confirmation. Required Gmail/Higgsfield cleanup realizations remain absent.",
+      "evidence": "Cloudflare read authentication now succeeds, but the bounded Development KV namespace create remains denied with error 10000 and post-attempt cleanup inspection found no canary namespace. Owner-confirmed Supabase branch cost was 0.01344 USD/hour. Ephemeral branch 91a37655-99b3-4e79-8b49-665ff688d17d contained no production data; bounded write, exact readback, row cleanup, zero-row readback, relation cleanup and branch deletion passed. The Supabase manifest declares no forbidden tools, so no destructive or Production operation was invented. Required Gmail/Higgsfield cleanup realizations remain absent.",
       "id": "development-canaries",
-      "required_action": "Designate existing least-privilege Development targets and write/cleanup transports. If a paid Supabase Development branch is needed, follow the owner-required cost/organization confirmation before creation. Run only declared governed-write and forbidden checks.",
+      "required_action": "Provide an authorized Cloudflare Development writer and exact cleanup transport, plus Gmail/Higgsfield cleanup realizations. Resolve fail-closed proof only through explicitly declared safe forbidden checks; do not invent Production or destructive canaries.",
       "status": "EXTERNAL_PREREQUISITE_PENDING"
     },
     {
