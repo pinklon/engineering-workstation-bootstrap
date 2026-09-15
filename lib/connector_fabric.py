@@ -350,7 +350,7 @@ def probe(connector, config, surface, home=None):
         checks['write_capability'] = bool(write) and set(write).issubset(names)
         forbidden = connector.get('forbidden_tools', [])
         checks['fail_closed'] = (bool(forbidden) and not set(forbidden).intersection(names)
-                                 and client.rejects_unconfigured_write(forbidden[0]))
+                                 and all(client.rejects_unconfigured_write(name) for name in forbidden))
         # Transport reconnect and login shell are separate facts. Neither proves
         # a new CLI/Desktop or hosted session.
         restarted = MCP(config)
@@ -538,6 +538,8 @@ def main():
                 expected_auth = c.get('bearer_token_env_var')
                 if expected_auth and existing[name].get('bearer_token_env_var') != expected_auth:
                     raise Refusal('required connector authentication reference mismatch')
+                if existing[name].get('http_headers'):
+                    raise Refusal('required connector literal headers refused')
                 continue
             additions.extend(['', '[mcp_servers.' + json.dumps(name) + ']',
                               'url = ' + json.dumps(endpoint), 'enabled = true'])

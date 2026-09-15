@@ -173,7 +173,7 @@ def observe(client, connector, surface):
         checks['write_capability'] = bool(writes) and set(writes).issubset(names)
         forbidden = connector.get('forbidden_tools', [])
         if forbidden and not set(forbidden).intersection(names):
-            checks['fail_closed'] = reader.rejects_unconfigured_write(forbidden[0])
+            checks['fail_closed'] = all(reader.rejects_unconfigured_write(name) for name in forbidden)
         checks['secret_exclusion'] = not secrets_present(json.dumps(row))
         row['reason'] = 'read observed; waiting for independent process restart and remaining checks'
     except (Refusal, OSError, ValueError, KeyError) as exc:
