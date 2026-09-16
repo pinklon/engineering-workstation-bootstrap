@@ -18,9 +18,9 @@
   "activation_status": "EXTERNAL_PREREQUISITES_PENDING",
   "bootstrap_source": {
     "client_adapter_sha256": "9fcd1816b6a4392418693cd6417542afa6a0eb23d6c5834debf9fa7ba83465fb",
-    "head": "360039e5e9a352f00053160d2fc98660d5071ba4",
+    "head": "c1281723f95b949b04e9d5ee023c402ea6abf827",
     "implementation_sha256": "e275c49ba025f6abf139a87ddd182b7c9650dcc13e5ee1dac7bc443a84ceaca7",
-    "root": "/Users/tonymalott/Documents/GitHub/worktrees/bootstrap-mesh-connectors-18"
+    "root": "/Users/tonymalott/Documents/Codex/2026-09-15/continue-pinklon-engineering-workstation-bootstrap-18-2/work/issue-18-final-qualification-v2"
   },
   "check_semantics": {
     "all_applicable_checks_required": true,
@@ -1971,7 +1971,7 @@
     "secret_scan_passed": true,
     "successful_qualified_admission_proven": false
   },
-  "generated_at": "2026-09-15T23:37:44Z",
+  "generated_at": "2026-09-16T02:31:34Z",
   "git": {
     "amendment_initial_ahead_behind": [
       0,
@@ -2685,18 +2685,20 @@
     "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
   },
   "executor_handoff_continuation": {
-    "authority": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/18#issuecomment-5688732456",
-    "collected_at": "2026-09-15T23:37:44Z",
+    "authority": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/18#issuecomment-5691030093",
+    "prior_authority": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/18#issuecomment-5688732456",
+    "collected_at": "2026-09-16T02:31:34Z",
     "desktop_restart": {
-      "current_config_sha256": "1321945916bf6acd20450980649be0d9611b9eba0d81079f0267930f3421c26c",
+      "current_config_sha256": "4a83bd03ffa8345b7ea5907ebb2760b69045eac17ef83894acfae60ced51257b",
       "prior_process_baseline_preserved": true,
       "restart_performed": false,
-      "supported_control_attempt": "computer-use sky.get_app_state ChatGPT",
+      "supported_control_attempt": "computer-use sky.get_app_state com.openai.codex",
       "supported_control_result": "Computer Use is not allowed to use the app com.openai.codex for safety reasons.",
       "unsafe_cross-task_host_termination_attempted": false,
       "status": "UNPROVEN"
     },
     "hosted_binding_inspection": {
+      "inspected_at": "2026-09-16T02:27:00Z",
       "environment_id": "6aa9a539484c819182f5afc7e203644f",
       "environment_secret_values_read": false,
       "local_credentials_copied": false,
@@ -2707,6 +2709,14 @@
         "Slack",
         "Linear"
       ],
+      "environment_editor_controls": [
+        "environment variables",
+        "setup-time secrets",
+        "setup and maintenance scripts",
+        "network allowlist"
+      ],
+      "environment_editor_provider_binding_control_found": false,
+      "agents_api_environment_lookup": "NOT_FOUND: the ChatGPT Codex Cloud environment ID is not an Agents API managed-environment resource",
       "required_non_github_provider_binding_control_found": false,
       "settings_url": "https://chatgpt.com/codex/cloud/settings/connectors"
     },
@@ -2743,6 +2753,9 @@
         "account_id": "5c8a037d78c37953b3bb8e84615c8d74",
         "read_status": 200,
         "read_authenticated": true,
+        "write_attempt_repeated": false,
+        "write_permission_required": "Account: Workers KV Storage (edit)",
+        "write_permission_source": "https://developers.cloudflare.com/workers/ci-cd/builds/configuration/",
         "existing_issue18_canary_namespaces": [],
         "write_operation": "POST /accounts/{account_id}/storage/kv/namespaces",
         "write_result": "DENIED",
@@ -2792,8 +2805,35 @@
         }
       },
       "completed_github_and_drive_canaries_repeated": false,
-      "gmail_draft_created": false,
+      "gmail": {
+        "surface": "codex-desktop",
+        "collected_at": "2026-09-16T02:29:24.275Z",
+        "recipient_supplied": false,
+        "draft_created": true,
+        "draft_id": "r4919461434420627987",
+        "message_id": "1a0a80c286f73702",
+        "exact_subject": "issue-18-development-canary-20260916T022924275Z",
+        "create_readback": true,
+        "delete_transport": "gmail_delete_emails moves the message to Trash",
+        "active_draft_list_cleanup": true,
+        "post_cleanup_labels": [
+          "DRAFT",
+          "TRASH"
+        ],
+        "exact_cleanup_proven": false,
+        "reason": "The exposed delete transport removed the canary from the active draft list but retained the immutable message with DRAFT and TRASH labels; no permanent draft-delete transport is exposed."
+      },
+      "gmail_draft_created": true,
       "gmail_cleanup_transport_available": false,
+      "higgsfield": {
+        "surface": "codex-desktop",
+        "balance_authenticated": true,
+        "minimum_image_canary_estimated_credits": 1,
+        "available_credit_sufficient": true,
+        "generation_submitted": false,
+        "cleanup_transport_available": false,
+        "reason": "The connector exposes image generation and result inspection but no generation delete or cleanup transport; no credit was spent and no persistent canary artifact was created."
+      },
       "higgsfield_generation_started": false,
       "higgsfield_cleanup_transport_available": false
     },
@@ -13151,21 +13191,21 @@
   "unresolved_gaps": [
     {
       "criterion": "Issue #18: authenticated equivalent REQUIRED capabilities independently on Codex Cloud and CLI-to-Cloud",
-      "evidence": "Exact-head tasks task_e_6aa9c357e26083259b941dcf95e4cdb0 and task_e_6aa9c38e0bec8325ae383857ab990809 ran at merged main 360039e5e9a352f00053160d2fc98660d5071ba4. Each exposed zero REQUIRED provider adapters, qualified zero REQUIRED connectors, and denied admission fail-closed. Hosted settings still expose no supported non-GitHub REQUIRED provider binding control.",
+      "evidence": "Exact-head tasks task_e_6aa9c357e26083259b941dcf95e4cdb0 and task_e_6aa9c38e0bec8325ae383857ab990809 ran at merged implementation source 360039e5e9a352f00053160d2fc98660d5071ba4. Each exposed zero REQUIRED provider adapters, qualified zero REQUIRED connectors, and denied admission fail-closed. Reinspection from merged receipt head c1281723f95b949b04e9d5ee023c402ea6abf827 found only GitHub, GitLab, Slack and Linear on the connector settings page. The target environment editor exposes setup-time variables/secrets and network controls, not non-GitHub provider bindings; no workstation credential was copied.",
       "id": "hosted-provider-custody",
       "required_action": "Provide platform-supported per-provider binding references for environment 6aa9a539484c819182f5afc7e203644f, keeping secrets in hosted custody; then execute independent conformance.",
       "status": "EXTERNAL_PREREQUISITE_PENDING"
     },
     {
       "criterion": "Issue #18: independently qualified Desktop capabilities and restart/new-session persistence",
-      "evidence": "Accepted direct reads and Drive write remain valid; current Desktop host process starts still do not prove a restart. The supported computer-use surface again refused com.openai.codex, and no unsafe host-wide process termination was attempted because it would interrupt unrelated active tasks.",
+      "evidence": "Accepted direct reads and Drive write remain valid; current Desktop host process starts still do not prove a restart. On 2026-09-16 the supported computer-use surface again refused com.openai.codex. No host-wide process termination was attempted because it would terminate this task and unrelated active Codex work.",
       "id": "desktop-restart",
       "required_action": "Make an authorized independent Desktop restart/session surface available, then collect post-restart provider and GitHub read-only evidence against the saved baseline.",
       "status": "EXTERNAL_PREREQUISITE_PENDING"
     },
     {
       "criterion": "Issue #18 conformance steps 6-8: bounded governed writes, cleanup and forbidden-operation enforcement where declared",
-      "evidence": "Cloudflare read authentication now succeeds, but the bounded Development KV namespace create remains denied with error 10000 and post-attempt cleanup inspection found no canary namespace. Owner-confirmed Supabase branch cost was 0.01344 USD/hour. Ephemeral branch 91a37655-99b3-4e79-8b49-665ff688d17d contained no production data; bounded write, exact readback, row cleanup, zero-row readback, relation cleanup and branch deletion passed. The Supabase manifest declares no forbidden tools, so no destructive or Production operation was invented. Required Gmail/Higgsfield cleanup realizations remain absent.",
+      "evidence": "Cloudflare read authentication succeeds, but the bounded Development KV namespace create remains denied with error 10000; the documented minimum write permission is Account: Workers KV Storage (edit), and no permission or credential was widened. Supabase Development qualification remains complete and was not repeated. A recipient-less Gmail draft canary created and read back successfully, then the exposed delete transport removed it from the active draft list but left its message labeled DRAFT and TRASH, so exact cleanup is not proven. A Higgsfield minimum image canary would cost one credit, but no generation cleanup/delete transport is exposed; no credit was spent and no generation was submitted.",
       "id": "development-canaries",
       "required_action": "Provide an authorized Cloudflare Development writer and exact cleanup transport, plus Gmail/Higgsfield cleanup realizations. Resolve fail-closed proof only through explicitly declared safe forbidden checks; do not invent Production or destructive canaries.",
       "status": "EXTERNAL_PREREQUISITE_PENDING"
@@ -13196,6 +13236,15 @@
     "actions_run_id": 35027112980,
     "all_four_jobs": "PASS",
     "browser_runtime_fixtures": "PASS",
+    "continuation": {
+      "checked_at": "2026-09-16T02:33:00Z",
+      "connector_tests": 30,
+      "gitleaks_redacted_full_worktree": "PASS: zero findings",
+      "json_parse": "PASS",
+      "make_validate": "PASS",
+      "receipt_scope": "evidence only",
+      "source_head": "c1281723f95b949b04e9d5ee023c402ea6abf827"
+    },
     "connector_tests": 30,
     "evidence_origin": "Accepted PR #21 GitHub Actions logs; completed suites were not re-run",
     "evidence_sha256": {
