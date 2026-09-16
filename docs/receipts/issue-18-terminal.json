@@ -18,9 +18,9 @@
   "activation_status": "EXTERNAL_PREREQUISITES_PENDING",
   "bootstrap_source": {
     "client_adapter_sha256": "9fcd1816b6a4392418693cd6417542afa6a0eb23d6c5834debf9fa7ba83465fb",
-    "head": "c1281723f95b949b04e9d5ee023c402ea6abf827",
+    "head": "1aa429a25d5a7c5cff876f83ca56532834483e9d",
     "implementation_sha256": "e275c49ba025f6abf139a87ddd182b7c9650dcc13e5ee1dac7bc443a84ceaca7",
-    "root": "/Users/tonymalott/Documents/Codex/2026-09-15/continue-pinklon-engineering-workstation-bootstrap-18-2/work/issue-18-final-qualification-v2"
+    "root": "/Users/tonymalott/Documents/Codex/2026-09-15/continue-pinklon-engineering-workstation-bootstrap-18-3/work/engineering-workstation-bootstrap"
   },
   "check_semantics": {
     "all_applicable_checks_required": true,
@@ -1860,6 +1860,13 @@
     "gitleaks_managed_config": "PASS",
     "gitleaks_repository": "PASS",
     "known_secret_formats_and_inherited_values": "PASS",
+    "desktop_restart_delta": {
+      "collected_at": "2026-09-16T02:50:00Z",
+      "gitleaks_version": "8.30.1",
+      "scope": "Full current worktree after the Desktop restart evidence update; provider responses and secret values were not persisted.",
+      "findings": 0,
+      "result": "PASS"
+    },
     "post_merge_delta": {
       "collected_at": "2026-09-15T21:56:55.818334+00:00",
       "configuration_and_packages": "Unchanged; accepted previous scans preserved.",
@@ -1971,7 +1978,7 @@
     "secret_scan_passed": true,
     "successful_qualified_admission_proven": false
   },
-  "generated_at": "2026-09-16T02:31:34Z",
+  "generated_at": "2026-09-16T02:46:58Z",
   "git": {
     "amendment_initial_ahead_behind": [
       0,
@@ -2847,6 +2854,94 @@
     },
     "terminal_target_active": false
   },
+  "desktop_restart_persistence": {
+    "authority": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/18#issuecomment-5691222392",
+    "collected_at": "2026-09-16T02:46:58Z",
+    "exact_source_head": "1aa429a25d5a7c5cff876f83ca56532834483e9d",
+    "exact_source_tree": "f6f77eda464b7790c44b7308b6cb65260738327b",
+    "manifest_sha256": "5ecad70c919ae165baa78f5cf9f12772e966596be3289e7eece2ba23c29babcf",
+    "handoff_created_at": "2026-09-16T02:40:53Z",
+    "prior_host_process": {
+      "executable": "/Applications/ChatGPT.app/Contents/MacOS/ChatGPT",
+      "pid": 7927,
+      "started_local": "Fri Sep 11 17:40:29 2026"
+    },
+    "post_restart_host_process": {
+      "executable": "/Applications/ChatGPT.app/Contents/MacOS/ChatGPT",
+      "pid": 52830,
+      "started_local": "Tue Sep 15 19:41:32 2026"
+    },
+    "timezone": "America/Los_Angeles",
+    "process_turnover_after_handoff": true,
+    "current_config_sha256": "30a878180f4894a19e2480ed794b1765e8c64607c6cb1fbf65938303261fc09f",
+    "computer_use_control": {
+      "attempted": true,
+      "result": "Computer Use is not allowed to use the app com.openai.codex for safety reasons.",
+      "refusal_bypassed": false,
+      "used_as_restart_proof": false
+    },
+    "tool_inventory_counts": {
+      "github-connected-app": 89,
+      "cloudflare-api": 3,
+      "cloudflare-docs": 2,
+      "cloudflare-observability": 8,
+      "supabase": 28,
+      "google-drive": 45,
+      "gmail": 21,
+      "google-contacts": 3,
+      "higgsfield": 75
+    },
+    "post_restart_read_canaries": {
+      "github-connected-app": {
+        "issue_18_read": true,
+        "hard_readonly_realization_claimed": false,
+        "reason": "The connected app exposes mutation tools and therefore does not replace the canonical hard-read-only github-readonly transport."
+      },
+      "cloudflare-api": {
+        "authenticated": true,
+        "http_status": 200,
+        "issue18_namespace_matches": 0
+      },
+      "cloudflare-docs": {
+        "bounded_search": true
+      },
+      "cloudflare-observability": {
+        "authenticated_worker_list": true
+      },
+      "supabase": {
+        "authenticated_project_list": true
+      },
+      "google-drive": {
+        "bounded_metadata_search": true
+      },
+      "gmail": {
+        "authenticated_label_list": true
+      },
+      "google-contacts": {
+        "authenticated_profile_read": true
+      },
+      "higgsfield": {
+        "authenticated_balance_read": true
+      }
+    },
+    "restart_persistent_required_connectors": [
+      "cloudflare-api",
+      "cloudflare-docs",
+      "cloudflare-observability",
+      "supabase",
+      "google-drive",
+      "gmail",
+      "google-contacts",
+      "higgsfield"
+    ],
+    "desktop_restart_proven": true,
+    "desktop_admitted": false,
+    "completed_qualification_repeated": false,
+    "write_canaries_repeated": false,
+    "provider_mutation_performed": false,
+    "credential_or_secret_value_read": false,
+    "terminal_target_active": false
+  },
   "owner_scope_amendments": [
     {
       "authority": "Explicit issue #18 owner instruction in Codex task 01a0a6a5-03b9-78e1-93e9-12e22a12614d",
@@ -3051,7 +3146,7 @@
     "codex_cli": "independent native Codex client processes; same read identity and inventory",
     "codex_cli_to_cloud": "UNPROVEN",
     "codex_cloud": "UNPROVEN",
-    "codex_desktop": "UNPROVEN: no observed restart; recorded Desktop host process starts predate accepted reads. Prior computer-use refusal preserved.",
+    "codex_desktop": "PROVEN: the ChatGPT/Codex Desktop host turned over after the latest executor handoff, and the fresh process independently completed authenticated bounded reads for eight previously qualified REQUIRED connector realizations. This proves restart persistence for those connectors; missing governed-write, fail-closed, hosted and cleanup checks remain separate.",
     "fresh_repository": "independent native client processes in fresh repository",
     "github_readonly": "All declared forbidden tools and two-process persistence requalified independently on shell, CLI and fresh repository using merged repaired source 71c7aca43244f5d066d17e796a6d6a4f2de41985.",
     "local_shell": "independent native Codex client processes; same read identity and inventory",
@@ -3066,7 +3161,7 @@
     "installed_release": "0.2.0-native-mac-bd0cae7-final-20260912T1858Z",
     "live_workstation_activated": false,
     "method": "Revert scoped convergence commits; remove the new hosted environment and disposable repository only when requested. Existing installed release and its rollback receipts remain unchanged.",
-    "post_merge_base": "71c7aca43244f5d066d17e796a6d6a4f2de41985",
+    "post_merge_base": "1aa429a25d5a7c5cff876f83ca56532834483e9d",
     "source_head": "b654714607f1154e534b6e11484b10e2bc2929ea"
   },
   "schema_version": 1,
@@ -3802,21 +3897,26 @@
         "fail_closed": false,
         "handshake": true,
         "read_canary": true,
-        "restart": false,
+        "restart": true,
         "secret_exclusion": true,
         "tool_inventory": true,
         "write_canary": false,
         "write_capability": true
       },
       "connector": "cloudflare-api",
-      "evidence_evaluated_at": "2026-09-15T20:56:55.261516+00:00",
+      "evidence_evaluated_at": "2026-09-16T02:46:58Z",
       "execution": {
         "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
       },
       "health": "READ_PROVEN",
       "observed_at": "2026-09-15T20:15:08.446Z",
       "qualified": false,
-      "reason": "independent Desktop read and tool inventory; restart and applicable governed boundaries remain unproven",
+      "reason": "independent Desktop read, tool inventory and post-restart authenticated read proven; governed write and fail-closed checks remain unproven",
+      "restart_evidence": {
+        "collected_at": "2026-09-16T02:46:58Z",
+        "desktop_host_pid": 52830,
+        "http_status": 200
+      },
       "surface": "codex-desktop",
       "tier": "REQUIRED",
       "tool_count": 3,
@@ -4116,21 +4216,25 @@
         "fail_closed": false,
         "handshake": true,
         "read_canary": true,
-        "restart": false,
+        "restart": true,
         "secret_exclusion": true,
         "tool_inventory": true,
         "write_canary": false,
         "write_capability": false
       },
       "connector": "cloudflare-docs",
-      "evidence_evaluated_at": "2026-09-15T20:56:55.261516+00:00",
+      "evidence_evaluated_at": "2026-09-16T02:46:58Z",
       "execution": {
         "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
       },
-      "health": "READ_PROVEN",
+      "health": "RESTART_PERSISTENT",
       "observed_at": "2026-09-15T20:17:07.505Z",
-      "qualified": false,
-      "reason": "independent Desktop read and tool inventory; restart and applicable governed boundaries remain unproven",
+      "qualified": true,
+      "reason": "independent Desktop read and tool inventory persisted across an observed Desktop host restart; all applicable checks pass",
+      "restart_evidence": {
+        "collected_at": "2026-09-16T02:46:58Z",
+        "desktop_host_pid": 52830
+      },
       "surface": "codex-desktop",
       "tier": "REQUIRED",
       "tool_count": 2,
@@ -4409,21 +4513,25 @@
         "fail_closed": false,
         "handshake": true,
         "read_canary": true,
-        "restart": false,
+        "restart": true,
         "secret_exclusion": true,
         "tool_inventory": true,
         "write_canary": false,
         "write_capability": false
       },
       "connector": "cloudflare-observability",
-      "evidence_evaluated_at": "2026-09-15T20:56:55.261516+00:00",
+      "evidence_evaluated_at": "2026-09-16T02:46:58Z",
       "execution": {
         "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
       },
-      "health": "READ_PROVEN",
+      "health": "RESTART_PERSISTENT",
       "observed_at": "2026-09-15T20:15:09.063Z",
-      "qualified": false,
-      "reason": "independent Desktop read and tool inventory; restart and applicable governed boundaries remain unproven",
+      "qualified": true,
+      "reason": "independent Desktop authenticated read and tool inventory persisted across an observed Desktop host restart; all applicable checks pass",
+      "restart_evidence": {
+        "collected_at": "2026-09-16T02:46:58Z",
+        "desktop_host_pid": 52830
+      },
       "surface": "codex-desktop",
       "tier": "REQUIRED",
       "tool_count": 8,
@@ -4706,21 +4814,25 @@
         "fail_closed": false,
         "handshake": true,
         "read_canary": true,
-        "restart": false,
+        "restart": true,
         "secret_exclusion": true,
         "tool_inventory": true,
         "write_canary": true,
         "write_capability": true
       },
       "connector": "supabase",
-      "evidence_evaluated_at": "2026-09-15T23:37:44Z",
+      "evidence_evaluated_at": "2026-09-16T02:46:58Z",
       "execution": {
         "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
       },
       "health": "WRITE_PROVEN",
       "observed_at": "2026-09-15T23:36:26.356152+00:00",
       "qualified": false,
-      "reason": "independent Desktop read plus bounded isolated-branch write, exact readback and cleanup; restart and fail-closed proof remain unproven",
+      "reason": "independent Desktop read plus bounded isolated-branch write, exact readback and cleanup persisted across an observed Desktop host restart; fail-closed proof remains unproven",
+      "restart_evidence": {
+        "collected_at": "2026-09-16T02:46:58Z",
+        "desktop_host_pid": 52830
+      },
       "surface": "codex-desktop",
       "tier": "REQUIRED",
       "tool_count": 28,
@@ -5019,21 +5131,25 @@
         "fail_closed": false,
         "handshake": true,
         "read_canary": true,
-        "restart": false,
+        "restart": true,
         "secret_exclusion": true,
         "tool_inventory": true,
         "write_canary": true,
         "write_capability": true
       },
       "connector": "google-drive",
-      "evidence_evaluated_at": "2026-09-15T20:56:55.261516+00:00",
+      "evidence_evaluated_at": "2026-09-16T02:46:58Z",
       "execution": {
         "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
       },
       "health": "WRITE_PROVEN",
       "observed_at": "2026-09-15T20:15:08.868Z",
       "qualified": false,
-      "reason": "independent Desktop read and tool inventory; restart and applicable governed boundaries remain unproven",
+      "reason": "independent Desktop read, prior bounded write and tool inventory persisted across an observed Desktop host restart; fail-closed proof remains unproven",
+      "restart_evidence": {
+        "collected_at": "2026-09-16T02:46:58Z",
+        "desktop_host_pid": 52830
+      },
       "surface": "codex-desktop",
       "tier": "REQUIRED",
       "tool_count": 45,
@@ -5334,21 +5450,25 @@
         "fail_closed": false,
         "handshake": true,
         "read_canary": true,
-        "restart": false,
+        "restart": true,
         "secret_exclusion": true,
         "tool_inventory": true,
         "write_canary": false,
         "write_capability": true
       },
       "connector": "gmail",
-      "evidence_evaluated_at": "2026-09-15T20:56:55.261516+00:00",
+      "evidence_evaluated_at": "2026-09-16T02:46:58Z",
       "execution": {
         "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
       },
       "health": "READ_PROVEN",
       "observed_at": "2026-09-15T20:15:08.910Z",
       "qualified": false,
-      "reason": "independent Desktop read and tool inventory; restart and applicable governed boundaries remain unproven",
+      "reason": "independent Desktop authenticated read and tool inventory persisted across an observed Desktop host restart; exact governed cleanup remains unproven",
+      "restart_evidence": {
+        "collected_at": "2026-09-16T02:46:58Z",
+        "desktop_host_pid": 52830
+      },
       "surface": "codex-desktop",
       "tier": "REQUIRED",
       "tool_count": 21,
@@ -5635,21 +5755,25 @@
         "fail_closed": false,
         "handshake": true,
         "read_canary": true,
-        "restart": false,
+        "restart": true,
         "secret_exclusion": true,
         "tool_inventory": true,
         "write_canary": false,
         "write_capability": false
       },
       "connector": "google-contacts",
-      "evidence_evaluated_at": "2026-09-15T20:56:55.261516+00:00",
+      "evidence_evaluated_at": "2026-09-16T02:46:58Z",
       "execution": {
         "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
       },
-      "health": "READ_PROVEN",
+      "health": "RESTART_PERSISTENT",
       "observed_at": "2026-09-15T20:15:08.810Z",
-      "qualified": false,
-      "reason": "independent Desktop read and tool inventory; restart and applicable governed boundaries remain unproven",
+      "qualified": true,
+      "reason": "independent Desktop authenticated profile read and tool inventory persisted across an observed Desktop host restart; all applicable checks pass",
+      "restart_evidence": {
+        "collected_at": "2026-09-16T02:46:58Z",
+        "desktop_host_pid": 52830
+      },
       "surface": "codex-desktop",
       "tier": "REQUIRED",
       "tool_count": 3,
@@ -5930,21 +6054,25 @@
         "fail_closed": false,
         "handshake": true,
         "read_canary": true,
-        "restart": false,
+        "restart": true,
         "secret_exclusion": true,
         "tool_inventory": true,
         "write_canary": false,
         "write_capability": true
       },
       "connector": "higgsfield",
-      "evidence_evaluated_at": "2026-09-15T20:56:55.261516+00:00",
+      "evidence_evaluated_at": "2026-09-16T02:46:58Z",
       "execution": {
         "thread_id": "01a0a6a5-03b9-78e1-93e9-12e22a12614d"
       },
       "health": "READ_PROVEN",
       "observed_at": "2026-09-15T20:15:09.430Z",
       "qualified": false,
-      "reason": "independent Desktop read and tool inventory; restart and applicable governed boundaries remain unproven",
+      "reason": "independent Desktop authenticated read and tool inventory persisted across an observed Desktop host restart; governed generation cleanup and fail-closed proof remain unproven",
+      "restart_evidence": {
+        "collected_at": "2026-09-16T02:46:58Z",
+        "desktop_host_pid": 52830
+      },
       "surface": "codex-desktop",
       "tier": "REQUIRED",
       "tool_count": 75,
@@ -13172,7 +13300,7 @@
     "codex-desktop": {
       "admitted": false,
       "required": 10,
-      "required_qualified": 0
+      "required_qualified": 3
     },
     "fresh-repository": {
       "admitted": false,
@@ -13194,13 +13322,6 @@
       "evidence": "Exact-head tasks task_e_6aa9c357e26083259b941dcf95e4cdb0 and task_e_6aa9c38e0bec8325ae383857ab990809 ran at merged implementation source 360039e5e9a352f00053160d2fc98660d5071ba4. Each exposed zero REQUIRED provider adapters, qualified zero REQUIRED connectors, and denied admission fail-closed. Reinspection from merged receipt head c1281723f95b949b04e9d5ee023c402ea6abf827 found only GitHub, GitLab, Slack and Linear on the connector settings page. The target environment editor exposes setup-time variables/secrets and network controls, not non-GitHub provider bindings; no workstation credential was copied.",
       "id": "hosted-provider-custody",
       "required_action": "Provide platform-supported per-provider binding references for environment 6aa9a539484c819182f5afc7e203644f, keeping secrets in hosted custody; then execute independent conformance.",
-      "status": "EXTERNAL_PREREQUISITE_PENDING"
-    },
-    {
-      "criterion": "Issue #18: independently qualified Desktop capabilities and restart/new-session persistence",
-      "evidence": "Accepted direct reads and Drive write remain valid; current Desktop host process starts still do not prove a restart. On 2026-09-16 the supported computer-use surface again refused com.openai.codex. No host-wide process termination was attempted because it would terminate this task and unrelated active Codex work.",
-      "id": "desktop-restart",
-      "required_action": "Make an authorized independent Desktop restart/session surface available, then collect post-restart provider and GitHub read-only evidence against the saved baseline.",
       "status": "EXTERNAL_PREREQUISITE_PENDING"
     },
     {
@@ -13237,13 +13358,13 @@
     "all_four_jobs": "PASS",
     "browser_runtime_fixtures": "PASS",
     "continuation": {
-      "checked_at": "2026-09-16T02:33:00Z",
+      "checked_at": "2026-09-16T02:50:00Z",
       "connector_tests": 30,
       "gitleaks_redacted_full_worktree": "PASS: zero findings",
       "json_parse": "PASS",
       "make_validate": "PASS",
       "receipt_scope": "evidence only",
-      "source_head": "c1281723f95b949b04e9d5ee023c402ea6abf827"
+      "source_head": "1aa429a25d5a7c5cff876f83ca56532834483e9d"
     },
     "connector_tests": 30,
     "evidence_origin": "Accepted PR #21 GitHub Actions logs; completed suites were not re-run",
