@@ -11,6 +11,7 @@ import ast, pathlib
 for path in pathlib.Path('lib').glob('*.py'):
     ast.parse(path.read_text(), filename=str(path))
 PY
+bash validation/runtime-truth-fixtures.sh
 
 printf 'Validating generated Homebrew manifest parity...\n'
 bash bin/workstation-toolsets brewfile | cmp - Brewfile
