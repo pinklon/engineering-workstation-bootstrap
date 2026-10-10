@@ -54,6 +54,10 @@ if [[ -n "$PRIVATE_PROFILE" ]]; then
   profile_root="$(cd "$(dirname "$PRIVATE_PROFILE")" && pwd -P)"
 fi
 
+codex_model="$(jq -r '.codexModel // empty' "$CONTRACT")"
+if [[ -n "$codex_model" ]]; then
+  [[ "$codex_model" =~ ^[a-z0-9][a-z0-9._-]{0,127}$ ]] || ws_die "activation contract contains invalid Codex model ID"
+fi
 manage_skill_roots="$(jq -r '.manageSkillRoots // false' "$CONTRACT")"
 state_root="$TARGET_HOME/.local/state/engineering-workstation-bootstrap"
 share_root="$TARGET_HOME/.local/share/engineering-workstation-bootstrap"
@@ -102,10 +106,11 @@ optional_mcp="$backup_root/optional-mcp.txt"
 if [[ -n "$PRIVATE_PROFILE" ]]; then
   jq -r '.mcp[]? | select(.startup == "disabled") | .name' "$PRIVATE_PROFILE" > "$optional_mcp"
 fi
-bash "$ROOT/bin/render-codex-config" \
-  --source "$TARGET_HOME/.codex/config.toml" \
-  --output "$release_dir/config/codex/config.toml" \
-  --optional-mcp-file "$optional_mcp"
+render_args=(--source "$TARGET_HOME/.codex/config.toml"
+  --output "$release_dir/config/codex/config.toml"
+  --optional-mcp-file "$optional_mcp")
+[[ -z "$codex_model" ]] || render_args+=(--model-override "$codex_model")
+bash "$ROOT/bin/render-codex-config" "${render_args[@]}"
 
 if [[ -n "$PRIVATE_PROFILE" ]]; then
   github_root="$(jq -r '.shell.githubRoot // empty' "$PRIVATE_PROFILE")"

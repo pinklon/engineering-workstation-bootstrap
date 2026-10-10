@@ -59,6 +59,17 @@ jq -n --arg home "$(cd "$HOME" && pwd -P)" \
 Set `manageSkillRoots` only when a local private profile has inventoried and
 checksum-bound every active skill entrypoint.
 
+An owner may optionally pin a **verified account-supported Codex model** for a
+single managed activation by adding `codexModel` to that same exact activation
+contract. For example, after an independent, authenticated disposable CLI probe
+succeeds with a specific model ID, add `codexModel` with that exact ID. The
+renderer replaces only the root Codex `model` value in the new, rollback-protected
+release; it preserves `model_reasoning_effort`, MCP/provider configuration and
+unrelated user-owned settings. Without `codexModel`, the previous model is
+preserved. Model availability is product/account-specific: API-model existence
+alone is not proof that a ChatGPT-signed-in Codex CLI can use it. Never update
+files through the live managed `~/.codex/config.toml` symlink directly.
+
 ## 8. Run the guided bootstrap
 
 ```bash

@@ -72,10 +72,11 @@ jq -n --arg utilitySha "$utility_sha" \
 profile_sha="$(shasum -a 256 "$tmp/private-profile.json" | awk '{print $1}')"
 
 write_activation_contract() {
-  local version="$1" output="$2"
-  jq -n --arg targetHome "$fixture_home" --arg version "$version" --arg profileSha "$profile_sha" \
+  local version="$1" output="$2" model="${3:-}"
+  jq -n --arg targetHome "$fixture_home" --arg version "$version" --arg profileSha "$profile_sha" --arg model "$model" \
     '{schemaVersion:1,activationAuthorized:true,allowLiveHome:false,authorityReference:"fixture:activation",
-      targetHome:$targetHome,version:$version,privateProfileSha256:$profileSha,manageSkillRoots:true}' > "$output"
+      targetHome:$targetHome,version:$version,privateProfileSha256:$profileSha,manageSkillRoots:true}
+      + (if $model == "" then {} else {codexModel:$model} end)' > "$output"
 }
 
 printf 'Validating manifests and instruction policy...\n'
@@ -115,14 +116,17 @@ test "$(find -L "$fixture_home/.codex/skills" "$fixture_home/.agents/skills" -ty
 test -f "$fixture_home/.local/share/engineering-workstation-bootstrap/current/skill-library/layered-fixture/layers/00/SKILL.md"
 
 printf 'Validating repeat activation idempotence and nested rollback...\n'
-write_activation_contract fixture-v1 "$tmp/activation-v2.json"
+write_activation_contract fixture-v1 "$tmp/activation-v2.json" gpt-6-astra
 WORKSTATION_TRANSACTION_ID=fixture-v2 bash bin/workstation-activate \
   --activation-contract "$tmp/activation-v2.json" --private-profile "$tmp/private-profile.json" \
   --home "$fixture_home" --version fixture-v1 >/dev/null
 test "$(grep -Fxc "source \"\$HOME/.config/engineering-workstation-bootstrap/shell.zsh\"" "$fixture_home/.zshrc")" = 1
 activation_two="$fixture_home/.local/state/engineering-workstation-bootstrap/receipts/activation-fixture-v2.json"
+test "$(grep -Fxc 'model = "gpt-6-astra"' "$fixture_home/.codex/config.toml")" = 1
+test "$(grep -Fxc 'approvals_reviewer = "auto_review"' "$fixture_home/.codex/config.toml")" = 1
 test "$(readlink "$fixture_home/.local/share/engineering-workstation-bootstrap/current")" = "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-v1-fixture-v2"
 bash bin/workstation-rollback --receipt "$activation_two" --home "$fixture_home" >/dev/null
+test "$(grep -Fxc 'model = "fixture-model"' "$fixture_home/.codex/config.toml")" = 1
 test "$(cat "$fixture_home/.local/state/engineering-workstation-bootstrap/current-transaction")" = fixture-v1
 bash bin/workstation-rollback --receipt "$activation_one" --home "$fixture_home" >/dev/null
 test ! -L "$fixture_home/.local/share/engineering-workstation-bootstrap/current"
