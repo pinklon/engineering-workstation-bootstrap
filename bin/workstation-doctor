@@ -60,6 +60,16 @@ if [[ "$MODE" == full ]]; then
   fi
   check 'GitHub authentication' bash "$ROOT/bin/github-auth-doctor"
   check 'Required connector capability conformance' bash "$ROOT/bin/connector-doctor" probe --home "$TARGET_HOME" --surface local-shell --output "$RECEIPT_ROOT/connectors-$STAMP-$$.json"
+  # Codex MCP OAuth is client-custodied; config can never certify grant health.
+  # Emit an immutable, secret-free inventory separately from read-canary proof.
+  if [[ "$TARGET_HOME" == "$(cd "$HOME" && pwd -P)" ]] && command -v codex >/dev/null 2>&1; then
+    if bash "$ROOT/bin/workstation-cloudflare-mcp" status \
+        --output "$RECEIPT_ROOT/cloudflare-oauth-$STAMP-$$.json" >/dev/null 2>&1; then
+      record 'Cloudflare MCP OAuth freshness: independent read proof still required' skipped
+    else
+      record 'Cloudflare MCP OAuth metadata inventory' fail
+    fi
+  fi
   if [[ "${ENABLE_CLOUDFLARE:-0}" == 1 ]]; then
     check 'Cloudflare authentication' bash "$ROOT/bin/cloudflare-auth-doctor"
   else
