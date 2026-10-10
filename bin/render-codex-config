@@ -9,6 +9,7 @@ SOURCE_FILE=''
 OUTPUT_FILE=''
 OPTIONAL_MCP_FILE=''
 CONNECTOR_PROFILE=''
+MODEL_OVERRIDE=''
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -16,11 +17,15 @@ while [[ $# -gt 0 ]]; do
     --output) OUTPUT_FILE="${2:-}"; shift 2 ;;
     --optional-mcp-file) OPTIONAL_MCP_FILE="${2:-}"; shift 2 ;;
     --connector-profile) CONNECTOR_PROFILE="${2:-}"; shift 2 ;;
-    *) ws_die "usage: render-codex-config --source <file> --output <file> [--optional-mcp-file <file>] [--connector-profile <name>]" ;;
+    --model-override) MODEL_OVERRIDE="${2:-}"; shift 2 ;;
+    *) ws_die "usage: render-codex-config --source <file> --output <file> [--optional-mcp-file <file>] [--connector-profile <name>] [--model-override <model-id>]" ;;
   esac
 done
 
 [[ -n "$OUTPUT_FILE" ]] || ws_die "--output is required"
+if [[ -n "$MODEL_OVERRIDE" ]]; then
+  [[ "$MODEL_OVERRIDE" =~ ^[a-z0-9][a-z0-9._-]{0,127}$ ]] || ws_die "invalid Codex model ID"
+fi
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 input="$(mktemp)"
 optional="$(mktemp)"
@@ -35,7 +40,7 @@ else
   : > "$optional"
 fi
 
-awk -v optional_file="$optional" '
+awk -v optional_file="$optional" -v model_override="$MODEL_OVERRIDE" '
   BEGIN {
     while ((getline item < optional_file) > 0) optional[item] = 1
     close(optional_file)
@@ -44,6 +49,7 @@ awk -v optional_file="$optional" '
     print "approval_policy = \"on-request\""
     print "approvals_reviewer = \"auto_review\""
     print "sandbox_mode = \"workspace-write\""
+    if (model_override != "") print "model = \"" model_override "\""
   }
   function mcp_name(header, value) {
     value = header
@@ -63,6 +69,9 @@ awk -v optional_file="$optional" '
     current_mcp = mcp_name($0)
     mcp_enabled_seen = 0
     print
+    next
+  }
+  section == "" && model_override != "" && /^[[:space:]]*model[[:space:]]*=/ {
     next
   }
   section == "" && /^[[:space:]]*approval_policy[[:space:]]*=/ {
