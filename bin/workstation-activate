@@ -97,7 +97,7 @@ trap cleanup_lock EXIT
 
 [[ ! -e "$release_dir" ]] || ws_die "version transaction already exists: $release_dir"
 mkdir -p "$release_dir/config/codex" "$release_dir/runtime" "$release_dir/private-bin" \
-  "$release_dir/codex-skills" "$release_dir/agent-skills" "$release_dir/skill-library" \
+  "$release_dir/codex-skills" "$release_dir/agent-skills" "$release_dir/skill-library" "$release_dir/task-scoped-skills" \
   "$release_dir/bin-links" "$release_dir/generated-home" "$backup_root/files"
 for runtime_path in bin lib config manifests bootstrap packaging docs skills validation Brewfile mise.toml Makefile AGENTS.md CLAUDE.md README.md CONTRIBUTING.md SECURITY.md LICENSE install.sh; do
   cp -R "$ROOT/$runtime_path" "$release_dir/runtime/"
