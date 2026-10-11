@@ -175,6 +175,21 @@ reference from \`$library\`. The external package is outside active discovery so
 its internal layers are not scanned as standalone skills.
 EOF
   done < <(jq -c '.skills[]?' "$PRIVATE_PROFILE")
+  # Task-scoped media packages stay available by explicit source reference,
+  # but receive no discoverable global skill wrapper.
+  while IFS= read -r skill; do
+    name="$(jq -r '.name' <<<"$skill")"
+    source_dir="$(jq -r '.sourceDir' <<<"$skill")"
+    [[ "$source_dir" == /* ]] || source_dir="$profile_root/$source_dir"
+    [[ "$(jq -r '.state' <<<"$skill")" == on-demand ]] || ws_die "invalid task-scoped state: $name"
+    [[ "$(jq -r '.installRoot' <<<"$skill")" == agent-skills ]] || ws_die "invalid task-scoped origin: $name"
+    [[ -f "$source_dir/SKILL.md" ]] || ws_die "missing task-scoped source: $name"
+    case "$name" in
+      hyperframes|hyperframes-animation|hyperframes-audio|hyperframes-cli|hyperframes-core|hyperframes-creative|hyperframes-keyframes|hyperframes-registry|media-use) ;;
+      *) ws_die "unsupported task-scoped skill: $name" ;;
+    esac
+    cp -R "$source_dir" "$release_dir/task-scoped-skills/$name"
+  done < <(jq -c '.taskScopedSkills[]?' "$PRIVATE_PROFILE")
 fi
 
 managed_commands=(workstation-bootstrap workstation-activate workstation-rollback workstation-doctor connector-doctor workstation-cloudflare-mcp workstation-toolsets workstation-publish-drive workstation-private-profile environment-inventory browser-gate-python github-auth-doctor cloudflare-auth-doctor)
