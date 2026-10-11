@@ -48,6 +48,12 @@ if [[ -n "$PRIVATE_PROFILE" ]]; then
   if rg -n "$(ws_secret_pattern)" "$PRIVATE_PROFILE" >/dev/null 2>&1; then
     ws_die "private profile matched the secret exclusion policy"
   fi
+  # Re-enrollment must not resurrect a legacy READ_ONLY governor from an old
+  # Google Drive/private profile archive. Fail before creating a release or
+  # modifying the live home. Canonical successor controls remain separate.
+  if jq -e '.skills[]? | select(.name == "governed-edit-protocol")' "$PRIVATE_PROFILE" >/dev/null; then
+    ws_die "retired governed-edit-protocol must not be installed; regenerate the private profile"
+  fi
   expected_profile_sha="$(jq -r '.privateProfileSha256 // empty' "$CONTRACT")"
   [[ -n "$expected_profile_sha" ]] || ws_die "contract must bind the private profile checksum"
   [[ "$(ws_sha256 "$PRIVATE_PROFILE")" == "$expected_profile_sha" ]] || ws_die "private profile checksum does not match contract"
