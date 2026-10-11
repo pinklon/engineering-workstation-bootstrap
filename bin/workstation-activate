@@ -51,8 +51,11 @@ if [[ -n "$PRIVATE_PROFILE" ]]; then
   # Re-enrollment must not resurrect a legacy READ_ONLY governor from an old
   # Google Drive/private profile archive. Fail before creating a release or
   # modifying the live home. Canonical successor controls remain separate.
-  if jq -e '.skills[]? | select(.name == "governed-edit-protocol")' "$PRIVATE_PROFILE" >/dev/null; then
-    ws_die "retired governed-edit-protocol must not be installed; regenerate the private profile"
+  if jq -e '(.skills[]?, .taskScopedSkills[]?) | select(.name == "governed-edit-protocol" or .name == "llmstack-installer-discipline" or (.name | startswith("vsok-")))' "$PRIVATE_PROFILE" >/dev/null; then
+    ws_die "retired legacy editing skills must not be installed; regenerate the private profile"
+  fi
+  if jq -e '.skills[]? | select(.name == "hyperframes" or (.name | startswith("hyperframes-")) or .name == "media-use")' "$PRIVATE_PROFILE" >/dev/null; then
+    ws_die "creative skills must be staged for task-scoped use, not global discovery"
   fi
   expected_profile_sha="$(jq -r '.privateProfileSha256 // empty' "$CONTRACT")"
   [[ -n "$expected_profile_sha" ]] || ws_die "contract must bind the private profile checksum"
