@@ -52,10 +52,15 @@ printf '%s\n' '# internal layer remains package material' \
   > "$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-codex/layers/00/SKILL.md"
 printf '%s\n' '---' 'name: linked-agent' 'description: full package fixture' '---' \
   '# canonical package' > "$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-agent/SKILL.md"
+# A retired local skill remains in old installs but is not re-exported.
+mkdir -p "$managed_release/codex-skills/governed-edit-protocol"
+printf '%s\n' '---' 'name: governed-edit-protocol' 'description: retired fixture' '---' \
+  > "$managed_release/codex-skills/governed-edit-protocol/SKILL.md"
 HOME="$inventory_home" bash bin/workstation-private-profile inventory \
   --output "$profile_tmp/inventoried-profile.json" >/dev/null
 test "$(jq '.skills | length' "$profile_tmp/inventoried-profile.json")" = 2
 test "$(jq -r '[.skills[].name] | sort | join(",")' "$profile_tmp/inventoried-profile.json")" = 'linked-agent,linked-codex'
+test ! -e "$profile_tmp/inventoried-profile.assets/skills/governed-edit-protocol"
 test -f "$profile_tmp/inventoried-profile.assets/skills/linked-codex/layers/00/SKILL.md"
 cmp "$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-codex/SKILL.md" \
   "$profile_tmp/inventoried-profile.assets/skills/linked-codex/SKILL.md"
@@ -90,6 +95,18 @@ printf 'Validating explicit activation gate...\n'
 if bash bin/workstation-activate --home "$fixture_home" --version fixture >/dev/null 2>&1; then exit 1; fi
 
 printf 'Validating transactional activation and pre-state receipt...\n'
+printf 'Validating retired-governor activation rejection...\n'
+write_activation_contract fixture-retired "$tmp/activation-retired-base.json"
+jq '.skills += [{name:"governed-edit-protocol",sourceDir:"private-profile.assets/skills/layered-fixture",installRoot:"codex-skills",state:"enabled"}]' \
+  "$tmp/private-profile.json" > "$tmp/retired-profile.json"
+retired_profile_sha="$(shasum -a 256 "$tmp/retired-profile.json" | awk '{print $1}')"
+jq --arg sha "$retired_profile_sha" '.privateProfileSha256=$sha' \
+  "$tmp/activation-retired-base.json" > "$tmp/activation-retired.json"
+if WORKSTATION_TRANSACTION_ID=fixture-retired bash bin/workstation-activate \
+  --activation-contract "$tmp/activation-retired.json" --private-profile "$tmp/retired-profile.json" \
+  --home "$fixture_home" --version fixture-retired >/dev/null 2>&1; then exit 1; fi
+test ! -e "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-retired-fixture-retired"
+
 write_activation_contract fixture-v1 "$tmp/activation-v1.json"
 WORKSTATION_TRANSACTION_ID=fixture-v1 bash bin/workstation-activate \
   --activation-contract "$tmp/activation-v1.json" --private-profile "$tmp/private-profile.json" \
