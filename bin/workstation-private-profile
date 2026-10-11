@@ -35,6 +35,7 @@ assets_ref="$output_name.assets"
 rm -rf "$assets_dir"
 mkdir -p "$assets_dir/skills" "$assets_dir/bin"
 : > "$work/skills.ndjson"
+: > "$work/task-scoped-skills.ndjson"
 : > "$work/environment.ndjson"
 : > "$work/mcp.ndjson"
 : > "$work/utilities.ndjson"
@@ -46,9 +47,11 @@ record_skill() {
   source_dir="$(dirname "$skill_file")"
   name="$(awk -F': *' '$1 == "name" {gsub(/^"|"$/, "", $2); print $2; exit}' "$skill_file")"
   [[ -n "$name" ]] || name="$(basename "$source_dir")"
-  # Local legacy governor is retired. Never export it into a new managed profile.
-  # The canonical Skills registry does not admit this invocation (Skills #293).
-  [[ "$name" != governed-edit-protocol ]] || return 0
+  # Historical VSOK/LLMStack governors are not admitted by the active Skills
+  # registry. Never re-export them, including via an archived private profile.
+  case "$name" in
+    governed-edit-protocol|llmstack-installer-discipline|vsok-diff-churn-guard|vsok-html-singlefile-modularization|vsok-invariants-snapshot|vsok-persistence-schema-guard|vsok-preflight-regression-harness|vsok-refactor-protocol|vsok-release-and-tag|vsok-skill-authoring-guardrails|vsok-spec-contract-guard|vsok-ticket-runner) return 0 ;;
+  esac
   grep -Fqx "$name" "$work/seen-skills" 2>/dev/null && return 0
   printf '%s\n' "$name" >> "$work/seen-skills"
   safe_name="$(printf '%s' "$name" | sed 's/[^A-Za-z0-9._-]/-/g')"
@@ -73,8 +76,15 @@ record_skill() {
   fi
   bundled_dir="$assets_dir/skills/$safe_name"
   cp -R "$source_dir" "$bundled_dir"
-  jq -cn --arg name "$name" --arg sourceDir "$assets_ref/skills/$safe_name" --arg installRoot "$install_root" \
-    '{name:$name,sourceDir:$sourceDir,installRoot:$installRoot,state:"enabled"}' >> "$work/skills.ndjson"
+  case "$name" in
+    hyperframes|hyperframes-animation|hyperframes-audio|hyperframes-cli|hyperframes-core|hyperframes-creative|hyperframes-keyframes|hyperframes-registry|media-use)
+      # Explicit task loading only: retain native bytes outside Codex discovery.
+      jq -cn --arg name "$name" --arg sourceDir "$assets_ref/skills/$safe_name" --arg installRoot "$install_root" \
+        '{name:$name,sourceDir:$sourceDir,installRoot:$installRoot,state:"on-demand"}' >> "$work/task-scoped-skills.ndjson" ;;
+    *)
+      jq -cn --arg name "$name" --arg sourceDir "$assets_ref/skills/$safe_name" --arg installRoot "$install_root" \
+        '{name:$name,sourceDir:$sourceDir,installRoot:$installRoot,state:"enabled"}' >> "$work/skills.ndjson" ;;
+  esac
 }
 
 current_release=''
@@ -101,6 +111,14 @@ for skill_root in "$HOME/.codex/skills" "$HOME/.agents/skills"; do
     [[ -d "$skill_root/.system" ]] && find -H "$skill_root/.system" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print
   )
 done
+
+# Preserve already scoped creative packages on subsequent managed releases even
+# though they deliberately have no global entrypoints.
+if [[ -n "$current_release" && -d "$current_release/task-scoped-skills" ]]; then
+  while IFS= read -r skill_file; do
+    record_skill "$skill_file" agent-skills ''
+  done < <(find "$current_release/task-scoped-skills" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print)
+fi
 
 for startup in "$HOME/.zshenv" "$HOME/.zprofile" "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.profile"; do
   [[ -f "$startup" ]] || continue
@@ -134,12 +152,13 @@ jq -n \
   --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg githubRoot "$github_root" \
   --slurpfile skills "$work/skills.ndjson" \
+  --slurpfile taskScopedSkills "$work/task-scoped-skills.ndjson" \
   --slurpfile environment "$work/environment.ndjson" \
   --slurpfile mcp "$work/mcp.ndjson" \
   --slurpfile utilities "$work/utilities.ndjson" \
   '{schemaVersion:1,profile:"tony-private",generatedAt:$generatedAt,secretValues:false,
     shell:{preservePrompt:true,githubRoot:$githubRoot,functions:["cgh","lgh"]},
-    skills:$skills,environment:$environment,mcp:$mcp,utilities:$utilities}' > "$OUTPUT"
+    skills:$skills,taskScopedSkills:$taskScopedSkills,environment:$environment,mcp:$mcp,utilities:$utilities}' > "$OUTPUT"
 
 if rg -n "$(ws_secret_pattern)" "$OUTPUT" >/dev/null 2>&1; then
   ws_die "generated private profile matched the secret exclusion policy"
@@ -150,5 +169,5 @@ fi
 
 rm -rf "$work"
 printf 'PASS: local private profile generated at %s\n' "$OUTPUT"
-printf 'Skills: %s; utilities: %s; optional MCP entries: %s; secret values: false\n' \
-  "$(jq '.skills | length' "$OUTPUT")" "$(jq '.utilities | length' "$OUTPUT")" "$(jq '.mcp | length' "$OUTPUT")"
+printf 'Standing skills: %s; on-demand skills: %s; utilities: %s; optional MCP entries: %s; secret values: false\n' \
+  "$(jq '.skills | length' "$OUTPUT")" "$(jq '.taskScopedSkills | length' "$OUTPUT")" "$(jq '.utilities | length' "$OUTPUT")" "$(jq '.mcp | length' "$OUTPUT")"
