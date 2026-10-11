@@ -37,6 +37,30 @@ discovery roots, and generates one frontmatter-valid wrapper per enabled skill.
 Internal layers remain available to their loader but are never scanned as
 standalone skills. Duplicate names are canonicalized during inventory.
 
+## Lean installed skill profile
+
+The inventory explicitly excludes the obsolete `governed-edit-protocol`,
+`llmstack-installer-discipline`, and the audited legacy VSOK skill identities.
+Their source/history is preserved in preceding immutable workstation releases.
+They are not canonical active GhostMesh Skills and must not be restored through
+an old Drive private profile. The activation gate rejects such profiles before
+writing the effective home.
+
+The HyperFrames creative family and `media-use` are retained as `taskScopedSkills`
+in the private profile. Activation copies their original packages without
+rewriting them to `current/task-scoped-skills/<name>/`, outside both global
+skill-discovery roots. An authorized creative task must explicitly reference
+`current/task-scoped-skills/<name>/SKILL.md`; package presence alone is not
+proof of skill invocation, consumption or execution permission. Profile
+regeneration inventories this directory so a later managed upgrade does not
+silently lose task-scoped packages. No separate canonical registry is created.
+
+All other current skills remain global until a separate profile-specific
+consumer evaluation proves narrower placement. Live changes use the existing
+owner-bound transactional activation and rollback process only when current
+Codex sessions can safely transition. The active model, MCP consent and
+Production authority are not changed by skill profiling.
+
 ## Codex and optional MCP state
 
 The renderer preserves unrelated existing Codex settings and routes routine
