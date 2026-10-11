@@ -18,6 +18,8 @@ chmod 755 "$tmp/reasonpack"
 utility_sha="$(shasum -a 256 "$tmp/reasonpack" | awk '{print $1}')"
 mkdir -p "$tmp/private-profile.assets/skills" "$tmp/private-profile.assets/bin"
 cp -R "$tmp/source-skill" "$tmp/private-profile.assets/skills/layered-fixture"
+mkdir -p "$tmp/private-profile.assets/skills/hyperframes"
+printf '%s\n' '---' 'name: hyperframes' 'description: fixture task-scoped media' '---' '# media fixture' > "$tmp/private-profile.assets/skills/hyperframes/SKILL.md"
 cp "$tmp/reasonpack" "$tmp/private-profile.assets/bin/reasonpack"
 
 printf 'Validating private-profile inventory through managed skill-root symlinks...\n'
@@ -56,11 +58,25 @@ printf '%s\n' '---' 'name: linked-agent' 'description: full package fixture' '--
 mkdir -p "$managed_release/codex-skills/governed-edit-protocol"
 printf '%s\n' '---' 'name: governed-edit-protocol' 'description: retired fixture' '---' \
   > "$managed_release/codex-skills/governed-edit-protocol/SKILL.md"
+for old in llmstack-installer-discipline vsok-ticket-runner vsok-refactor-protocol; do
+  mkdir -p "$managed_release/codex-skills/$old"
+  printf '%s\n' '---' "name: $old" 'description: obsolete fixture' '---' \
+    > "$managed_release/codex-skills/$old/SKILL.md"
+done
+mkdir -p "$managed_release/agent-skills/hyperframes"
+printf '%s\n' '---' 'name: hyperframes' 'description: creative fixture' '---' \
+  > "$managed_release/agent-skills/hyperframes/SKILL.md"
 HOME="$inventory_home" bash bin/workstation-private-profile inventory \
   --output "$profile_tmp/inventoried-profile.json" >/dev/null
 test "$(jq '.skills | length' "$profile_tmp/inventoried-profile.json")" = 2
+test "$(jq '.taskScopedSkills | length' "$profile_tmp/inventoried-profile.json")" = 1
+test "$(jq -r '.taskScopedSkills[0].name' "$profile_tmp/inventoried-profile.json")" = hyperframes
 test "$(jq -r '[.skills[].name] | sort | join(",")' "$profile_tmp/inventoried-profile.json")" = 'linked-agent,linked-codex'
 test ! -e "$profile_tmp/inventoried-profile.assets/skills/governed-edit-protocol"
+test ! -e "$profile_tmp/inventoried-profile.assets/skills/llmstack-installer-discipline"
+test ! -e "$profile_tmp/inventoried-profile.assets/skills/vsok-refactor-protocol"
+test ! -e "$profile_tmp/inventoried-profile.assets/skills/vsok-ticket-runner"
+test -f "$profile_tmp/inventoried-profile.assets/skills/hyperframes/SKILL.md"
 test -f "$profile_tmp/inventoried-profile.assets/skills/linked-codex/layers/00/SKILL.md"
 cmp "$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-codex/SKILL.md" \
   "$profile_tmp/inventoried-profile.assets/skills/linked-codex/SKILL.md"
@@ -71,6 +87,7 @@ jq -n --arg utilitySha "$utility_sha" \
   '{schemaVersion:1,profile:"fixture-private",secretValues:false,
     shell:{preservePrompt:true,githubRoot:"/fixture/github",functions:["cgh","lgh"]},
     skills:[{name:"layered-fixture",sourceDir:"private-profile.assets/skills/layered-fixture",installRoot:"codex-skills",state:"enabled"}],
+    taskScopedSkills:[{name:"hyperframes",sourceDir:"private-profile.assets/skills/hyperframes",installRoot:"agent-skills",state:"on-demand"}],
     environment:[{name:"SUPABASE_ACCESS_TOKEN",class:"oauth-enrolled",origin:"provider",valueIncluded:false}],
     mcp:[{name:"supabase-fixture",state:"auth-required",startup:"disabled",credentials:"preserve"}],
     utilities:[{name:"reasonpack",source:"private-profile.assets/bin/reasonpack",sha256:$utilitySha,aliases:["yt","rp"],dependencies:[],classification:"canonicalize"}]}' > "$tmp/private-profile.json"
@@ -131,6 +148,10 @@ rg -q '^cgh\(\)' "$fixture_home/.config/engineering-workstation-bootstrap/functi
 rg -q '^lgh\(\)' "$fixture_home/.config/engineering-workstation-bootstrap/functions.zsh"
 test "$(find -L "$fixture_home/.codex/skills" "$fixture_home/.agents/skills" -type f -path '*/layers/*/SKILL.md' | wc -l | tr -d ' ')" = 0
 test -f "$fixture_home/.local/share/engineering-workstation-bootstrap/current/skill-library/layered-fixture/layers/00/SKILL.md"
+test -f "$fixture_home/.local/share/engineering-workstation-bootstrap/current/task-scoped-skills/hyperframes/SKILL.md"
+test ! -e "$fixture_home/.agents/skills/hyperframes"
+test ! -e "$fixture_home/.codex/skills/vsok-ticket-runner"
+test ! -e "$fixture_home/.codex/skills/llmstack-installer-discipline"
 
 printf 'Validating repeat activation idempotence and nested rollback...\n'
 write_activation_contract fixture-v1 "$tmp/activation-v2.json" gpt-6-astra
