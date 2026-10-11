@@ -124,6 +124,27 @@ if WORKSTATION_TRANSACTION_ID=fixture-retired bash bin/workstation-activate \
   --home "$fixture_home" --version fixture-retired >/dev/null 2>&1; then exit 1; fi
 test ! -e "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-retired-fixture-retired"
 
+# Every historical private profile must fail closed on the newly retired
+# governors. Do not rely on a missing package to produce a false PASS.
+for old in llmstack-installer-discipline vsok-ticket-runner vsok-refactor-protocol; do
+  jq --arg name "$old" '.skills += [{name:$name,sourceDir:"private-profile.assets/skills/layered-fixture",installRoot:"codex-skills",state:"enabled"}]' \
+    "$tmp/private-profile.json" > "$tmp/retired-extended-profile.json"
+  old_sha="$(shasum -a 256 "$tmp/retired-extended-profile.json" | awk '{print $1}')"
+  jq --arg sha "$old_sha" '.privateProfileSha256=$sha' "$tmp/activation-retired-base.json" > "$tmp/activation-retired-extended.json"
+  if WORKSTATION_TRANSACTION_ID=fixture-retired-extended bash bin/workstation-activate \
+    --activation-contract "$tmp/activation-retired-extended.json" --private-profile "$tmp/retired-extended-profile.json" \
+    --home "$fixture_home" --version fixture-retired >"$tmp/retired-extended.log" 2>&1; then exit 1; fi
+  grep -Fq 'retired legacy editing skills must not be installed' "$tmp/retired-extended.log"
+done
+jq '.skills += [{name:"hyperframes",sourceDir:"private-profile.assets/skills/hyperframes",installRoot:"agent-skills",state:"enabled"}]' \
+  "$tmp/private-profile.json" > "$tmp/creative-global-profile.json"
+creative_sha="$(shasum -a 256 "$tmp/creative-global-profile.json" | awk '{print $1}')"
+jq --arg sha "$creative_sha" '.privateProfileSha256=$sha' "$tmp/activation-retired-base.json" > "$tmp/activation-creative-global.json"
+if WORKSTATION_TRANSACTION_ID=fixture-creative-global bash bin/workstation-activate \
+  --activation-contract "$tmp/activation-creative-global.json" --private-profile "$tmp/creative-global-profile.json" \
+  --home "$fixture_home" --version fixture-retired >"$tmp/creative-global.log" 2>&1; then exit 1; fi
+grep -Fq 'creative skills must be staged for task-scoped use' "$tmp/creative-global.log"
+
 write_activation_contract fixture-v1 "$tmp/activation-v1.json"
 WORKSTATION_TRANSACTION_ID=fixture-v1 bash bin/workstation-activate \
   --activation-contract "$tmp/activation-v1.json" --private-profile "$tmp/private-profile.json" \
@@ -152,6 +173,11 @@ test -f "$fixture_home/.local/share/engineering-workstation-bootstrap/current/ta
 test ! -e "$fixture_home/.agents/skills/hyperframes"
 test ! -e "$fixture_home/.codex/skills/vsok-ticket-runner"
 test ! -e "$fixture_home/.codex/skills/llmstack-installer-discipline"
+# Task-scoped packages must survive a future profile regeneration from a
+# managed release even though no wrapper advertises them globally.
+HOME="$fixture_home" bash bin/workstation-private-profile inventory --output "$profile_tmp/reinventoried.json" >/dev/null
+test "$(jq -r '[.taskScopedSkills[]?.name] | join(",")' "$profile_tmp/reinventoried.json")" = hyperframes
+test -f "$profile_tmp/reinventoried.assets/skills/hyperframes/SKILL.md"
 
 printf 'Validating repeat activation idempotence and nested rollback...\n'
 write_activation_contract fixture-v1 "$tmp/activation-v2.json" gpt-6-astra
