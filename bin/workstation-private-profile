@@ -46,6 +46,9 @@ record_skill() {
   source_dir="$(dirname "$skill_file")"
   name="$(awk -F': *' '$1 == "name" {gsub(/^"|"$/, "", $2); print $2; exit}' "$skill_file")"
   [[ -n "$name" ]] || name="$(basename "$source_dir")"
+  # Local legacy governor is retired. Never export it into a new managed profile.
+  # The canonical Skills registry does not admit this invocation (Skills #293).
+  [[ "$name" != governed-edit-protocol ]] || return 0
   grep -Fqx "$name" "$work/seen-skills" 2>/dev/null && return 0
   printf '%s\n' "$name" >> "$work/seen-skills"
   safe_name="$(printf '%s' "$name" | sed 's/[^A-Za-z0-9._-]/-/g')"
