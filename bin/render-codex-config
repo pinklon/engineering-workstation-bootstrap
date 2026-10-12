@@ -45,7 +45,8 @@ awk -v optional_file="$optional" -v model_override="$MODEL_OVERRIDE" '
     while ((getline item < optional_file) > 0) optional[item] = 1
     close(optional_file)
     section = ""
-    print "# Managed routine-execution posture; high-risk stops remain in AGENTS.md."
+    banner = "# Managed routine-execution posture; high-risk stops remain in AGENTS.md."
+    print banner
     print "approval_policy = \"on-request\""
     print "approvals_reviewer = \"auto_review\""
     print "sandbox_mode = \"workspace-write\""
@@ -63,6 +64,7 @@ awk -v optional_file="$optional" -v model_override="$MODEL_OVERRIDE" '
       print "enabled = false"
     }
   }
+  $0 == banner { next }
   /^\[/ {
     finish_section()
     section = $0

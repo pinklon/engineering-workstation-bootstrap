@@ -263,4 +263,44 @@ test -f "$distribution/current/private/private-profile.assets/skills/layered-fix
 test "$(find "$distribution/receipts" -type f -name 'publish-*.json' | wc -l | tr -d ' ')" -ge 1
 test "$(awk 'NR==1 {print $1}' "$distribution/current/checksums.sha256")" = "$(jq -r .sha256 "$distribution/current/manifest.json")"
 
+printf 'Validating digest-bound staged Codex config source and rollback...\n'
+cat > "$tmp/staged-codex.toml" <<'TOML'
+# Managed routine-execution posture; high-risk stops remain in AGENTS.md.
+# Managed routine-execution posture; high-risk stops remain in AGENTS.md.
+model = "fixture-model"
+model_reasoning_effort = "high"
+personality = "pragmatic"
+[projects."/synthetic/still-trusted"]
+trust_level = "trusted"
+[mcp_servers."supabase-fixture"]
+url = "https://example.invalid/mcp"
+bearer_token_env_var = "SUPABASE_ACCESS_TOKEN"
+enabled = true
+TOML
+write_activation_contract fixture-staged "$tmp/staged-base.json"
+config_source_sha="$(shasum -a 256 "$tmp/staged-codex.toml" | awk '{print $1}')"
+jq --arg src "$tmp/staged-codex.toml" --arg sha "$config_source_sha" \
+  '.codexConfigSource=$src | .codexConfigSourceSha256=$sha' \
+  "$tmp/staged-base.json" > "$tmp/staged-contract.json"
+jq '.codexConfigSourceSha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
+  "$tmp/staged-contract.json" > "$tmp/staged-bad.json"
+if WORKSTATION_TRANSACTION_ID=staged-bad bash bin/workstation-activate \
+  --activation-contract "$tmp/staged-bad.json" --private-profile "$tmp/private-profile.json" \
+  --home "$fixture_home" --version fixture-staged >"$tmp/staged-bad.log" 2>&1; then exit 1; fi
+grep -Fq 'staged Codex config changed after approval' "$tmp/staged-bad.log"
+test ! -e "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-staged-staged-bad"
+WORKSTATION_TRANSACTION_ID=staged-good bash bin/workstation-activate \
+  --activation-contract "$tmp/staged-contract.json" --private-profile "$tmp/private-profile.json" \
+  --home "$fixture_home" --version fixture-staged >/dev/null
+python3 - "$fixture_home/.codex/config.toml" <<'PY'
+import pathlib,sys,tomllib
+p=pathlib.Path(sys.argv[1]);text=p.read_text();d=tomllib.loads(text)
+assert text.count('# Managed routine-execution posture; high-risk stops remain in AGENTS.md.')==1
+assert d['model']=='fixture-model' and d['model_reasoning_effort']=='high'
+assert d['personality']=='pragmatic' and d['projects']['/synthetic/still-trusted']['trust_level']=='trusted'
+assert d['mcp_servers']['supabase-fixture']['enabled'] is False
+PY
+bash bin/workstation-rollback --receipt "$fixture_home/.local/state/engineering-workstation-bootstrap/receipts/activation-staged-good.json" --home "$fixture_home" >/dev/null
+printf 'PASS: staged source SHA binding, normalization, and rollback\n'
+
 printf 'PASS: v2 activation, rollback, discovery, policy, MCP, utilities, secrets, reproducibility, and Drive fixtures\n'

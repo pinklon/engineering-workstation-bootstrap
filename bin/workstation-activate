@@ -63,6 +63,18 @@ if [[ -n "$PRIVATE_PROFILE" ]]; then
   profile_root="$(cd "$(dirname "$PRIVATE_PROFILE")" && pwd -P)"
 fi
 
+# A cleanup candidate can supply a private, checksum-bound TOML source without
+# editing the active managed symlink. Existing callers default to the live file.
+codex_config_source="$(jq -r '.codexConfigSource // empty' "$CONTRACT")"
+if [[ -n "$codex_config_source" ]]; then
+  [[ "$codex_config_source" == /* && "$codex_config_source" != *'/../'* && ! -L "$codex_config_source" && -f "$codex_config_source" ]] || ws_die "invalid staged Codex config source"
+  config_sha="$(jq -r '.codexConfigSourceSha256 // empty' "$CONTRACT")"
+  [[ "$config_sha" =~ ^[a-f0-9]{64}$ ]] || ws_die "staged Codex config requires SHA-256 pin"
+  [[ "$(ws_sha256 "$codex_config_source")" == "$config_sha" ]] || ws_die "staged Codex config changed after approval"
+else
+  [[ -z "$(jq -r '.codexConfigSourceSha256 // empty' "$CONTRACT")" ]] || ws_die "Codex config source SHA without source"
+  codex_config_source="$TARGET_HOME/.codex/config.toml"
+fi
 codex_model="$(jq -r '.codexModel // empty' "$CONTRACT")"
 if [[ -n "$codex_model" ]]; then
   [[ "$codex_model" =~ ^[a-z0-9][a-z0-9._-]{0,127}$ ]] || ws_die "activation contract contains invalid Codex model ID"
@@ -115,7 +127,7 @@ optional_mcp="$backup_root/optional-mcp.txt"
 if [[ -n "$PRIVATE_PROFILE" ]]; then
   jq -r '.mcp[]? | select(.startup == "disabled") | .name' "$PRIVATE_PROFILE" > "$optional_mcp"
 fi
-render_args=(--source "$TARGET_HOME/.codex/config.toml"
+render_args=(--source "$codex_config_source"
   --output "$release_dir/config/codex/config.toml"
   --optional-mcp-file "$optional_mcp")
 [[ -z "$codex_model" ]] || render_args+=(--model-override "$codex_model")
