@@ -51,8 +51,11 @@ if [[ -n "$PRIVATE_PROFILE" ]]; then
   # Re-enrollment must not resurrect a legacy READ_ONLY governor from an old
   # Google Drive/private profile archive. Fail before creating a release or
   # modifying the live home. Canonical successor controls remain separate.
-  if jq -e '.skills[]? | select(.name == "governed-edit-protocol")' "$PRIVATE_PROFILE" >/dev/null; then
-    ws_die "retired governed-edit-protocol must not be installed; regenerate the private profile"
+  if jq -e '(.skills[]?, .taskScopedSkills[]?) | select(.name == "governed-edit-protocol" or .name == "llmstack-installer-discipline" or (.name | startswith("vsok-")))' "$PRIVATE_PROFILE" >/dev/null; then
+    ws_die "retired legacy editing skills must not be installed; regenerate the private profile"
+  fi
+  if jq -e '.skills[]? | select(.name == "hyperframes" or (.name | startswith("hyperframes-")) or .name == "media-use")' "$PRIVATE_PROFILE" >/dev/null; then
+    ws_die "creative skills must be staged for task-scoped use, not global discovery"
   fi
   expected_profile_sha="$(jq -r '.privateProfileSha256 // empty' "$CONTRACT")"
   [[ -n "$expected_profile_sha" ]] || ws_die "contract must bind the private profile checksum"
@@ -97,7 +100,7 @@ trap cleanup_lock EXIT
 
 [[ ! -e "$release_dir" ]] || ws_die "version transaction already exists: $release_dir"
 mkdir -p "$release_dir/config/codex" "$release_dir/runtime" "$release_dir/private-bin" \
-  "$release_dir/codex-skills" "$release_dir/agent-skills" "$release_dir/skill-library" \
+  "$release_dir/codex-skills" "$release_dir/agent-skills" "$release_dir/skill-library" "$release_dir/task-scoped-skills" \
   "$release_dir/bin-links" "$release_dir/generated-home" "$backup_root/files"
 for runtime_path in bin lib config manifests bootstrap packaging docs skills validation Brewfile mise.toml Makefile AGENTS.md CLAUDE.md README.md CONTRIBUTING.md SECURITY.md LICENSE install.sh; do
   cp -R "$ROOT/$runtime_path" "$release_dir/runtime/"
@@ -175,6 +178,21 @@ reference from \`$library\`. The external package is outside active discovery so
 its internal layers are not scanned as standalone skills.
 EOF
   done < <(jq -c '.skills[]?' "$PRIVATE_PROFILE")
+  # Task-scoped media packages stay available by explicit source reference,
+  # but receive no discoverable global skill wrapper.
+  while IFS= read -r skill; do
+    name="$(jq -r '.name' <<<"$skill")"
+    source_dir="$(jq -r '.sourceDir' <<<"$skill")"
+    [[ "$source_dir" == /* ]] || source_dir="$profile_root/$source_dir"
+    [[ "$(jq -r '.state' <<<"$skill")" == on-demand ]] || ws_die "invalid task-scoped state: $name"
+    [[ "$(jq -r '.installRoot' <<<"$skill")" == agent-skills ]] || ws_die "invalid task-scoped origin: $name"
+    [[ -f "$source_dir/SKILL.md" ]] || ws_die "missing task-scoped source: $name"
+    case "$name" in
+      hyperframes|hyperframes-animation|hyperframes-audio|hyperframes-cli|hyperframes-core|hyperframes-creative|hyperframes-keyframes|hyperframes-registry|media-use) ;;
+      *) ws_die "unsupported task-scoped skill: $name" ;;
+    esac
+    cp -R "$source_dir" "$release_dir/task-scoped-skills/$name"
+  done < <(jq -c '.taskScopedSkills[]?' "$PRIVATE_PROFILE")
 fi
 
 managed_commands=(workstation-bootstrap workstation-activate workstation-rollback workstation-doctor connector-doctor workstation-cloudflare-mcp workstation-toolsets workstation-publish-drive workstation-private-profile environment-inventory browser-gate-python github-auth-doctor cloudflare-auth-doctor)
