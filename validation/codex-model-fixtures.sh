@@ -36,4 +36,31 @@ if bash "$ROOT/bin/render-codex-config" --source "$t/source.toml" --output "$t/b
   echo 'FAIL: invalid model override admitted' >&2
   exit 1
 fi
+# Repeated managed releases must never accumulate a second policy banner.
+cat > "$t/duplicated.toml" <<'TOML'
+# Managed routine-execution posture; high-risk stops remain in AGENTS.md.
+model = "gpt-6.1-sol"
+# Managed routine-execution posture; high-risk stops remain in AGENTS.md.
+model_reasoning_effort = "high"
+# Managed routine-execution posture; high-risk stops remain in AGENTS.md.
+personality = "pragmatic"
+[projects."/private/tmp/legacy-absent"]
+trust_level = "trusted"
+[mcp_servers.example]
+url = "https://example.invalid/mcp"
+TOML
+bash "$ROOT/bin/render-codex-config" --source "$t/duplicated.toml" --output "$t/cleaned.toml"
+bash "$ROOT/bin/render-codex-config" --source "$t/cleaned.toml" --output "$t/cleaned-twice.toml"
+cmp "$t/cleaned.toml" "$t/cleaned-twice.toml"
+python3 - "$t/duplicated.toml" "$t/cleaned.toml" <<'PY'
+import pathlib,sys,tomllib
+source,output=(pathlib.Path(p) for p in sys.argv[1:])
+before=tomllib.loads(source.read_text()); after=tomllib.loads(output.read_text())
+assert output.read_text().count('# Managed routine-execution posture; high-risk stops remain in AGENTS.md.')==1
+assert after['model']=='gpt-6.1-sol' and after['model_reasoning_effort']=='high'
+assert after['personality']==before['personality']
+assert after['projects']==before['projects'] and after['mcp_servers']==before['mcp_servers']
+assert after['approval_policy']=='on-request' and after['approvals_reviewer']=='auto_review' and after['sandbox_mode']=='workspace-write'
+print('PASS: managed renderer idempotent; config semantics retained')
+PY
 echo 'PASS: invalid model IDs rejected'
