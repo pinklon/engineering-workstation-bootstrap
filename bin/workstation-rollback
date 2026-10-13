@@ -50,7 +50,8 @@ if [[ "$(jq -r '.recoveryProtocol // 0' "$RECEIPT")" == 1 ]]; then
     [[ "$(jq -r .transactionId "$lock/owner.json")" == "$transaction_id" ]] || ws_die "automatic recovery lock belongs to another transaction"
   fi
   ws_recovery recover "$RECEIPT" "$TARGET_HOME"
-  printf 'PASS: restored transaction %s\nReceipt: %s\n' "$transaction_id" "$RECEIPT"
+  rollback_receipt="$(jq -r .rollbackReceipt "$RECEIPT")"
+  printf 'PASS: restored transaction %s\nReceipt: %s\n' "$transaction_id" "$rollback_receipt"
   exit 0
 fi
 

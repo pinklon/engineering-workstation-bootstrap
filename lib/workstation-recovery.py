@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Durable metadata and bounded recovery for the existing managed transaction."""
 import hashlib
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -346,12 +347,14 @@ def recover(receipt_path, home):
         checkpoint('after-marker')
         custody(receipt, state, share, release)
         rollback_path = state / 'receipts' / ('rollback-' + receipt['transactionId'] + '.json')
+        completed_at = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
         write_json(rollback_path, {'schemaVersion': 1, 'transactionId': receipt['transactionId'],
                                  'targetHome': str(home), 'activationReceipt': str(receipt_path),
-                                 'status': 'rolled-back', 'restoredAllManagedPaths': True, 'secretValues': False})
+                                 'status': 'rolled-back', 'completedAt': completed_at,
+                                 'restoredAllManagedPaths': True, 'secretValues': False})
         checkpoint('before-completion')
         patch(receipt_path, {'status': 'rolled-back', 'phase': 'rolled-back',
-                             'rollbackReceipt': str(rollback_path), 'pendingPath': None,
+                             'rollbackReceipt': str(rollback_path), 'rolledBackAt': completed_at, 'pendingPath': None,
                              'recoveryError': None})
     except Exception as error:
         patch(receipt_path, {'status': 'recovery-required', 'recoveryError': str(error)})

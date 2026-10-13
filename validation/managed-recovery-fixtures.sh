@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-python3 -B - "$ROOT" <<'PY'
+python3 -B - "$ROOT" "$@" <<'PY'
 import importlib.util
 import json
 import os
@@ -217,10 +217,23 @@ class RecoveryBoundaries(unittest.TestCase):
 
     def test_completed_rollback_is_idempotent_and_legacy_normal_supported(self):
         self.assertEqual(self.activate().returncode, 0)
-        self.assertEqual(self.rollback().returncode, 0)
+        result = self.rollback()
+        self.assertEqual(result.returncode, 0)
         self.restored()
-        self.assertEqual(self.rollback().returncode, 0)
+        activation = self.data()
+        terminal = Path(activation['rollbackReceipt'])
+        fields = json.loads(terminal.read_text())
+        from datetime import datetime
+        datetime.fromisoformat(fields['completedAt'].replace('Z', '+00:00'))
+        self.assertEqual(activation['rolledBackAt'], fields['completedAt'])
+        self.assertIn('Receipt: ' + str(terminal), result.stdout)
+        self.assertNotIn('Receipt: ' + str(self.receipt), result.stdout)
+        receipt_bytes = self.receipt.read_bytes(), terminal.read_bytes()
+        result = self.rollback()
+        self.assertEqual(result.returncode, 0)
         self.restored()
+        self.assertEqual(receipt_bytes, (self.receipt.read_bytes(), terminal.read_bytes()))
+        self.assertIn('Receipt: ' + str(terminal), result.stdout)
         # Only this disposable completed predecessor receipt is projected to
         # the unchanged legacy protocol; no live receipt or marker is forced.
         self.receipt = self.prior_receipt
@@ -232,5 +245,5 @@ class RecoveryBoundaries(unittest.TestCase):
         self.assertEqual((self.home / '.codex/AGENTS.md').read_text(), 'original instructions\n')
 
 
-unittest.main(argv=['managed-recovery'], verbosity=2)
+unittest.main(argv=['managed-recovery'] + sys.argv[2:], verbosity=2)
 PY
