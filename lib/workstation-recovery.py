@@ -347,7 +347,7 @@ def recover(receipt_path, home):
         checkpoint('after-marker')
         custody(receipt, state, share, release)
         rollback_path = state / 'receipts' / ('rollback-' + receipt['transactionId'] + '.json')
-        completed_at = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+        completed_at = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         write_json(rollback_path, {'schemaVersion': 1, 'transactionId': receipt['transactionId'],
                                  'targetHome': str(home), 'activationReceipt': str(receipt_path),
                                  'status': 'rolled-back', 'completedAt': completed_at,

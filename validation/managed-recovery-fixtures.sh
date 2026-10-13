@@ -223,8 +223,7 @@ class RecoveryBoundaries(unittest.TestCase):
         activation = self.data()
         terminal = Path(activation['rollbackReceipt'])
         fields = json.loads(terminal.read_text())
-        from datetime import datetime
-        datetime.fromisoformat(fields['completedAt'].replace('Z', '+00:00'))
+        self.assertRegex(fields['completedAt'], r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$')
         self.assertEqual(activation['rolledBackAt'], fields['completedAt'])
         self.assertIn('Receipt: ' + str(terminal), result.stdout)
         self.assertNotIn('Receipt: ' + str(self.receipt), result.stdout)
