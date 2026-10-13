@@ -84,3 +84,32 @@ ChatGPT private-plugin installation is a different supported client route.
 Failed or uncertain preservation, loading, runtime identity or rollback must leave
 the candidate held and identify the existing accepting owner. Never promote a
 synthetic test or a root report invocation into universal adoption.
+
+## Interrupted managed transitions
+
+New transactions use `recoveryProtocol: 1` in the existing activation receipt.
+The installer seals and syncs all preimages and candidate file pins before
+publishing a durable intent. Pointer, transaction marker and each managed path
+have explicit transition phases; the interrupted path is recorded before removal.
+Recovery restores that path first, then the remaining paths, pointer and marker.
+It copies preimages instead of consuming backups, so an interrupted rollback can
+be repeated with the same exact receipt.
+
+Recovery accepts only the recorded predecessor/candidate pointer and marker
+pairs and matching managed path material. Missing or changed backups, changed
+candidate files, unrelated managed content or custody, and an unowned automatic
+request refuse before restoration. A failed recovery reports `REQUIRES_OWNER`
+and retains `recovery-required` rather than claiming completion. Automatic
+recovery belongs to the parent activation's lock; manual recovery acquires the
+ordinary lock. A stale lock is an explicit owner blocker, never removed by this
+protocol. A committed active receipt is not undone by a later notification error.
+
+The controlled fixtures exercise ordinary errors and non-ERR process exits at
+publication and rollback boundaries, plus corruption and custody refusals.
+They do not attest survival of arbitrary power loss, a forced process kill,
+concurrent unmanaged home edits, or real session loading. Such uncertainty stays
+held for the existing owner. Completed legacy receipts retain their prior normal
+rollback behavior; this repair does not retrofit installed immutable releases.
+Activation authorization, live-home authorization and all security settings are
+unchanged. The complete source rollback reverts this seven-path recovery delta,
+including removal of the two added files, to the accepted source predecessor.
