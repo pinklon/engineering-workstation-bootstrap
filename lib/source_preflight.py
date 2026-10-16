@@ -139,6 +139,12 @@ def git_source(args):
     has_commit = command(GIT + ['cat-file', '-e', args.sha + '^{commit}'], cwd=root)
     if has_commit.returncode:
         raise Failed('SOURCE_COMMIT_MISSING')
+    # Git's object lookup alone does not validate that stored bytes hash to the
+    # advertised object name. Verify the reachable graph before using its tree.
+    verified = command(GIT + ['fsck', '--full', '--no-reflogs', '--no-dangling',
+                            '--no-progress', args.sha], cwd=root)
+    if verified.returncode:
+        raise Failed('SOURCE_COMMIT_REMOTE_UNVERIFIED')
     if args.pr:
         head = command(GIT + ['ls-remote', remote_url, f'refs/pull/{args.pr}/head'],
                        cwd=root, env=ssh_env)
@@ -159,6 +165,11 @@ def git_source(args):
                 continue
             ancestry = command(GIT + ['merge-base', '--is-ancestor', args.sha, tip], cwd=root)
             if ancestry.returncode == 0:
+                # The advertised tip's local ancestry must be genuine too.
+                verified_tip = command(GIT + ['fsck', '--full', '--no-reflogs',
+                                               '--no-dangling', '--no-progress', tip], cwd=root)
+                if verified_tip.returncode:
+                    continue
                 anchored = True
                 break
         if not anchored:

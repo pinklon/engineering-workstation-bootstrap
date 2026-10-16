@@ -12,6 +12,7 @@ import tempfile
 import unittest
 from unittest import mock
 import urllib.error
+import zlib
 
 import source_preflight as p
 
@@ -240,6 +241,37 @@ class SourcePreflightTests(unittest.TestCase):
             self.assertEqual(len(remote_environments), 3)
             self.assertTrue(all(env['GIT_SSH_COMMAND'] == p.SSH_COMMAND
                                 for env in remote_environments))
+
+    def test_corrupt_local_commit_cannot_use_genuine_remote_advertisement(self):
+        for corrupt_tip in (False, True):
+            with self.subTest(corrupt_tip=corrupt_tip), tempfile.TemporaryDirectory() as root:
+                historical, tip = local_history(root)
+                a = args(root)
+                a.sha = historical if corrupt_tip else tip
+                object_sha = tip if corrupt_tip else a.sha
+                object_path = Path(root) / '.git/objects' / object_sha[:2] / object_sha[2:]
+                original = zlib.decompress(object_path.read_bytes())
+                self.assertIn(b'tip\n', original)
+                forged = original.replace(b'tip\n', b'forged\n', 1)
+                object_path.chmod(0o600)
+                object_path.write_bytes(zlib.compress(forged))
+                self.assertEqual(git(root, 'cat-file', '-t', object_sha), 'commit')
+                real_command = p.command
+
+                def remote_command(argv, **kwargs):
+                    if argv[:3] == p.GIT + ['ls-remote']:
+                        return subprocess.CompletedProcess(argv, 0,
+                            tip + '\trefs/heads/main\n', '')
+                    if argv == p.GIT + ['cat-file', '-e', a.sha + '^{commit}']:
+                        # Older Git versions may accept this lookup; current Git
+                        # can fail earlier. Exercise the explicit hash check.
+                        return subprocess.CompletedProcess(argv, 0, '', '')
+                    return real_command(argv, **kwargs)
+
+                with mock.patch.object(p, 'command', side_effect=remote_command):
+                    with self.assertRaises(p.Failed) as failure:
+                        p.git_source(a)
+                self.assertEqual(failure.exception.code, 'SOURCE_COMMIT_REMOTE_UNVERIFIED')
 
     def test_fixed_ssh_command_ignores_host_routing_configuration(self):
         with tempfile.TemporaryDirectory() as root:

@@ -107,7 +107,9 @@ written to the receipt. The API must independently return the exact repository,
 commit and file bytes. A missing Git remote or `gh` login alone is not a blocker
 when this approved API path succeeds. No raw provider error or response body is
 included in a failed receipt.
-Git verification ignores local replacement refs. The API path resolves the
+Git verification ignores local replacement refs and checks reachable local
+object hashes before trusting a freshly advertised commit or its ancestry.
+The API path resolves the
 commit's tree entry and reads its exact Git blob, including files between 1 MB
 and the 2 MB preflight limit. Both transports reject directories and symlinks.
 The SSH path rejects repository SSH command and URL rewrite overrides; the `gh`
