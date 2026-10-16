@@ -95,7 +95,8 @@ bash bin/connector-doctor source-preflight \
   --required-tool python3 --scratch /tmp --min-scratch-mb 128
 ```
 
-The command tries a GitHub SSH remote plus local exact commit, then the existing
+The command tries a GitHub SSH remote with the exact commit advertised by a
+remote ref and present locally, then the existing
 authenticated `gh api` client. An isolated environment without `gh` may opt in
 to the direct GitHub API with `--api-token-env GH_TOKEN` or
 `--api-token-env GITHUB_TOKEN` only when that named variable is already provided

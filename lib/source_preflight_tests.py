@@ -114,6 +114,19 @@ class SourcePreflightTests(unittest.TestCase):
             with self.assertRaises(p.Failed):
                 p.artifact_path(value)
 
+    def test_local_commit_is_not_proof_of_remote_exact_sha(self):
+        with tempfile.TemporaryDirectory() as root:
+            a = args(root)
+            commands = [
+                subprocess.CompletedProcess([], 0, root + '\n', ''),
+                subprocess.CompletedProcess([], 0, 'git@github.com:pinklon/skills.git\n', ''),
+                subprocess.CompletedProcess([], 0, 'b' * 40 + '\trefs/heads/main\n', '')]
+            with (mock.patch.object(p.shutil, 'which', return_value='/usr/bin/git'),
+                  mock.patch.object(p, 'command', side_effect=commands)):
+                with self.assertRaises(p.Failed) as failure:
+                    p.git_source(a)
+            self.assertEqual(failure.exception.code, 'SOURCE_COMMIT_REMOTE_UNVERIFIED')
+
     def test_unavailable_model_and_bounded_timeout(self):
         with (mock.patch.object(p.shutil, 'which', return_value='/usr/bin/codex'),
               mock.patch.object(p.subprocess, 'run') as run):
@@ -145,6 +158,8 @@ class SourcePreflightTests(unittest.TestCase):
             self.assertEqual(receipt['required_tools'], ['python3'])
             self.assertEqual(receipt['required_skill_names'], ['managed-skill'])
             self.assertTrue(receipt['checks']['scratch_headroom'])
+            self.assertTrue(receipt['checks']['tool_presence'])
+            self.assertTrue(receipt['checks']['skill_wrapper_presence'])
             self.assertEqual(receipt['checks']['model_probe'], 'NOT_REQUESTED')
             self.assertNotIn(root, output.read_text())
             self.assertEqual(output.stat().st_mode & 0o777, 0o600)

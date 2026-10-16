@@ -69,9 +69,12 @@ def git_source(args):
         raise Failed('WRONG_REPOSITORY')
     if not origin.stdout.strip().startswith(('git@github.com:', 'ssh://git@github.com/')):
         raise Failed('AUTH_MISSING')
-    reachable = command(['git', 'ls-remote', '--exit-code', 'origin', 'HEAD'], cwd=root)
+    reachable = command(['git', 'ls-remote', '--refs', 'origin'], cwd=root)
     if reachable.returncode:
         raise Failed('NETWORK_OR_AUTH_UNAVAILABLE')
+    remote_refs = {line.split()[0] for line in reachable.stdout.splitlines() if line.split()}
+    if args.sha not in remote_refs:
+        raise Failed('SOURCE_COMMIT_REMOTE_UNVERIFIED')
     has_commit = command(['git', 'cat-file', '-e', args.sha + '^{commit}'], cwd=root)
     if has_commit.returncode:
         raise Failed('SOURCE_COMMIT_MISSING')
@@ -268,7 +271,8 @@ def main(argv=None):
     try:
         source, attempts, free = preflight(args)
         receipt.update(source_verified=True, source=source, attempts=attempts,
-                       checks={'tool_presence': True, 'skill_wrapper_presence': True,
+                       checks={'tool_presence': True if args.required_tool else 'NOT_REQUESTED',
+                               'skill_wrapper_presence': True if args.required_skill else 'NOT_REQUESTED',
                                'scratch_headroom': True,
                                'model_probe': True if args.required_model else 'NOT_REQUESTED'},
                        scratch_free_bytes=free, reason='READY_FOR_SCOPED_READ')
