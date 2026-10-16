@@ -76,6 +76,22 @@ class SourcePreflightTests(unittest.TestCase):
                 'import sys; sys.stdout.buffer.write(b"x" * 100000)'], 10)
         self.assertEqual(failure.exception.code, 'API_RESPONSE_TOO_LARGE')
 
+    def test_maximum_blob_wire_json_fits_bounded_api_read(self):
+        encoded = base64.b64encode(b'\xff' * p.MAX_BYTES).decode()
+        wrapped = '\n'.join(encoded[i:i + 60] for i in range(0, len(encoded), 60))
+        payload = json.dumps({'content': wrapped, 'encoding': 'base64',
+                              'size': p.MAX_BYTES, 'sha': 'a' * 40}).encode()
+        old_unwrapped_limit = len(encoded) + 4096
+        self.assertGreater(len(payload), old_unwrapped_limit)
+        self.assertLessEqual(len(payload), p.MAX_BLOB_RESPONSE_BYTES)
+        with tempfile.TemporaryDirectory() as root:
+            wire = Path(root) / 'blob.json'
+            wire.write_bytes(payload)
+            actual = p.bounded_api_command([sys.executable, '-c',
+                'import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes())',
+                str(wire)], p.MAX_BLOB_RESPONSE_BYTES)
+        self.assertEqual(len(actual), len(payload))
+
     def test_historical_missing_commit_no_remote_no_gh_and_no_alternate(self):
         with tempfile.TemporaryDirectory() as root:
             a = args(root)

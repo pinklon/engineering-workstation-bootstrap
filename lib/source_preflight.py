@@ -24,7 +24,10 @@ SCHEMA = 1
 SHA = re.compile(r'^[0-9a-f]{40}$')
 REPO = re.compile(r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')
 MAX_BYTES = 2_000_000
-MAX_BLOB_RESPONSE_BYTES = 4 * ((MAX_BYTES + 2) // 3) + 4096
+ENCODED_BLOB_BYTES = 4 * ((MAX_BYTES + 2) // 3)
+# Bound the JSON wire form, including wrapped newlines and possible slash escapes.
+MAX_BLOB_RESPONSE_BYTES = (2 * ENCODED_BLOB_BYTES
+                           + 4 * ((ENCODED_BLOB_BYTES + 59) // 60) + 4096)
 GIT = ['git', '--no-replace-objects']
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / 'manifests/connector-capabilities.json'
