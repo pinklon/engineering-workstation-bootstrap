@@ -95,8 +95,10 @@ bash bin/connector-doctor source-preflight \
   --required-tool python3 --scratch /tmp --min-scratch-mb 128
 ```
 
-The command tries a GitHub SSH remote with the exact commit advertised by a
-remote ref and present locally, then the existing
+The command tries a GitHub SSH remote with the exact commit present locally and
+either advertised by a freshly authenticated remote ref or verified as an
+ancestor of a locally present, freshly advertised remote commit. An unanchored
+local commit is not accepted. It then tries the existing
 authenticated `gh api` client. An isolated environment without `gh` may opt in
 to the direct GitHub API with `--api-token-env GH_TOKEN` or
 `--api-token-env GITHUB_TOKEN` only when that named variable is already provided
@@ -105,6 +107,10 @@ written to the receipt. The API must independently return the exact repository,
 commit and file bytes. A missing Git remote or `gh` login alone is not a blocker
 when this approved API path succeeds. No raw provider error or response body is
 included in a failed receipt.
+GitHub API file content accepts the API's Base64 line breaks but rejects
+malformed encoding. `--output` creates a private (0600) receipt only at a new
+path; an existing file or symlink is left untouched and returns a blocked
+reason on stdout.
 
 `--required-model MODEL` optionally runs one live, ephemeral, read-only Codex
 model canary with closed stdin and a 20-second default timeout (maximum 30

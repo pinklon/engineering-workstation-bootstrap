@@ -5,6 +5,7 @@ turns a local fixture into hosted or skill-consumption evidence.
 """
 import argparse
 import base64
+import binascii
 import datetime as dt
 import hashlib
 import json
@@ -72,9 +73,8 @@ def git_source(args):
     reachable = command(['git', 'ls-remote', '--refs', 'origin'], cwd=root)
     if reachable.returncode:
         raise Failed('NETWORK_OR_AUTH_UNAVAILABLE')
-    remote_refs = {line.split()[0] for line in reachable.stdout.splitlines() if line.split()}
-    if args.sha not in remote_refs:
-        raise Failed('SOURCE_COMMIT_REMOTE_UNVERIFIED')
+    remote_refs = {fields[0] for line in reachable.stdout.splitlines()
+                   if len(fields := line.split()) == 2 and SHA.fullmatch(fields[0])}
     has_commit = command(['git', 'cat-file', '-e', args.sha + '^{commit}'], cwd=root)
     if has_commit.returncode:
         raise Failed('SOURCE_COMMIT_MISSING')
@@ -84,6 +84,17 @@ def git_source(args):
             raise Failed('PR_HEAD_UNAVAILABLE')
         if head.stdout.split()[0] != args.sha:
             raise Failed('WRONG_HEAD')
+    if args.sha not in remote_refs:
+        anchored = False
+        for tip in remote_refs:
+            if command(['git', 'cat-file', '-e', tip + '^{commit}'], cwd=root).returncode:
+                continue
+            ancestry = command(['git', 'merge-base', '--is-ancestor', args.sha, tip], cwd=root)
+            if ancestry.returncode == 0:
+                anchored = True
+                break
+        if not anchored:
+            raise Failed('SOURCE_COMMIT_REMOTE_UNVERIFIED')
     hashes = {}
     for name in args.artifact:
         try:
@@ -143,26 +154,44 @@ def api_source(args, via_gh):
             raise Failed('AUTH_MISSING')
     prefix = 'repos/' + args.identity
     repo = api_get(prefix, token, via_gh)
+    if not isinstance(repo, dict) or not isinstance(repo.get('full_name'), str):
+        raise Failed('TOOL_SCHEMA_MISMATCH')
     if repo.get('full_name') != args.identity:
         raise Failed('WRONG_REPOSITORY')
     commit = api_get(prefix + '/git/commits/' + args.sha, token, via_gh)
+    if not isinstance(commit, dict) or not isinstance(commit.get('sha'), str):
+        raise Failed('TOOL_SCHEMA_MISMATCH')
     if commit.get('sha') != args.sha:
         raise Failed('WRONG_HEAD')
     if args.pr:
         pull = api_get(prefix + '/pulls/' + str(args.pr), token, via_gh)
-        if pull.get('base', {}).get('repo', {}).get('full_name') != args.identity:
+        if (not isinstance(pull, dict) or not isinstance(pull.get('base'), dict)
+                or not isinstance(pull['base'].get('repo'), dict)
+                or not isinstance(pull['base']['repo'].get('full_name'), str)
+                or not isinstance(pull.get('head'), dict)
+                or not isinstance(pull['head'].get('sha'), str)):
+            raise Failed('TOOL_SCHEMA_MISMATCH')
+        if pull['base']['repo']['full_name'] != args.identity:
             raise Failed('WRONG_REPOSITORY')
-        if pull.get('head', {}).get('sha') != args.sha:
+        if pull['head']['sha'] != args.sha:
             raise Failed('WRONG_HEAD')
     hashes = {}
     for name in args.artifact:
         quoted = urllib.parse.quote(name, safe='/')
         item = api_get(prefix + '/contents/' + quoted + '?ref=' + args.sha, token, via_gh)
-        if item.get('type') != 'file' or item.get('path') != name or item.get('encoding') != 'base64':
+        if (not isinstance(item, dict) or not isinstance(item.get('type'), str)
+                or not isinstance(item.get('path'), str)
+                or not isinstance(item.get('encoding'), str)
+                or not isinstance(item.get('content'), str)):
+            raise Failed('TOOL_SCHEMA_MISMATCH')
+        if item['type'] != 'file' or item['path'] != name or item['encoding'] != 'base64':
             raise Failed('TOOL_SCHEMA_MISMATCH')
         try:
-            data = base64.b64decode(item['content'], validate=False)
-        except (KeyError, ValueError):
+            encoded = re.sub(r'[\t\n\r ]', '', item['content'])
+            data = base64.b64decode(encoded, validate=True)
+            if base64.b64encode(data).decode('ascii') != encoded:
+                raise Failed('TOOL_SCHEMA_MISMATCH')
+        except (ValueError, binascii.Error):
             raise Failed('TOOL_SCHEMA_MISMATCH') from None
         if len(data) > MAX_BYTES:
             raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
@@ -283,17 +312,30 @@ def main(argv=None):
     payload = json.dumps(receipt, indent=2, sort_keys=True) + '\n'
     if args.output:
         dest = Path(args.output)
-        if dest.is_symlink():
-            raise Failed('OUTPUT_SYMLINK_REFUSED')
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        temporary = dest.with_name(dest.name + '.' + uuid.uuid4().hex)
         try:
-            fd = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            with os.fdopen(fd, 'w') as stream:
-                stream.write(payload)
-            os.replace(temporary, dest)
-        finally:
-            temporary.unlink(missing_ok=True)
+            if dest.is_symlink():
+                raise Failed('OUTPUT_SYMLINK_REFUSED')
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            temporary = dest.with_name(dest.name + '.' + uuid.uuid4().hex)
+            try:
+                fd = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                with os.fdopen(fd, 'w') as stream:
+                    stream.write(payload)
+                os.link(temporary, dest)
+            finally:
+                temporary.unlink(missing_ok=True)
+        except FileExistsError:
+            receipt.update(source_verified=False, reason='OUTPUT_EXISTS')
+            exit_code = 1
+            payload = json.dumps(receipt, indent=2, sort_keys=True) + '\n'
+        except Failed as exc:
+            receipt.update(source_verified=False, reason=exc.code)
+            exit_code = 1
+            payload = json.dumps(receipt, indent=2, sort_keys=True) + '\n'
+        except OSError:
+            receipt.update(source_verified=False, reason='OUTPUT_UNAVAILABLE')
+            exit_code = 1
+            payload = json.dumps(receipt, indent=2, sort_keys=True) + '\n'
     print(payload, end='')
     return exit_code
 

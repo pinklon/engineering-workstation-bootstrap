@@ -1,5 +1,6 @@
 """Adversarial source preflight fixtures; no live credentials or network."""
 import argparse
+import base64
 import io
 import json
 import os
@@ -20,6 +21,28 @@ def args(root):
         sha=HISTORICAL, pr=None, artifact=['scripts/test_design_os_portability.py'],
         required_tool=[], required_skill=[], scratch=str(root), min_scratch_mb=0,
         api_token_env=None, required_model=None, model_timeout=20)
+
+
+def git(root, *argv):
+    return subprocess.run(['git', '-C', str(root), *argv], check=True,
+                          capture_output=True, text=True).stdout.strip()
+
+
+def local_history(root):
+    git(root, 'init', '-q')
+    git(root, 'config', 'user.name', 'Fixture')
+    git(root, 'config', 'user.email', 'fixture@example.invalid')
+    git(root, 'remote', 'add', 'origin', 'git@github.com:pinklon/skills.git')
+    artifact = Path(root) / 'scripts/test_design_os_portability.py'
+    artifact.parent.mkdir()
+    artifact.write_text('historical source\n')
+    git(root, 'add', '.')
+    git(root, 'commit', '-qm', 'historical')
+    historical = git(root, 'rev-parse', 'HEAD')
+    artifact.write_text('remote tip source\n')
+    git(root, 'commit', '-qam', 'tip')
+    tip = git(root, 'rev-parse', 'HEAD')
+    return historical, tip
 
 
 class SourcePreflightTests(unittest.TestCase):
@@ -116,16 +139,129 @@ class SourcePreflightTests(unittest.TestCase):
 
     def test_local_commit_is_not_proof_of_remote_exact_sha(self):
         with tempfile.TemporaryDirectory() as root:
+            historical, tip = local_history(root)
             a = args(root)
-            commands = [
-                subprocess.CompletedProcess([], 0, root + '\n', ''),
-                subprocess.CompletedProcess([], 0, 'git@github.com:pinklon/skills.git\n', ''),
-                subprocess.CompletedProcess([], 0, 'b' * 40 + '\trefs/heads/main\n', '')]
-            with (mock.patch.object(p.shutil, 'which', return_value='/usr/bin/git'),
-                  mock.patch.object(p, 'command', side_effect=commands)):
+            a.sha = historical
+            git(root, 'checkout', '-qb', 'unrelated', historical)
+            (Path(root) / a.artifact[0]).write_text('unanchored source\n')
+            git(root, 'commit', '-qam', 'unanchored')
+            a.sha = git(root, 'rev-parse', 'HEAD')
+            real_command = p.command
+
+            def remote_command(argv, **kwargs):
+                if argv[:2] == ['git', 'ls-remote']:
+                    return subprocess.CompletedProcess(argv, 0, tip + '\trefs/heads/main\n', '')
+                return real_command(argv, **kwargs)
+
+            with mock.patch.object(p, 'command', side_effect=remote_command):
                 with self.assertRaises(p.Failed) as failure:
                     p.git_source(a)
             self.assertEqual(failure.exception.code, 'SOURCE_COMMIT_REMOTE_UNVERIFIED')
+
+    def test_historical_commit_requires_authenticated_advertised_ancestor(self):
+        with tempfile.TemporaryDirectory() as root:
+            historical, tip = local_history(root)
+            a = args(root)
+            a.sha = historical
+            real_command = p.command
+
+            def remote_command(argv, **kwargs):
+                if argv[:3] == ['git', 'ls-remote', '--refs']:
+                    return subprocess.CompletedProcess(argv, 0, tip + '\trefs/heads/main\n', '')
+                if argv[:2] == ['git', 'ls-remote']:
+                    return subprocess.CompletedProcess(argv, 0, tip + '\trefs/pull/348/head\n', '')
+                return real_command(argv, **kwargs)
+
+            with mock.patch.object(p, 'command', side_effect=remote_command):
+                result = p.git_source(a)
+                self.assertEqual(result['artifact_sha256'][a.artifact[0]],
+                                 p.hashlib.sha256(b'historical source\n').hexdigest())
+                a.pr = 348
+                with self.assertRaises(p.Failed) as failure:
+                    p.git_source(a)
+            self.assertEqual(failure.exception.code, 'WRONG_HEAD')
+
+    def test_absent_remote_tip_object_cannot_anchor_local_commit(self):
+        with tempfile.TemporaryDirectory() as root:
+            historical, _ = local_history(root)
+            a = args(root)
+            a.sha = historical
+            real_command = p.command
+
+            def remote_command(argv, **kwargs):
+                if argv[:2] == ['git', 'ls-remote']:
+                    return subprocess.CompletedProcess(argv, 0,
+                        'b' * 40 + '\trefs/heads/main\n', '')
+                return real_command(argv, **kwargs)
+
+            with mock.patch.object(p, 'command', side_effect=remote_command):
+                with self.assertRaises(p.Failed) as failure:
+                    p.git_source(a)
+            self.assertEqual(failure.exception.code, 'SOURCE_COMMIT_REMOTE_UNVERIFIED')
+
+    def test_api_response_shapes_fail_closed(self):
+        a = args('/tmp')
+        a.pr = 348
+        a.api_token_env = 'GH_TOKEN'
+        valid = [
+            {'full_name': a.identity}, {'sha': a.sha},
+            {'base': {'repo': {'full_name': a.identity}}, 'head': {'sha': a.sha}},
+            {'type': 'file', 'path': a.artifact[0], 'encoding': 'base64',
+             'content': base64.b64encode(b'fixture').decode()}]
+        malformed = [(0, []), (0, None), (0, {'full_name': 42}),
+                     (1, []), (1, {'sha': None}),
+                     (2, None), (2, {'base': []}),
+                     (2, {'base': {'repo': []}, 'head': {'sha': a.sha}}),
+                     (2, {'base': {'repo': {'full_name': a.identity}}, 'head': []}),
+                     (3, []), (3, {'type': 'file', 'path': a.artifact[0],
+                                  'encoding': 'base64', 'content': None})]
+        for index, bad in malformed:
+            with self.subTest(index=index, bad=bad):
+                responses = valid.copy()
+                responses[index] = bad
+                with (mock.patch.dict(os.environ, {'GH_TOKEN': 'fixture-value'}),
+                      mock.patch.object(p, 'api_get', side_effect=responses)):
+                    with self.assertRaises(p.Failed) as failure:
+                        p.api_source(a, False)
+                self.assertEqual(failure.exception.code, 'TOOL_SCHEMA_MISMATCH')
+
+    def test_base64_rejects_corruption_and_accepts_github_line_breaks(self):
+        a = args('/tmp')
+        a.api_token_env = 'GH_TOKEN'
+        valid = [{'full_name': a.identity}, {'sha': a.sha},
+                 {'type': 'file', 'path': a.artifact[0], 'encoding': 'base64',
+                  'content': 'Zml4\r\ndHVyZQ==\n'}]
+        with (mock.patch.dict(os.environ, {'GH_TOKEN': 'fixture-value'}),
+              mock.patch.object(p, 'api_get', side_effect=valid)):
+            result = p.api_source(a, False)
+        self.assertEqual(result['artifact_sha256'][a.artifact[0]],
+                         p.hashlib.sha256(b'fixture').hexdigest())
+        for bad in ('Zml4#dHVyZQ==', 'Zml4dHVyZQ=', 'Zml4dHVyZQ===',
+                    'Zml4dHVyZQ==!', 'Zml4dHVyZQ'):
+            with self.subTest(bad=bad):
+                responses = [dict(x) for x in valid]
+                responses[2]['content'] = bad
+                with (mock.patch.dict(os.environ, {'GH_TOKEN': 'fixture-value'}),
+                      mock.patch.object(p, 'api_get', side_effect=responses)):
+                    with self.assertRaises(p.Failed) as failure:
+                        p.api_source(a, False)
+                self.assertEqual(failure.exception.code, 'TOOL_SCHEMA_MISMATCH')
+
+    def test_malformed_api_yields_blocked_receipt_without_source_proof(self):
+        with tempfile.TemporaryDirectory() as root:
+            argv = ['--repository', root, '--identity', 'pinklon/skills', '--sha',
+                    HISTORICAL, '--artifact', 'scripts/test_design_os_portability.py',
+                    '--api-token-env', 'GH_TOKEN', '--min-scratch-mb', '0']
+            with (mock.patch.dict(os.environ, {'GH_TOKEN': 'fixture-value'}),
+                  mock.patch.object(p, 'git_source', side_effect=p.Failed('REMOTE_NOT_CONFIGURED')),
+                  mock.patch.object(p.shutil, 'which', return_value=None),
+                  mock.patch.object(p, 'api_get', return_value=[]),
+                  mock.patch('sys.stdout', new_callable=io.StringIO) as stdout):
+                self.assertEqual(p.main(argv), 1)
+            receipt = json.loads(stdout.getvalue())
+            self.assertFalse(receipt['source_verified'])
+            self.assertEqual(receipt['reason'], 'SOURCE_UNAVAILABLE')
+            self.assertEqual(receipt['attempts'][-1]['reason'], 'TOOL_SCHEMA_MISMATCH')
 
     def test_https_git_transport_is_explicitly_unqualified(self):
         with tempfile.TemporaryDirectory() as root:
@@ -175,6 +311,48 @@ class SourcePreflightTests(unittest.TestCase):
             self.assertEqual(receipt['checks']['model_probe'], 'NOT_REQUESTED')
             self.assertNotIn(root, output.read_text())
             self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+
+    def test_receipt_output_does_not_clobber_file_or_symlink(self):
+        with tempfile.TemporaryDirectory() as root:
+            argv = ['--repository', root, '--identity', 'pinklon/skills', '--sha',
+                    HISTORICAL, '--artifact', 'scripts/test_design_os_portability.py',
+                    '--output', str(Path(root) / 'receipt.json')]
+            source = {'transport': 'fixture', 'artifact_sha256': {}}
+            output = Path(root) / 'receipt.json'
+            output.write_text('existing data')
+            with (mock.patch.object(p, 'preflight', return_value=(source, [], 1)),
+                  mock.patch('sys.stdout', new_callable=io.StringIO) as stdout):
+                self.assertEqual(p.main(argv), 1)
+            self.assertEqual(output.read_text(), 'existing data')
+            self.assertEqual(json.loads(stdout.getvalue())['reason'], 'OUTPUT_EXISTS')
+            output.unlink()
+            target = Path(root) / 'target.json'
+            target.write_text('symlink target')
+            output.symlink_to(target)
+            with (mock.patch.object(p, 'preflight', return_value=(source, [], 1)),
+                  mock.patch('sys.stdout', new_callable=io.StringIO) as stdout):
+                self.assertEqual(p.main(argv), 1)
+            self.assertEqual(target.read_text(), 'symlink target')
+            self.assertEqual(json.loads(stdout.getvalue())['reason'], 'OUTPUT_SYMLINK_REFUSED')
+
+    def test_receipt_output_race_cannot_replace_new_file(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / 'receipt.json'
+            argv = ['--repository', root, '--identity', 'pinklon/skills', '--sha',
+                    HISTORICAL, '--artifact', 'scripts/test_design_os_portability.py',
+                    '--output', str(output)]
+
+            def raced_link(_source, destination):
+                Path(destination).write_text('concurrent writer')
+                raise FileExistsError(destination)
+
+            with (mock.patch.object(p, 'preflight', return_value=({'transport': 'fixture'}, [], 1)),
+                  mock.patch.object(p.os, 'link', side_effect=raced_link),
+                  mock.patch('sys.stdout', new_callable=io.StringIO) as stdout):
+                self.assertEqual(p.main(argv), 1)
+            self.assertEqual(output.read_text(), 'concurrent writer')
+            self.assertEqual(json.loads(stdout.getvalue())['reason'], 'OUTPUT_EXISTS')
+            self.assertEqual(sorted(x.name for x in Path(root).iterdir()), ['receipt.json'])
 
 
 if __name__ == '__main__':
