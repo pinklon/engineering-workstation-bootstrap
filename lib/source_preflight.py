@@ -94,6 +94,19 @@ def artifact_path(value):
     return value
 
 
+def require_unmodified_ssh_transport(root):
+    if any(name in os.environ for name in ('GIT_SSH', 'GIT_SSH_COMMAND')):
+        raise Failed('UNSUPPORTED_GIT_TRANSPORT')
+    config = command(GIT + ['config', '--list', '--name-only', '--null'], cwd=root)
+    if config.returncode:
+        raise Failed('UNSUPPORTED_GIT_TRANSPORT')
+    names = [name.lower() for name in config.stdout.split('\0') if name]
+    if any(name == 'core.sshcommand' or
+           (name.startswith('url.') and name.endswith('.insteadof'))
+           for name in names):
+        raise Failed('UNSUPPORTED_GIT_TRANSPORT')
+
+
 def git_source(args):
     if not shutil.which('git'):
         raise Failed('TOOL_UNAVAILABLE')
@@ -104,11 +117,13 @@ def git_source(args):
     origin = command(GIT + ['remote', 'get-url', 'origin'], cwd=root)
     if origin.returncode or not origin.stdout.strip():
         raise Failed('REMOTE_NOT_CONFIGURED')
-    if remote_identity(origin.stdout.strip()) != args.identity:
+    remote_url = origin.stdout.strip()
+    if remote_identity(remote_url) != args.identity:
         raise Failed('WRONG_REPOSITORY')
-    if not origin.stdout.strip().startswith(('git@github.com:', 'ssh://git@github.com/')):
+    if not remote_url.startswith(('git@github.com:', 'ssh://git@github.com/')):
         raise Failed('UNSUPPORTED_GIT_TRANSPORT')
-    reachable = command(GIT + ['ls-remote', '--refs', 'origin'], cwd=root)
+    require_unmodified_ssh_transport(root)
+    reachable = command(GIT + ['ls-remote', '--refs', remote_url], cwd=root)
     if reachable.returncode:
         raise Failed('NETWORK_OR_AUTH_UNAVAILABLE')
     remote_refs = {fields[0] for line in reachable.stdout.splitlines()
@@ -117,7 +132,7 @@ def git_source(args):
     if has_commit.returncode:
         raise Failed('SOURCE_COMMIT_MISSING')
     if args.pr:
-        head = command(GIT + ['ls-remote', 'origin', f'refs/pull/{args.pr}/head'], cwd=root)
+        head = command(GIT + ['ls-remote', remote_url, f'refs/pull/{args.pr}/head'], cwd=root)
         if head.returncode or not head.stdout.strip():
             raise Failed('PR_HEAD_UNAVAILABLE')
         if head.stdout.split()[0] != args.sha:
@@ -176,7 +191,8 @@ def api_get(path, token, via_gh, max_bytes=MAX_BYTES):
     if via_gh:
         if command(['gh', 'auth', 'status', '--hostname', 'github.com']).returncode:
             raise Failed('AUTH_MISSING')
-        payload = bounded_api_command(['gh', 'api', '--method', 'GET', path], max_bytes)
+        payload = bounded_api_command(['gh', 'api', '--hostname', 'github.com',
+                                       '--method', 'GET', path], max_bytes)
     else:
         request = urllib.request.Request('https://api.github.com/' + path.lstrip('/'),
             headers={'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json',

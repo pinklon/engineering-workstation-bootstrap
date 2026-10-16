@@ -76,6 +76,16 @@ class SourcePreflightTests(unittest.TestCase):
                 'import sys; sys.stdout.buffer.write(b"x" * 100000)'], 10)
         self.assertEqual(failure.exception.code, 'API_RESPONSE_TOO_LARGE')
 
+    def test_gh_api_is_pinned_to_authenticated_github_host(self):
+        with (mock.patch.dict(os.environ, {'GH_HOST': 'enterprise.example.invalid'}),
+              mock.patch.object(p, 'command', return_value=subprocess.CompletedProcess([], 0, '', '')),
+              mock.patch.object(p, 'bounded_api_command', return_value=b'{"full_name":"pinklon/skills"}')
+              as bounded):
+            result = p.api_get('repos/pinklon/skills', None, True)
+        self.assertEqual(result['full_name'], 'pinklon/skills')
+        self.assertEqual(bounded.call_args.args[0][:4],
+                         ['gh', 'api', '--hostname', 'github.com'])
+
     def test_maximum_blob_wire_json_fits_bounded_api_read(self):
         encoded = base64.b64encode(b'\xff' * p.MAX_BYTES).decode()
         wrapped = '\n'.join(encoded[i:i + 60] for i in range(0, len(encoded), 60))
@@ -295,6 +305,27 @@ class SourcePreflightTests(unittest.TestCase):
                 result = p.git_source(a)
             self.assertEqual(result['artifact_sha256'][a.artifact[0]],
                              p.hashlib.sha256(b'historical source\n').hexdigest())
+
+    def test_ssh_command_overrides_cannot_forge_remote_advertisement(self):
+        with tempfile.TemporaryDirectory() as root:
+            historical, _ = local_history(root)
+            a = args(root)
+            a.sha = historical
+            git(root, 'config', 'core.sshCommand', 'sh -c "printf forged"')
+            with self.assertRaises(p.Failed) as failure:
+                p.git_source(a)
+            self.assertEqual(failure.exception.code, 'UNSUPPORTED_GIT_TRANSPORT')
+            git(root, 'config', '--unset', 'core.sshCommand')
+            for variable in ('GIT_SSH_COMMAND', 'GIT_SSH'):
+                with self.subTest(variable=variable), mock.patch.dict(os.environ,
+                     {variable: '/tmp/forged-ssh'}):
+                    with self.assertRaises(p.Failed) as failure:
+                        p.git_source(a)
+                self.assertEqual(failure.exception.code, 'UNSUPPORTED_GIT_TRANSPORT')
+            git(root, 'config', 'url.file:///tmp/forged.insteadOf', 'git@github.com:')
+            with self.assertRaises(p.Failed) as failure:
+                p.require_unmodified_ssh_transport(Path(root))
+            self.assertEqual(failure.exception.code, 'UNSUPPORTED_GIT_TRANSPORT')
 
     def test_local_grafts_cannot_prove_remote_ancestry(self):
         with tempfile.TemporaryDirectory() as root:

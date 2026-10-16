@@ -110,6 +110,8 @@ included in a failed receipt.
 Git verification ignores local replacement refs. The API path resolves the
 commit's tree entry and reads its exact Git blob, including files between 1 MB
 and the 2 MB preflight limit. Both transports reject directories and symlinks.
+The SSH path rejects repository SSH command and URL rewrite overrides; the `gh`
+API path pins requests to `github.com` even when `GH_HOST` is set elsewhere.
 GitHub blob content accepts the API's Base64 line breaks but rejects malformed
 encoding or a blob SHA mismatch. `--output` creates a private (0600) receipt only at a new
 path; an existing file or symlink is left untouched and returns a blocked
