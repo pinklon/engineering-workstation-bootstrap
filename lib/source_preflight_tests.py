@@ -127,6 +127,18 @@ class SourcePreflightTests(unittest.TestCase):
                     p.git_source(a)
             self.assertEqual(failure.exception.code, 'SOURCE_COMMIT_REMOTE_UNVERIFIED')
 
+    def test_https_git_transport_is_explicitly_unqualified(self):
+        with tempfile.TemporaryDirectory() as root:
+            a = args(root)
+            commands = [
+                subprocess.CompletedProcess([], 0, root + '\n', ''),
+                subprocess.CompletedProcess([], 0, 'https://github.com/pinklon/skills.git\n', '')]
+            with (mock.patch.object(p.shutil, 'which', return_value='/usr/bin/git'),
+                  mock.patch.object(p, 'command', side_effect=commands)):
+                with self.assertRaises(p.Failed) as failure:
+                    p.git_source(a)
+            self.assertEqual(failure.exception.code, 'UNSUPPORTED_GIT_TRANSPORT')
+
     def test_unavailable_model_and_bounded_timeout(self):
         with (mock.patch.object(p.shutil, 'which', return_value='/usr/bin/codex'),
               mock.patch.object(p.subprocess, 'run') as run):

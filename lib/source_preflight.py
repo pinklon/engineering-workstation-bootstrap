@@ -68,7 +68,7 @@ def git_source(args):
     if remote_identity(origin.stdout.strip()) != args.identity:
         raise Failed('WRONG_REPOSITORY')
     if not origin.stdout.strip().startswith(('git@github.com:', 'ssh://git@github.com/')):
-        raise Failed('AUTH_MISSING')
+        raise Failed('UNSUPPORTED_GIT_TRANSPORT')
     reachable = command(['git', 'ls-remote', '--refs', 'origin'], cwd=root)
     if reachable.returncode:
         raise Failed('NETWORK_OR_AUTH_UNAVAILABLE')
