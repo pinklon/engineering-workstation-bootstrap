@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ "${1:-}" == source-preflight ]]; then
+  shift
+  exec python3 "$ROOT/lib/source_preflight.py" "$@"
+fi
 exec python3 "$ROOT/lib/connector_fabric.py" "$@"

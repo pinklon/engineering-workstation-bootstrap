@@ -22,6 +22,29 @@
     ],
     "github_governed_mcp_qualified": false
   },
+  "source_preflight": {
+    "schema_version": 1,
+    "purpose": "bounded read-only exact-source admission for an authorized task",
+    "required_proofs": [
+      "repository_identity",
+      "exact_commit_sha",
+      "requested_artifact_bytes",
+      "authenticated_read_transport",
+      "required_tool_presence",
+      "required_skill_presence",
+      "scratch_headroom"
+    ],
+    "supported_transports": [
+      "authenticated-git-ssh-remote",
+      "authenticated-gh-api",
+      "explicit-existing-token-env-github-api"
+    ],
+    "model_probe": "optional-explicit-cost-bounded-live-check",
+    "skill_consumption": "separate-runtime-receipt-required",
+    "hosted_qualification": "separate-cloud-11-real-task-receipt-required",
+    "credential_custody": "existing-client-or-environment-only; no copied token or new store",
+    "fail_closed": true
+  },
   "connectors": [
     {
       "id": "github-readonly",

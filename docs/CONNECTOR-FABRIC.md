@@ -79,6 +79,49 @@ is evidence of that operation; it does not independently prove all surface check
 
 ## Repository admission
 
+### Exact-source preflight for a scoped review
+
+The existing `connector-doctor source-preflight` command implements version 1 of
+`manifests/connector-capabilities.json#source_preflight`. It is a read-only gate
+for a task that names its repository, full commit SHA and at least one requested
+file. It checks tool presence, optional managed skill wrapper paths, scratch
+headroom and the actual file bytes at that commit. When `--pr` is supplied, the
+current PR head must still equal the requested SHA. A mismatch stops admission.
+
+```bash
+bash bin/connector-doctor source-preflight \
+  --repository . --identity pinklon/engineering-workstation-bootstrap \
+  --sha "$(git rev-parse HEAD)" --artifact AGENTS.md \
+  --required-tool python3 --scratch /tmp --min-scratch-mb 128
+```
+
+The command tries a GitHub SSH remote plus local exact commit, then the existing
+authenticated `gh api` client. An isolated environment without `gh` may opt in
+to the direct GitHub API with `--api-token-env GH_TOKEN` or
+`--api-token-env GITHUB_TOKEN` only when that named variable is already provided
+by its approved execution surface. The token is used in memory and never
+written to the receipt. The API must independently return the exact repository,
+commit and file bytes. A missing Git remote or `gh` login alone is not a blocker
+when this approved API path succeeds. No raw provider error or response body is
+included in a failed receipt.
+
+`--required-model MODEL` optionally runs one live, ephemeral, read-only Codex
+model canary with closed stdin and a 20-second default timeout (maximum 30
+seconds). This may consume model tokens; use it only when the task requires that
+model. The command does not repeatedly retry a hung model. The receipt reports
+source proof, attempted transports, artifact SHA-256 hashes, scratch bytes,
+contract and implementation hashes, and a structured failure reason. It reports
+skill *presence* only; `skill_consumption: UNOBSERVED` remains until a separate
+actual invocation receipt exists. It cannot assert Desktop, hosted Cloud, or
+fresh-machine behavior from a local source check.
+
+The historical Skills PR #348 commit `44a48f20bbef29ff86d728347481a22bcd13a47a`
+is a regression fixture, not a request to reopen that merged PR. Its missing
+checkout/remote/`gh` state fails closed when no approved alternate is available;
+the same artifact may pass through a verified API transport. Unit fixtures cover
+that distinction, 401/403, wrong repository or head, missing skill/model,
+network denial, and scratch exhaustion.
+
 `connector-doctor client-probe --surface codex-cli` starts two independent installed
 Codex client processes, uses their native MCP transport and platform-managed app
 credentials, then compares read identity, server identity and tool inventory.
