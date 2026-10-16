@@ -107,8 +107,11 @@ written to the receipt. The API must independently return the exact repository,
 commit and file bytes. A missing Git remote or `gh` login alone is not a blocker
 when this approved API path succeeds. No raw provider error or response body is
 included in a failed receipt.
-GitHub API file content accepts the API's Base64 line breaks but rejects
-malformed encoding. `--output` creates a private (0600) receipt only at a new
+Git verification ignores local replacement refs. The API path resolves the
+commit's tree entry and reads its exact Git blob, including files between 1 MB
+and the 2 MB preflight limit. Both transports reject directories and symlinks.
+GitHub blob content accepts the API's Base64 line breaks but rejects malformed
+encoding or a blob SHA mismatch. `--output` creates a private (0600) receipt only at a new
 path; an existing file or symlink is left untouched and returns a blocked
 reason on stdout.
 

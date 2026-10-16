@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -45,7 +46,36 @@ def local_history(root):
     return historical, tip
 
 
+def api_fixture(a, content=b'fixture'):
+    root_tree, scripts_tree = 'a' * 40, 'b' * 40
+    blob_sha = p.hashlib.sha1(b'blob ' + str(len(content)).encode() + b'\0' + content).hexdigest()
+    responses = [
+        {'full_name': a.identity},
+        {'sha': a.sha, 'tree': {'sha': root_tree}}]
+    if a.pr:
+        responses.append({'base': {'repo': {'full_name': a.identity}},
+                          'head': {'sha': a.sha}})
+    responses.extend([
+        {'sha': root_tree, 'truncated': False, 'tree': [
+            {'path': 'scripts', 'type': 'tree', 'mode': '040000', 'sha': scripts_tree}]},
+        {'sha': scripts_tree, 'truncated': False, 'tree': [
+            {'path': 'test_design_os_portability.py', 'type': 'blob',
+             'mode': '100644', 'sha': blob_sha, 'size': len(content)}]},
+        {'sha': blob_sha, 'encoding': 'base64', 'size': len(content),
+         'content': base64.b64encode(content).decode()}])
+    return responses
+
+
 class SourcePreflightTests(unittest.TestCase):
+    def test_gh_api_output_is_bounded_before_buffering(self):
+        normal = p.bounded_api_command([sys.executable, '-c',
+            'import sys; sys.stdout.buffer.write(b"ok")'], 10)
+        self.assertEqual(normal, b'ok')
+        with self.assertRaises(p.Failed) as failure:
+            p.bounded_api_command([sys.executable, '-c',
+                'import sys; sys.stdout.buffer.write(b"x" * 100000)'], 10)
+        self.assertEqual(failure.exception.code, 'API_RESPONSE_TOO_LARGE')
+
     def test_historical_missing_commit_no_remote_no_gh_and_no_alternate(self):
         with tempfile.TemporaryDirectory() as root:
             a = args(root)
@@ -114,11 +144,7 @@ class SourcePreflightTests(unittest.TestCase):
         a = args('/tmp')
         a.pr = 348
         a.api_token_env = 'GH_TOKEN'
-        content = 'Zml4dHVyZQ=='
-        responses = [
-            {'full_name': a.identity}, {'sha': a.sha},
-            {'base': {'repo': {'full_name': a.identity}}, 'head': {'sha': a.sha}},
-            {'type': 'file', 'path': a.artifact[0], 'encoding': 'base64', 'content': content}]
+        responses = api_fixture(a)
         with (mock.patch.dict(os.environ, {'GH_TOKEN': 'fixture-value'}),
               mock.patch.object(p, 'api_get', side_effect=responses)):
             result = p.api_source(a, False)
@@ -149,7 +175,7 @@ class SourcePreflightTests(unittest.TestCase):
             real_command = p.command
 
             def remote_command(argv, **kwargs):
-                if argv[:2] == ['git', 'ls-remote']:
+                if argv[:3] == p.GIT + ['ls-remote']:
                     return subprocess.CompletedProcess(argv, 0, tip + '\trefs/heads/main\n', '')
                 return real_command(argv, **kwargs)
 
@@ -166,9 +192,9 @@ class SourcePreflightTests(unittest.TestCase):
             real_command = p.command
 
             def remote_command(argv, **kwargs):
-                if argv[:3] == ['git', 'ls-remote', '--refs']:
+                if argv[:4] == p.GIT + ['ls-remote', '--refs']:
                     return subprocess.CompletedProcess(argv, 0, tip + '\trefs/heads/main\n', '')
-                if argv[:2] == ['git', 'ls-remote']:
+                if argv[:3] == p.GIT + ['ls-remote']:
                     return subprocess.CompletedProcess(argv, 0, tip + '\trefs/pull/348/head\n', '')
                 return real_command(argv, **kwargs)
 
@@ -189,7 +215,7 @@ class SourcePreflightTests(unittest.TestCase):
             real_command = p.command
 
             def remote_command(argv, **kwargs):
-                if argv[:2] == ['git', 'ls-remote']:
+                if argv[:3] == p.GIT + ['ls-remote']:
                     return subprocess.CompletedProcess(argv, 0,
                         'b' * 40 + '\trefs/heads/main\n', '')
                 return real_command(argv, **kwargs)
@@ -207,7 +233,7 @@ class SourcePreflightTests(unittest.TestCase):
             real_command = p.command
 
             def remote_command(argv, **kwargs):
-                if argv[:2] == ['git', 'ls-remote']:
+                if argv[:3] == p.GIT + ['ls-remote']:
                     return subprocess.CompletedProcess(argv, 0, tip + '\trefs/heads/main\n', '')
                 return real_command(argv, **kwargs)
 
@@ -221,7 +247,7 @@ class SourcePreflightTests(unittest.TestCase):
                 real_run = subprocess.run
 
                 def no_blob_read(argv, **kwargs):
-                    if argv[:2] == ['git', 'show']:
+                    if argv[:3] == p.GIT + ['show']:
                         self.fail('oversized blob was read before the size gate')
                     return real_run(argv, **kwargs)
 
@@ -231,22 +257,127 @@ class SourcePreflightTests(unittest.TestCase):
                         p.git_source(a)
                 self.assertEqual(failure.exception.code, 'SOURCE_ARTIFACT_UNAVAILABLE')
 
+    def test_git_replace_refs_cannot_change_authenticated_source_bytes(self):
+        with tempfile.TemporaryDirectory() as root:
+            historical, tip = local_history(root)
+            a = args(root)
+            a.sha = historical
+            git(root, 'checkout', '-qb', 'forged', historical)
+            (Path(root) / a.artifact[0]).write_text('forged source\n')
+            git(root, 'commit', '-qam', 'forged')
+            forged = git(root, 'rev-parse', 'HEAD')
+            git(root, 'replace', historical, forged)
+            self.assertEqual(git(root, 'show', f'{historical}:{a.artifact[0]}'), 'forged source')
+            real_command = p.command
+
+            def remote_command(argv, **kwargs):
+                if argv[:3] == p.GIT + ['ls-remote']:
+                    return subprocess.CompletedProcess(argv, 0, tip + '\trefs/heads/main\n', '')
+                return real_command(argv, **kwargs)
+
+            with mock.patch.object(p, 'command', side_effect=remote_command):
+                result = p.git_source(a)
+            self.assertEqual(result['artifact_sha256'][a.artifact[0]],
+                             p.hashlib.sha256(b'historical source\n').hexdigest())
+
+    def test_local_grafts_cannot_prove_remote_ancestry(self):
+        with tempfile.TemporaryDirectory() as root:
+            historical, tip = local_history(root)
+            a = args(root)
+            a.sha = historical
+            grafts = Path(root) / '.git/info/grafts'
+            grafts.write_text(tip + ' ' + historical + '\n')
+            real_command = p.command
+
+            def remote_command(argv, **kwargs):
+                if argv[:3] == p.GIT + ['ls-remote']:
+                    return subprocess.CompletedProcess(argv, 0, tip + '\trefs/heads/main\n', '')
+                return real_command(argv, **kwargs)
+
+            with mock.patch.object(p, 'command', side_effect=remote_command):
+                with self.assertRaises(p.Failed) as failure:
+                    p.git_source(a)
+            self.assertEqual(failure.exception.code, 'SOURCE_COMMIT_REMOTE_UNVERIFIED')
+
+    def test_git_and_api_reject_symlink_artifacts(self):
+        with tempfile.TemporaryDirectory() as root:
+            _, tip = local_history(root)
+            a = args(root)
+            link = Path(root) / 'scripts/link.py'
+            link.symlink_to('test_design_os_portability.py')
+            git(root, 'add', '.')
+            git(root, 'commit', '-qm', 'symlink')
+            a.sha = git(root, 'rev-parse', 'HEAD')
+            a.artifact = ['scripts/link.py']
+            real_command = p.command
+
+            def remote_command(argv, **kwargs):
+                if argv[:3] == p.GIT + ['ls-remote']:
+                    return subprocess.CompletedProcess(argv, 0, a.sha + '\trefs/heads/main\n', '')
+                return real_command(argv, **kwargs)
+
+            with mock.patch.object(p, 'command', side_effect=remote_command):
+                with self.assertRaises(p.Failed) as failure:
+                    p.git_source(a)
+            self.assertEqual(failure.exception.code, 'SOURCE_ARTIFACT_UNAVAILABLE')
+
+        a = args('/tmp')
+        a.api_token_env = 'GH_TOKEN'
+        responses = api_fixture(a)
+        responses[-2]['tree'][0]['mode'] = '120000'
+        with (mock.patch.dict(os.environ, {'GH_TOKEN': 'fixture-value'}),
+              mock.patch.object(p, 'api_get', side_effect=responses)):
+            with self.assertRaises(p.Failed) as failure:
+                p.api_source(a, False)
+        self.assertEqual(failure.exception.code, 'SOURCE_ARTIFACT_UNAVAILABLE')
+
+    def test_api_blob_supports_artifact_above_one_mb_with_bounded_response(self):
+        a = args('/tmp')
+        a.api_token_env = 'GH_TOKEN'
+        content = b'large fixture\n' * 100_000
+        self.assertTrue(1_000_000 < len(content) < p.MAX_BYTES)
+        responses = api_fixture(a, content)
+        with (mock.patch.dict(os.environ, {'GH_TOKEN': 'fixture-value'}),
+              mock.patch.object(p, 'api_get', side_effect=responses) as get):
+            result = p.api_source(a, False)
+        self.assertEqual(result['artifact_sha256'][a.artifact[0]],
+                         p.hashlib.sha256(content).hexdigest())
+        self.assertEqual(get.call_args.kwargs['max_bytes'], p.MAX_BLOB_RESPONSE_BYTES)
+
+    def test_api_blob_must_match_tree_sha_and_declared_limit(self):
+        a = args('/tmp')
+        a.api_token_env = 'GH_TOKEN'
+        responses = api_fixture(a)
+        responses[-1]['content'] = base64.b64encode(b'changed').decode()
+        with (mock.patch.dict(os.environ, {'GH_TOKEN': 'fixture-value'}),
+              mock.patch.object(p, 'api_get', side_effect=responses)):
+            with self.assertRaises(p.Failed) as failure:
+                p.api_source(a, False)
+        self.assertEqual(failure.exception.code, 'TOOL_SCHEMA_MISMATCH')
+
+        responses = api_fixture(a)
+        responses[-2]['tree'][0]['size'] = p.MAX_BYTES + 1
+        with (mock.patch.dict(os.environ, {'GH_TOKEN': 'fixture-value'}),
+              mock.patch.object(p, 'api_get', side_effect=responses[:-1]) as get):
+            with self.assertRaises(p.Failed) as failure:
+                p.api_source(a, False)
+        self.assertEqual(failure.exception.code, 'SOURCE_ARTIFACT_UNAVAILABLE')
+        self.assertEqual(get.call_count, 4)
+
     def test_api_response_shapes_fail_closed(self):
         a = args('/tmp')
         a.pr = 348
         a.api_token_env = 'GH_TOKEN'
-        valid = [
-            {'full_name': a.identity}, {'sha': a.sha},
-            {'base': {'repo': {'full_name': a.identity}}, 'head': {'sha': a.sha}},
-            {'type': 'file', 'path': a.artifact[0], 'encoding': 'base64',
-             'content': base64.b64encode(b'fixture').decode()}]
+        valid = api_fixture(a)
         malformed = [(0, []), (0, None), (0, {'full_name': 42}),
                      (1, []), (1, {'sha': None}),
                      (2, None), (2, {'base': []}),
                      (2, {'base': {'repo': []}, 'head': {'sha': a.sha}}),
                      (2, {'base': {'repo': {'full_name': a.identity}}, 'head': []}),
-                     (3, []), (3, {'type': 'file', 'path': a.artifact[0],
-                                  'encoding': 'base64', 'content': None})]
+                     (3, []), (3, {'sha': 'a' * 40, 'tree': None, 'truncated': False}),
+                     (4, {'sha': 'b' * 40, 'tree': [None], 'truncated': False}),
+                     (5, []), (5, {'sha': valid[-1]['sha'], 'encoding': 'base64',
+                                  'size': 7, 'content': None})]
         for index, bad in malformed:
             with self.subTest(index=index, bad=bad):
                 responses = valid.copy()
@@ -260,9 +391,8 @@ class SourcePreflightTests(unittest.TestCase):
     def test_base64_rejects_corruption_and_accepts_github_line_breaks(self):
         a = args('/tmp')
         a.api_token_env = 'GH_TOKEN'
-        valid = [{'full_name': a.identity}, {'sha': a.sha},
-                 {'type': 'file', 'path': a.artifact[0], 'encoding': 'base64',
-                  'content': 'Zml4\r\ndHVyZQ==\n'}]
+        valid = api_fixture(a)
+        valid[-1]['content'] = 'Zml4\r\ndHVyZQ==\n'
         with (mock.patch.dict(os.environ, {'GH_TOKEN': 'fixture-value'}),
               mock.patch.object(p, 'api_get', side_effect=valid)):
             result = p.api_source(a, False)
@@ -272,7 +402,7 @@ class SourcePreflightTests(unittest.TestCase):
                     'Zml4dHVyZQ==!', 'Zml4dHVyZQ'):
             with self.subTest(bad=bad):
                 responses = [dict(x) for x in valid]
-                responses[2]['content'] = bad
+                responses[-1]['content'] = bad
                 with (mock.patch.dict(os.environ, {'GH_TOKEN': 'fixture-value'}),
                       mock.patch.object(p, 'api_get', side_effect=responses)):
                     with self.assertRaises(p.Failed) as failure:

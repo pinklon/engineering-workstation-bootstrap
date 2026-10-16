@@ -15,15 +15,17 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import uuid
 import urllib.error
-import urllib.parse
 import urllib.request
 
 SCHEMA = 1
 SHA = re.compile(r'^[0-9a-f]{40}$')
 REPO = re.compile(r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')
 MAX_BYTES = 2_000_000
+MAX_BLOB_RESPONSE_BYTES = 4 * ((MAX_BYTES + 2) // 3) + 4096
+GIT = ['git', '--no-replace-objects']
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / 'manifests/connector-capabilities.json'
 
@@ -44,6 +46,39 @@ def command(argv, cwd=None, timeout=12):
                      else 'TOOL_UNAVAILABLE') from None
 
 
+def bounded_api_command(argv, max_bytes, timeout=15):
+    try:
+        process = subprocess.Popen(argv, stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    except OSError:
+        raise Failed('TOOL_UNAVAILABLE') from None
+    expired = threading.Event()
+
+    def stop():
+        expired.set()
+        if process.poll() is None:
+            process.kill()
+
+    timer = threading.Timer(timeout, stop)
+    timer.start()
+    try:
+        payload = process.stdout.read(max_bytes + 1)
+        if len(payload) > max_bytes:
+            raise Failed('API_RESPONSE_TOO_LARGE')
+        status = process.wait()
+    except OSError:
+        raise Failed('AUTH_OR_API_UNAVAILABLE') from None
+    finally:
+        timer.cancel()
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+        process.stdout.close()
+    if expired.is_set() or status:
+        raise Failed('AUTH_OR_API_UNAVAILABLE')
+    return payload
+
+
 def remote_identity(url):
     match = re.fullmatch(r'(?:git@github\.com:|ssh://git@github\.com/|https://github\.com/)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?', url)
     return match.group(1) if match else None
@@ -60,36 +95,42 @@ def git_source(args):
     if not shutil.which('git'):
         raise Failed('TOOL_UNAVAILABLE')
     root = Path(args.repository).resolve()
-    inside = command(['git', 'rev-parse', '--show-toplevel'], cwd=root)
+    inside = command(GIT + ['rev-parse', '--show-toplevel'], cwd=root)
     if inside.returncode or Path(inside.stdout.strip()).resolve() != root:
         raise Failed('REPOSITORY_NOT_CONFIGURED')
-    origin = command(['git', 'remote', 'get-url', 'origin'], cwd=root)
+    origin = command(GIT + ['remote', 'get-url', 'origin'], cwd=root)
     if origin.returncode or not origin.stdout.strip():
         raise Failed('REMOTE_NOT_CONFIGURED')
     if remote_identity(origin.stdout.strip()) != args.identity:
         raise Failed('WRONG_REPOSITORY')
     if not origin.stdout.strip().startswith(('git@github.com:', 'ssh://git@github.com/')):
         raise Failed('UNSUPPORTED_GIT_TRANSPORT')
-    reachable = command(['git', 'ls-remote', '--refs', 'origin'], cwd=root)
+    reachable = command(GIT + ['ls-remote', '--refs', 'origin'], cwd=root)
     if reachable.returncode:
         raise Failed('NETWORK_OR_AUTH_UNAVAILABLE')
     remote_refs = {fields[0] for line in reachable.stdout.splitlines()
                    if len(fields := line.split()) == 2 and SHA.fullmatch(fields[0])}
-    has_commit = command(['git', 'cat-file', '-e', args.sha + '^{commit}'], cwd=root)
+    has_commit = command(GIT + ['cat-file', '-e', args.sha + '^{commit}'], cwd=root)
     if has_commit.returncode:
         raise Failed('SOURCE_COMMIT_MISSING')
     if args.pr:
-        head = command(['git', 'ls-remote', 'origin', f'refs/pull/{args.pr}/head'], cwd=root)
+        head = command(GIT + ['ls-remote', 'origin', f'refs/pull/{args.pr}/head'], cwd=root)
         if head.returncode or not head.stdout.strip():
             raise Failed('PR_HEAD_UNAVAILABLE')
         if head.stdout.split()[0] != args.sha:
             raise Failed('WRONG_HEAD')
     if args.sha not in remote_refs:
+        grafts = command(GIT + ['rev-parse', '--git-path', 'info/grafts'], cwd=root)
+        graft_path = Path(grafts.stdout.strip())
+        if not graft_path.is_absolute():
+            graft_path = root / graft_path
+        if grafts.returncode or graft_path.is_file():
+            raise Failed('SOURCE_COMMIT_REMOTE_UNVERIFIED')
         anchored = False
         for tip in remote_refs:
-            if command(['git', 'cat-file', '-e', tip + '^{commit}'], cwd=root).returncode:
+            if command(GIT + ['cat-file', '-e', tip + '^{commit}'], cwd=root).returncode:
                 continue
-            ancestry = command(['git', 'merge-base', '--is-ancestor', args.sha, tip], cwd=root)
+            ancestry = command(GIT + ['merge-base', '--is-ancestor', args.sha, tip], cwd=root)
             if ancestry.returncode == 0:
                 anchored = True
                 break
@@ -98,32 +139,41 @@ def git_source(args):
     hashes = {}
     for name in args.artifact:
         object_name = f'{args.sha}:{name}'
-        kind = command(['git', 'cat-file', '-t', object_name], cwd=root)
+        listed = command(GIT + ['ls-tree', '-r', '-z', args.sha, '--', name], cwd=root)
+        if listed.returncode:
+            raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
+        entries = [line.split('\t', 1) for line in listed.stdout.split('\0') if line]
+        matching = [metadata.split() for metadata, path in entries if path == name]
+        if len(matching) != 1 or len(matching[0]) != 3 or matching[0][:2] not in (
+                ['100644', 'blob'], ['100755', 'blob']):
+            raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
+        kind = command(GIT + ['cat-file', '-t', object_name], cwd=root)
         if kind.returncode or kind.stdout.strip() != 'blob':
             raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
-        size = command(['git', 'cat-file', '-s', object_name], cwd=root)
+        size = command(GIT + ['cat-file', '-s', object_name], cwd=root)
         if size.returncode or not size.stdout.strip().isdigit() or int(size.stdout.strip()) > MAX_BYTES:
             raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
         try:
-            result = subprocess.run(['git', 'show', object_name], cwd=root,
+            result = subprocess.run(GIT + ['show', object_name], cwd=root,
                                     capture_output=True, timeout=12, stdin=subprocess.DEVNULL)
         except (OSError, subprocess.TimeoutExpired):
             raise Failed('SOURCE_ARTIFACT_UNAVAILABLE') from None
         if result.returncode or len(result.stdout) > MAX_BYTES:
+            raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
+        git_digest = hashlib.sha1(b'blob ' + str(len(result.stdout)).encode()
+                                  + b'\0' + result.stdout).hexdigest()
+        if git_digest != matching[0][2]:
             raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
         hashes[name] = hashlib.sha256(result.stdout).hexdigest()
     return {'transport': 'git-remote', 'artifact_sha256': hashes,
             'remote': 'github.com/' + args.identity}
 
 
-def api_get(path, token, via_gh):
+def api_get(path, token, via_gh, max_bytes=MAX_BYTES):
     if via_gh:
         if command(['gh', 'auth', 'status', '--hostname', 'github.com']).returncode:
             raise Failed('AUTH_MISSING')
-        result = command(['gh', 'api', '--method', 'GET', path], timeout=15)
-        if result.returncode:
-            raise Failed('AUTH_OR_API_UNAVAILABLE')
-        payload = result.stdout.encode()
+        payload = bounded_api_command(['gh', 'api', '--method', 'GET', path], max_bytes)
     else:
         request = urllib.request.Request('https://api.github.com/' + path.lstrip('/'),
             headers={'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json',
@@ -133,22 +183,80 @@ def api_get(path, token, via_gh):
                                                   {'redirect_request': lambda self, *unused: None})())
         try:
             with opener.open(request, timeout=12) as response:
-                payload = response.read(MAX_BYTES + 1)
+                payload = response.read(max_bytes + 1)
         except urllib.error.HTTPError as exc:
             raise Failed('AUTH_MISSING' if exc.code == 401 else
                          'ACCESS_DENIED' if exc.code == 403 else
                          ('SOURCE_COMMIT_MISSING' if '/git/commits/' in path else
-                          'SOURCE_ARTIFACT_UNAVAILABLE' if '/contents/' in path else
+                         'SOURCE_ARTIFACT_UNAVAILABLE' if '/git/trees/' in path or '/git/blobs/' in path else
                           'REPOSITORY_OR_AUTH_UNAVAILABLE') if exc.code == 404 else
                          'NETWORK_DENIED') from None
         except (OSError, TimeoutError):
             raise Failed('NETWORK_DENIED') from None
-    if len(payload) > MAX_BYTES:
+    if len(payload) > max_bytes:
         raise Failed('API_RESPONSE_TOO_LARGE')
     try:
         return json.loads(payload)
     except (ValueError, UnicodeError):
         raise Failed('TOOL_SCHEMA_MISMATCH') from None
+
+
+def api_artifact(prefix, name, root_tree, token, via_gh):
+    tree_sha = root_tree
+    parts = Path(name).parts
+    for index, part in enumerate(parts):
+        tree = api_get(prefix + '/git/trees/' + tree_sha, token, via_gh)
+        if (not isinstance(tree, dict) or tree.get('sha') != tree_sha
+                or not isinstance(tree.get('tree'), list)
+                or not isinstance(tree.get('truncated'), bool)):
+            raise Failed('TOOL_SCHEMA_MISMATCH')
+        if tree['truncated']:
+            raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
+        entries = tree['tree']
+        if any(not isinstance(entry, dict) or not isinstance(entry.get('path'), str)
+               for entry in entries):
+            raise Failed('TOOL_SCHEMA_MISMATCH')
+        matching = [entry for entry in entries if entry['path'] == part]
+        if len(matching) != 1:
+            raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
+        entry = matching[0]
+        if (not isinstance(entry.get('sha'), str) or not SHA.fullmatch(entry['sha'])
+                or not isinstance(entry.get('type'), str)
+                or not isinstance(entry.get('mode'), str)):
+            raise Failed('TOOL_SCHEMA_MISMATCH')
+        if index < len(parts) - 1:
+            if entry['type'] != 'tree' or entry['mode'] != '040000':
+                raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
+            tree_sha = entry['sha']
+            continue
+        if entry['type'] != 'blob' or entry['mode'] not in ('100644', '100755'):
+            raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
+        size = entry.get('size')
+        if type(size) is not int or size < 0:
+            raise Failed('TOOL_SCHEMA_MISMATCH')
+        if size > MAX_BYTES:
+            raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
+        blob = api_get(prefix + '/git/blobs/' + entry['sha'], token, via_gh,
+                       max_bytes=MAX_BLOB_RESPONSE_BYTES)
+        if (not isinstance(blob, dict) or blob.get('sha') != entry['sha']
+                or blob.get('encoding') != 'base64'
+                or not isinstance(blob.get('content'), str)
+                or type(blob.get('size')) is not int or blob['size'] != size):
+            raise Failed('TOOL_SCHEMA_MISMATCH')
+        try:
+            encoded = re.sub(r'[\t\n\r ]', '', blob['content'])
+            data = base64.b64decode(encoded, validate=True)
+            if base64.b64encode(data).decode('ascii') != encoded:
+                raise Failed('TOOL_SCHEMA_MISMATCH')
+        except (ValueError, binascii.Error):
+            raise Failed('TOOL_SCHEMA_MISMATCH') from None
+        if len(data) != size:
+            raise Failed('TOOL_SCHEMA_MISMATCH')
+        git_digest = hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
+        if git_digest != entry['sha']:
+            raise Failed('TOOL_SCHEMA_MISMATCH')
+        return hashlib.sha256(data).hexdigest()
+    raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
 
 
 def api_source(args, via_gh):
@@ -170,6 +278,10 @@ def api_source(args, via_gh):
         raise Failed('TOOL_SCHEMA_MISMATCH')
     if commit.get('sha') != args.sha:
         raise Failed('WRONG_HEAD')
+    if (not isinstance(commit.get('tree'), dict)
+            or not isinstance(commit['tree'].get('sha'), str)
+            or not SHA.fullmatch(commit['tree']['sha'])):
+        raise Failed('TOOL_SCHEMA_MISMATCH')
     if args.pr:
         pull = api_get(prefix + '/pulls/' + str(args.pr), token, via_gh)
         if (not isinstance(pull, dict) or not isinstance(pull.get('base'), dict)
@@ -184,25 +296,7 @@ def api_source(args, via_gh):
             raise Failed('WRONG_HEAD')
     hashes = {}
     for name in args.artifact:
-        quoted = urllib.parse.quote(name, safe='/')
-        item = api_get(prefix + '/contents/' + quoted + '?ref=' + args.sha, token, via_gh)
-        if (not isinstance(item, dict) or not isinstance(item.get('type'), str)
-                or not isinstance(item.get('path'), str)
-                or not isinstance(item.get('encoding'), str)
-                or not isinstance(item.get('content'), str)):
-            raise Failed('TOOL_SCHEMA_MISMATCH')
-        if item['type'] != 'file' or item['path'] != name or item['encoding'] != 'base64':
-            raise Failed('TOOL_SCHEMA_MISMATCH')
-        try:
-            encoded = re.sub(r'[\t\n\r ]', '', item['content'])
-            data = base64.b64decode(encoded, validate=True)
-            if base64.b64encode(data).decode('ascii') != encoded:
-                raise Failed('TOOL_SCHEMA_MISMATCH')
-        except (ValueError, binascii.Error):
-            raise Failed('TOOL_SCHEMA_MISMATCH') from None
-        if len(data) > MAX_BYTES:
-            raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
-        hashes[name] = hashlib.sha256(data).hexdigest()
+        hashes[name] = api_artifact(prefix, name, commit['tree']['sha'], token, via_gh)
     return {'transport': 'gh-api' if via_gh else 'authenticated-github-api',
             'artifact_sha256': hashes, 'remote': 'api.github.com/' + args.identity}
 
