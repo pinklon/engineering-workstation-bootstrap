@@ -5,6 +5,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -217,10 +218,14 @@ class SourcePreflightTests(unittest.TestCase):
             a.sha = historical
             real_command = p.command
 
+            remote_environments = []
+
             def remote_command(argv, **kwargs):
                 if argv[:4] == p.GIT + ['ls-remote', '--refs']:
+                    remote_environments.append(kwargs.get('env'))
                     return subprocess.CompletedProcess(argv, 0, tip + '\trefs/heads/main\n', '')
                 if argv[:3] == p.GIT + ['ls-remote']:
+                    remote_environments.append(kwargs.get('env'))
                     return subprocess.CompletedProcess(argv, 0, tip + '\trefs/pull/348/head\n', '')
                 return real_command(argv, **kwargs)
 
@@ -232,6 +237,25 @@ class SourcePreflightTests(unittest.TestCase):
                 with self.assertRaises(p.Failed) as failure:
                     p.git_source(a)
             self.assertEqual(failure.exception.code, 'WRONG_HEAD')
+            self.assertEqual(len(remote_environments), 3)
+            self.assertTrue(all(env['GIT_SSH_COMMAND'] == p.SSH_COMMAND
+                                for env in remote_environments))
+
+    def test_fixed_ssh_command_ignores_host_routing_configuration(self):
+        with tempfile.TemporaryDirectory() as root:
+            config = Path(root) / 'ssh-config'
+            config.write_text('Host github.com\n  HostName forged.example.invalid\n'
+                              '  ProxyCommand /bin/false\n  StrictHostKeyChecking no\n')
+            unsafe = subprocess.run([str(p.SSH_BINARY), '-F', str(config), '-G',
+                                     'github.com'], capture_output=True, text=True, check=True)
+            self.assertIn('hostname forged.example.invalid', unsafe.stdout)
+            safe = subprocess.run(shlex.split(p.SSH_COMMAND) + ['-G', 'github.com'],
+                                  capture_output=True, text=True, check=True)
+            self.assertIn('hostname github.com\n', safe.stdout)
+            self.assertIn('stricthostkeychecking true\n', safe.stdout)
+            self.assertIn('hostkeyalias github.com\n', safe.stdout)
+            self.assertNotIn('forged.example.invalid', safe.stdout)
+            self.assertNotIn('proxycommand /bin/false', safe.stdout)
 
     def test_absent_remote_tip_object_cannot_anchor_local_commit(self):
         with tempfile.TemporaryDirectory() as root:

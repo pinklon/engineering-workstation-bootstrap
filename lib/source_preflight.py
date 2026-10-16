@@ -29,6 +29,10 @@ ENCODED_BLOB_BYTES = 4 * ((MAX_BYTES + 2) // 3)
 MAX_BLOB_RESPONSE_BYTES = (2 * ENCODED_BLOB_BYTES
                            + 4 * ((ENCODED_BLOB_BYTES + 59) // 60) + 4096)
 GIT = ['git', '--no-replace-objects']
+SSH_BINARY = Path('/usr/bin/ssh')
+SSH_COMMAND = ('/usr/bin/ssh -F none -o BatchMode=yes -o StrictHostKeyChecking=yes '
+               '-o ProxyCommand=none -o ProxyJump=none -o HostName=github.com '
+               '-o HostKeyAlias=github.com -o CanonicalizeHostname=no -o Port=22')
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / 'manifests/connector-capabilities.json'
 
@@ -40,10 +44,10 @@ class Failed(Exception):
         self.attempts = attempts or []
 
 
-def command(argv, cwd=None, timeout=12):
+def command(argv, cwd=None, timeout=12, env=None):
     try:
         return subprocess.run(argv, cwd=cwd, capture_output=True, text=True,
-                              timeout=timeout, stdin=subprocess.DEVNULL)
+                              timeout=timeout, stdin=subprocess.DEVNULL, env=env)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise Failed('TIMEOUT_OR_TOOL_UNAVAILABLE' if isinstance(exc, subprocess.TimeoutExpired)
                      else 'TOOL_UNAVAILABLE') from None
@@ -97,6 +101,8 @@ def artifact_path(value):
 def require_unmodified_ssh_transport(root):
     if any(name in os.environ for name in ('GIT_SSH', 'GIT_SSH_COMMAND')):
         raise Failed('UNSUPPORTED_GIT_TRANSPORT')
+    if not SSH_BINARY.is_file() or not os.access(SSH_BINARY, os.X_OK):
+        raise Failed('UNSUPPORTED_GIT_TRANSPORT')
     config = command(GIT + ['config', '--list', '--name-only', '--null'], cwd=root)
     if config.returncode:
         raise Failed('UNSUPPORTED_GIT_TRANSPORT')
@@ -123,7 +129,9 @@ def git_source(args):
     if not remote_url.startswith(('git@github.com:', 'ssh://git@github.com/')):
         raise Failed('UNSUPPORTED_GIT_TRANSPORT')
     require_unmodified_ssh_transport(root)
-    reachable = command(GIT + ['ls-remote', '--refs', remote_url], cwd=root)
+    ssh_env = os.environ.copy()
+    ssh_env['GIT_SSH_COMMAND'] = SSH_COMMAND
+    reachable = command(GIT + ['ls-remote', '--refs', remote_url], cwd=root, env=ssh_env)
     if reachable.returncode:
         raise Failed('NETWORK_OR_AUTH_UNAVAILABLE')
     remote_refs = {fields[0] for line in reachable.stdout.splitlines()
@@ -132,7 +140,8 @@ def git_source(args):
     if has_commit.returncode:
         raise Failed('SOURCE_COMMIT_MISSING')
     if args.pr:
-        head = command(GIT + ['ls-remote', remote_url, f'refs/pull/{args.pr}/head'], cwd=root)
+        head = command(GIT + ['ls-remote', remote_url, f'refs/pull/{args.pr}/head'],
+                       cwd=root, env=ssh_env)
         if head.returncode or not head.stdout.strip():
             raise Failed('PR_HEAD_UNAVAILABLE')
         if head.stdout.split()[0] != args.sha:

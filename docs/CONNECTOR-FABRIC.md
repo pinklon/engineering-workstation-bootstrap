@@ -112,6 +112,9 @@ commit's tree entry and reads its exact Git blob, including files between 1 MB
 and the 2 MB preflight limit. Both transports reject directories and symlinks.
 The SSH path rejects repository SSH command and URL rewrite overrides; the `gh`
 API path pins requests to `github.com` even when `GH_HOST` is set elsewhere.
+The SSH read uses `/usr/bin/ssh` with configuration files disabled, strict
+known-host checking and noninteractive authentication. A host whose approved
+key is unavailable on that fixed path falls through to the API transport.
 GitHub blob content accepts the API's Base64 line breaks but rejects malformed
 encoding or a blob SHA mismatch. `--output` creates a private (0600) receipt only at a new
 path; an existing file or symlink is left untouched and returns a blocked
