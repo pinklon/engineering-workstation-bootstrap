@@ -112,6 +112,8 @@ def load_manifest():
     ids = [c['id'] for c in m['connectors']]
     if m['schema_version'] != 1 or len(ids) != len(set(ids)):
         raise Refusal('invalid capability manifest')
+    if m.get('source_preflight', {}).get('schema_version') != 1 or not m['source_preflight'].get('fail_closed'):
+        raise Refusal('invalid source preflight contract')
     for c in m['connectors']:
         if set(c['surfaces']) != set(SURFACES):
             raise Refusal('incomplete surface declaration')
