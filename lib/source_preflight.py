@@ -97,8 +97,15 @@ def git_source(args):
             raise Failed('SOURCE_COMMIT_REMOTE_UNVERIFIED')
     hashes = {}
     for name in args.artifact:
+        object_name = f'{args.sha}:{name}'
+        kind = command(['git', 'cat-file', '-t', object_name], cwd=root)
+        if kind.returncode or kind.stdout.strip() != 'blob':
+            raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
+        size = command(['git', 'cat-file', '-s', object_name], cwd=root)
+        if size.returncode or not size.stdout.strip().isdigit() or int(size.stdout.strip()) > MAX_BYTES:
+            raise Failed('SOURCE_ARTIFACT_UNAVAILABLE')
         try:
-            result = subprocess.run(['git', 'show', f'{args.sha}:{name}'], cwd=root,
+            result = subprocess.run(['git', 'show', object_name], cwd=root,
                                     capture_output=True, timeout=12, stdin=subprocess.DEVNULL)
         except (OSError, subprocess.TimeoutExpired):
             raise Failed('SOURCE_ARTIFACT_UNAVAILABLE') from None

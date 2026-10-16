@@ -199,6 +199,38 @@ class SourcePreflightTests(unittest.TestCase):
                     p.git_source(a)
             self.assertEqual(failure.exception.code, 'SOURCE_COMMIT_REMOTE_UNVERIFIED')
 
+    def test_git_artifact_must_be_blob_and_size_is_checked_before_read(self):
+        with tempfile.TemporaryDirectory() as root:
+            historical, tip = local_history(root)
+            a = args(root)
+            a.sha = historical
+            real_command = p.command
+
+            def remote_command(argv, **kwargs):
+                if argv[:2] == ['git', 'ls-remote']:
+                    return subprocess.CompletedProcess(argv, 0, tip + '\trefs/heads/main\n', '')
+                return real_command(argv, **kwargs)
+
+            with mock.patch.object(p, 'command', side_effect=remote_command):
+                a.artifact = ['scripts']
+                with self.assertRaises(p.Failed) as failure:
+                    p.git_source(a)
+                self.assertEqual(failure.exception.code, 'SOURCE_ARTIFACT_UNAVAILABLE')
+
+                a.artifact = ['scripts/test_design_os_portability.py']
+                real_run = subprocess.run
+
+                def no_blob_read(argv, **kwargs):
+                    if argv[:2] == ['git', 'show']:
+                        self.fail('oversized blob was read before the size gate')
+                    return real_run(argv, **kwargs)
+
+                with (mock.patch.object(p, 'MAX_BYTES', 10),
+                      mock.patch.object(p.subprocess, 'run', side_effect=no_blob_read)):
+                    with self.assertRaises(p.Failed) as failure:
+                        p.git_source(a)
+                self.assertEqual(failure.exception.code, 'SOURCE_ARTIFACT_UNAVAILABLE')
+
     def test_api_response_shapes_fail_closed(self):
         a = args('/tmp')
         a.pr = 348
