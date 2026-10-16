@@ -257,6 +257,10 @@ def main(argv=None):
     receipt = {'schema_version': SCHEMA, 'checked_at': dt.datetime.now(dt.timezone.utc).isoformat(),
                'identity': args.identity, 'sha': args.sha, 'pr': args.pr,
                'artifacts': args.artifact, 'source_verified': False,
+               'required_tools': args.required_tool,
+               'required_skill_names': [Path(value).name for value in args.required_skill],
+               'required_model': args.required_model,
+               'minimum_scratch_mb': args.min_scratch_mb,
                'skill_consumption': 'UNOBSERVED', 'runtime_activation': False,
                'secret_values': False,
                'manifest_sha256': hashlib.sha256(MANIFEST.read_bytes()).hexdigest(),
@@ -264,6 +268,9 @@ def main(argv=None):
     try:
         source, attempts, free = preflight(args)
         receipt.update(source_verified=True, source=source, attempts=attempts,
+                       checks={'tool_presence': True, 'skill_wrapper_presence': True,
+                               'scratch_headroom': True,
+                               'model_probe': True if args.required_model else 'NOT_REQUESTED'},
                        scratch_free_bytes=free, reason='READY_FOR_SCOPED_READ')
         exit_code = 0
     except Failed as exc:

@@ -128,6 +128,27 @@ class SourcePreflightTests(unittest.TestCase):
                 p.model_probe('fixture-model', '/tmp', 5)
             self.assertEqual(failure.exception.code, 'TIMEOUT_OR_STDIN_WAIT')
 
+    def test_receipt_binds_checked_prerequisites_without_secret_or_path_leak(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / 'receipt.json'
+            argv = ['--repository', root, '--identity', 'pinklon/skills', '--sha',
+                    HISTORICAL, '--artifact', 'scripts/test_design_os_portability.py',
+                    '--required-tool', 'python3', '--required-skill',
+                    str(Path(root) / 'managed-skill'), '--min-scratch-mb', '5',
+                    '--output', str(output)]
+            source = {'transport': 'authenticated-github-api', 'artifact_sha256':
+                      {'scripts/test_design_os_portability.py': 'a' * 64}}
+            with (mock.patch.object(p, 'preflight', return_value=(source, [], 99_000_000)),
+                  mock.patch('sys.stdout', new_callable=io.StringIO)):
+                self.assertEqual(p.main(argv), 0)
+            receipt = json.loads(output.read_text())
+            self.assertEqual(receipt['required_tools'], ['python3'])
+            self.assertEqual(receipt['required_skill_names'], ['managed-skill'])
+            self.assertTrue(receipt['checks']['scratch_headroom'])
+            self.assertEqual(receipt['checks']['model_probe'], 'NOT_REQUESTED')
+            self.assertNotIn(root, output.read_text())
+            self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
