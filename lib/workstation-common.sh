@@ -32,9 +32,25 @@ temporary = destination.with_name(destination.name + '.next.' + uuid.uuid4().hex
 try:
     temporary.symlink_to(target)
     os.replace(temporary, destination)
+    directory = os.open(destination.parent, os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
 finally:
     temporary.unlink(missing_ok=True)
 PY
+}
+
+ws_recovery() {
+  python3 -B "$ROOT/lib/workstation-recovery.py" "$@"
+}
+
+ws_transition_checkpoint() {
+  if [[ "${WORKSTATION_FAIL_POINT:-}" == "$1" ]]; then
+    if [[ "${WORKSTATION_FAIL_MODE:-error}" == exit ]]; then exit 75; fi
+    return 74
+  fi
 }
 
 ws_assert_relative_path() {

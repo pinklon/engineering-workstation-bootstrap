@@ -20,6 +20,8 @@ bash validation/cloud-apt-fixtures.sh
 bash validation/connector-fixtures.sh
 bash validation/cloudflare-mcp-oauth-fixtures.sh
 bash validation/codex-model-fixtures.sh
+bash validation/mesh-status-adoption-fixtures.sh
+bash validation/managed-recovery-fixtures.sh
 
 if command -v shellcheck >/dev/null 2>&1; then
   printf 'Running ShellCheck...\n'
