@@ -6,6 +6,11 @@ under Workstation #18. This document is an instruction and lookup chain, not a
 task registry, lease service, credential store, or substitute for the existing
 shared dispatcher. The generated [capability view](CAPABILITY-MAP.md) is a
 reading aid.
+The offline fresh-context fixture checks these lookup references and a
+synthetic checkpoint/lease. It does not prove installed discovery, an
+authenticated dispatcher read, atomic lease enforcement or a live consumer.
+The existing dispatcher must authenticate the caller, read current state
+atomically, and enforce its own lease/fencing/idempotency contract.
 
 ## Resume and route lookup
 

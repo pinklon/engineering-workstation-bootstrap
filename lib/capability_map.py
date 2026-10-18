@@ -74,7 +74,7 @@ def validate(contract):
         ):
             raise InvalidMap('invalid scope observation')
         for key in ('task_classes', 'hardware_requirements', 'dependencies', 'failure_domains',
-                    'limits', 'alternative_route_ids', 'evidence_refs'):
+                    'limits', 'alternative_route_ids', 'evidence_refs', 'transports', 'prerequisites'):
             if not isinstance(entry.get(key), list):
                 raise InvalidMap('missing route field')
         if not set(entry['alternative_route_ids']).issubset(ids):
@@ -103,6 +103,11 @@ def validate(contract):
             if (receipt.get('kind') != source.get('kind') or
                 receipt.get('observed_at') != source.get('observed_at') or
                 receipt.get('output_sha256') != source.get('output_sha256') or
+                receipt.get('operation') != source.get('qualified_operation') or
+                receipt.get('qualified_task_class') != source.get('qualified_task_class') or
+                receipt.get('qualified_target') != source.get('qualified_target') or
+                receipt.get('qualified_scope') != source.get('qualified_scope') or
+                receipt.get('availability_state') != source.get('availability_state') or
                 receipt.get('secret_values') is not False):
                 raise InvalidMap('local receipt does not match evidence declaration')
     return projection
@@ -124,7 +129,9 @@ def eligible(contract, *, task_class, scope, target, authority, hardware=(), now
     if now.tzinfo is None:
         raise InvalidMap('clock needs timezone')
     policy = projection['freshness_policy']
-    ttl = policy['authenticated_read_ttl_seconds'] if scope == 'read' else policy['availability_ttl_seconds']
+    availability_ttl = policy['availability_ttl_seconds']
+    capability_ttl = (policy['authenticated_read_ttl_seconds']
+                      if scope == 'read' else availability_ttl)
     candidates = []
     for entry in projection['entries']:
         if entry['observation_state'] != 'tested' or task_class not in entry['task_classes']:
@@ -133,15 +140,29 @@ def eligible(contract, *, task_class, scope, target, authority, hardware=(), now
             continue
         if entry['kind'] in {'metadata', 'service'} or entry['scopes'][scope] != 'tested':
             continue
-        observed_at = entry['availability']['observed_at']
-        if observed_at is None or not 0 <= (now - timestamp(observed_at)).total_seconds() <= ttl:
+        availability = entry['availability']
+        if availability['state'] != 'observed_available':
+            continue
+        if any(
+            projection['sources'][ref].get('availability_state') not in (None, 'observed_available')
+            for ref in availability['evidence_refs']
+        ):
+            continue
+        observed_at = availability['observed_at']
+        if observed_at is None or not 0 <= (now - timestamp(observed_at)).total_seconds() <= availability_ttl:
             continue
         if not any(
             projection['sources'][ref].get('kind') in DIRECT_EVIDENCE and
             str(projection['sources'][ref].get('ref', '')).startswith('docs/receipts/') and
+            projection['sources'][ref].get('availability_state') == 'observed_available' and
+            projection['sources'][ref].get('qualified_task_class') == task_class and
+            projection['sources'][ref].get('qualified_target') == target and
+            projection['sources'][ref].get('qualified_scope') == scope and
+            projection['sources'][ref].get('qualified_operation') and
+            projection['sources'][ref].get('observed_at') == observed_at and
             projection['sources'][ref].get('observed_at') and
-            0 <= (now - timestamp(projection['sources'][ref]['observed_at'])).total_seconds() <= ttl
-            for ref in entry['availability']['evidence_refs']
+            0 <= (now - timestamp(projection['sources'][ref]['observed_at'])).total_seconds() <= capability_ttl
+            for ref in availability['evidence_refs']
         ):
             continue
         candidates.append(entry)
@@ -229,6 +250,8 @@ def render(contract):
             '',
             '- Task classes: ' + (', '.join(entry['task_classes']) or 'none qualified'),
             '- Hardware: ' + (', '.join(entry['hardware_requirements']) or 'none declared'),
+            '- Transport: ' + (', '.join(entry['transports']) or 'unresolved'),
+            '- Prerequisites: ' + (', '.join(entry['prerequisites']) or 'none declared'),
             '- Dependencies: ' + (', '.join(entry['dependencies']) or 'none declared'),
             '- Failure domains (inferred): ' + (', '.join(entry['failure_domains']) or 'none classified'),
             '- Evidence: ' + ', '.join(entry['evidence_refs']),

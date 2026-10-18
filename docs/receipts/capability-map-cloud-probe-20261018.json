@@ -10,5 +10,9 @@
   "git": "git version 2.52.0",
   "source_head": "36b86ce99c7536017822630a75cea8d5abe8ab4b",
   "scope": "this cloud task only; no hosted profile, restart, network, GPU or failover qualification",
-  "secret_values": false
+  "secret_values": false,
+  "qualified_task_class": "stdlib-computation",
+  "qualified_target": "scratch-fixture",
+  "qualified_scope": "read",
+  "availability_state": "observed_available"
 }

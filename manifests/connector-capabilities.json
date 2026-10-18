@@ -2005,7 +2005,9 @@
       "contract": {
         "kind": "direct_connector_read",
         "observed_at": "2026-10-18T19:52:08Z",
-        "ref": "manifests/connector-capabilities.json"
+        "ref": "manifests/connector-capabilities.json",
+        "url": "https://github.com/pinklon/engineering-workstation-bootstrap/blob/main/manifests/connector-capabilities.json",
+        "original_git_blob_sha": "33dce2b3977505483911886ac80acb152966c6cb"
       },
       "cloud-gap": {
         "kind": "historical_source_record",
@@ -2015,12 +2017,15 @@
       "fleet-handoff": {
         "kind": "historical_source_record",
         "observed_at": "2026-10-18T19:50:53Z",
-        "ref": "https://github.com/pinklon/shareplane-control-tower/issues/1051#issuecomment-6230576879"
+        "ref": "https://github.com/pinklon/shareplane-control-tower/issues/1051#issuecomment-6230576879",
+        "qualification": "Historical draft source status superseded by October 17 merges; runtime gaps remain."
       },
       "cloud-probe": {
         "kind": "direct_execution",
         "observed_at": "2026-10-18T19:50:21Z",
-        "ref": "parent review snapshot; direct stdlib scratch probe"
+        "ref": "parent review snapshot; direct stdlib scratch probe",
+        "original_output_sha256": "5de91f2c1973d69d8a74f4f691fc9f914be6f6d8fa708dd0e9bdb4776be14e67",
+        "description": "Parent direct stdlib scratch computation; expected sum 23. Separate from repository-local receipt."
       },
       "mac": {
         "kind": "parent_verified_summary",
@@ -2035,38 +2040,55 @@
       "github": {
         "kind": "parent_verified_summary",
         "observed_at": "2026-10-18T19:51:51Z",
-        "ref": null
+        "ref": null,
+        "description": "Parent-verified GitHub read and installation metadata; no governed write or admin proof."
       },
       "slack": {
         "kind": "parent_verified_summary",
         "observed_at": "2026-10-18T19:41:00Z",
-        "ref": null
+        "ref": null,
+        "description": "Parent-verified owner conversation route; no standing send authority. Private IDs omitted."
       },
       "netlify": {
         "kind": "parent_verified_summary",
         "observed_at": "2026-10-18T14:24:00Z",
-        "ref": null
+        "ref": null,
+        "description": "Historical Mac deploy; exact current site, release and grant must be refreshed."
       },
       "services": {
         "kind": "parent_verified_summary",
         "observed_at": "2026-10-18T16:24:00Z",
-        "ref": null
+        "ref": null,
+        "description": "Legacy service summary; Task 15 source preparation and PR 131 execution remain separate."
       },
       "service-slack": {
         "kind": "parent_verified_summary",
         "observed_at": "2026-10-18T13:31:00Z",
-        "ref": null
+        "ref": null,
+        "description": "Historical bounded Slack/Gmail ingestion checkpoints; not global coverage."
       },
       "merges": {
         "kind": "parent_verified_summary",
         "observed_at": "2026-10-18T19:51:51Z",
-        "ref": null
+        "ref": null,
+        "description": "Parent reports MC 77, Workstation 36, Skills 346, Platform 1473 merged October 17; runtime remains unproven."
       },
       "cloud-probe-local": {
         "kind": "direct_execution",
         "observed_at": "2026-10-18T20:05:12.753751+00:00",
         "ref": "docs/receipts/capability-map-cloud-probe-20261018.json",
-        "output_sha256": "076320a2a08267b4c026d06573bba408ea68841e73cdc20e62cce59de165ece3"
+        "output_sha256": "076320a2a08267b4c026d06573bba408ea68841e73cdc20e62cce59de165ece3",
+        "qualified_task_class": "stdlib-computation",
+        "qualified_target": "scratch-fixture",
+        "qualified_scope": "read",
+        "qualified_operation": "stdlib scratch write/hash/reread",
+        "availability_state": "observed_available"
+      },
+      "cloud-contract": {
+        "kind": "direct_connector_read",
+        "observed_at": "2026-10-18T19:50:39Z",
+        "ref": "https://github.com/pinklon/engineering-workstation-bootstrap/blob/main/docs/CLOUD-SETUP.md",
+        "original_git_blob_sha": "a130da828812d3f309a11281e721c2a99672fde7"
       }
     },
     "entries": [
@@ -2120,7 +2142,15 @@
         "alternative_route_ids": [
           "surface.bootstrap-cloud"
         ],
-        "auth_custody": "platform-scoped"
+        "auth_custody": "platform-scoped",
+        "transports": [
+          "current cloud shell",
+          "connected plugins"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "surface.mac-studio",
@@ -2165,7 +2195,14 @@
         "alternative_route_ids": [
           "surface.dot-cloud"
         ],
-        "auth_custody": "device-scoped-unverified"
+        "auth_custody": "device-scoped-unverified",
+        "transports": [
+          "authorized connected-computer task"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "surface.hyperion",
@@ -2214,7 +2251,14 @@
         "alternative_route_ids": [
           "surface.dot-cloud"
         ],
-        "auth_custody": "host-scoped-unverified"
+        "auth_custody": "host-scoped-unverified",
+        "transports": [
+          "existing authorized host task after route preflight"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "surface.ghostmesh-vps",
@@ -2262,7 +2306,14 @@
         "alternative_route_ids": [
           "surface.dot-cloud"
         ],
-        "auth_custody": "runner-scoped-unverified"
+        "auth_custody": "runner-scoped-unverified",
+        "transports": [
+          "existing governed runner after custodian admission"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "surface.bootstrap-cloud",
@@ -2274,7 +2325,8 @@
           "state": "saved_configuration_only",
           "observed_at": null,
           "evidence_refs": [
-            "cloud-gap"
+            "cloud-gap",
+            "cloud-contract"
           ]
         },
         "scopes": {
@@ -2302,12 +2354,21 @@
         ],
         "maintenance_owner": "Cloud #11",
         "evidence_refs": [
-          "cloud-gap"
+          "cloud-gap",
+          "cloud-contract"
         ],
         "alternative_route_ids": [
           "surface.dot-cloud"
         ],
-        "auth_custody": "platform-scoped-unverified"
+        "auth_custody": "platform-scoped-unverified",
+        "transports": [
+          "saved environment via verified environmentConfigId"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe",
+          "verified saved environment ID and repository binding"
+        ]
       },
       {
         "id": "surface.mc-cloud",
@@ -2319,7 +2380,8 @@
           "state": "saved_configuration_only",
           "observed_at": null,
           "evidence_refs": [
-            "cloud-gap"
+            "cloud-gap",
+            "cloud-contract"
           ]
         },
         "scopes": {
@@ -2347,10 +2409,21 @@
         ],
         "maintenance_owner": "Cloud #11 / Mission Control incumbent",
         "evidence_refs": [
-          "cloud-gap"
+          "cloud-gap",
+          "cloud-contract"
         ],
-        "alternative_route_ids": [],
-        "auth_custody": "platform-scoped-unverified"
+        "alternative_route_ids": [
+          "surface.dot-cloud"
+        ],
+        "auth_custody": "platform-scoped-unverified",
+        "transports": [
+          "saved environment via verified environmentConfigId"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe",
+          "verified saved environment ID and repository binding"
+        ]
       },
       {
         "id": "route.dc-directory",
@@ -2387,7 +2460,14 @@
           "dc"
         ],
         "alternative_route_ids": [],
-        "auth_custody": "platform-scoped"
+        "auth_custody": "platform-scoped",
+        "transports": [
+          "directory metadata read only"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "route.dc-command",
@@ -2407,7 +2487,9 @@
           "write": "unknown",
           "admin": "unknown"
         },
-        "task_classes": [],
+        "task_classes": [
+          "authorized-device-command-after-proof"
+        ],
         "hardware_requirements": [],
         "dependencies": [],
         "failure_domains": [
@@ -2425,7 +2507,14 @@
           "surface.mac-studio",
           "surface.dot-cloud"
         ],
-        "auth_custody": "device-scoped-unverified"
+        "auth_custody": "device-scoped-unverified",
+        "transports": [
+          "command through authorized computer task only"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "connector.github",
@@ -2466,10 +2555,18 @@
         "maintenance_owner": "Portfolio Agent Bootstrap #15 auth; Workstation #18 contract",
         "evidence_refs": [
           "github",
-          "contract"
+          "contract",
+          "fleet-handoff"
         ],
         "alternative_route_ids": [],
-        "auth_custody": "platform-scoped"
+        "auth_custody": "platform-scoped",
+        "transports": [
+          "platform GitHub connector"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "connector.slack",
@@ -2510,7 +2607,14 @@
           "slack"
         ],
         "alternative_route_ids": [],
-        "auth_custody": "platform-scoped"
+        "auth_custody": "platform-scoped",
+        "transports": [
+          "connected Slack owner conversation"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "connector.cloudflare",
@@ -2530,7 +2634,9 @@
           "write": "unknown",
           "admin": "unknown"
         },
-        "task_classes": [],
+        "task_classes": [
+          "provider-read-after-route-preflight"
+        ],
         "hardware_requirements": [],
         "dependencies": [
           "Cloudflare",
@@ -2549,7 +2655,14 @@
           "contract"
         ],
         "alternative_route_ids": [],
-        "auth_custody": "surface-isolated-unverified"
+        "auth_custody": "surface-isolated-unverified",
+        "transports": [
+          "direct connector absent in reviewed surface; local route unverified"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "connector.netlify",
@@ -2569,7 +2682,9 @@
           "write": "historical_parent_verified",
           "admin": "unknown"
         },
-        "task_classes": [],
+        "task_classes": [
+          "authorized-repeat-deploy-after-refreshed-proof"
+        ],
         "hardware_requirements": [],
         "dependencies": [
           "Mac route",
@@ -2591,7 +2706,16 @@
         "alternative_route_ids": [
           "surface.mac-studio"
         ],
-        "auth_custody": "mac-scoped-unverified"
+        "auth_custody": "mac-scoped-unverified",
+        "transports": [
+          "historically qualified Mac deployment route"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe",
+          "exact site and release authority",
+          "current Mac and Netlify authentication"
+        ]
       },
       {
         "id": "service.reasonpack",
@@ -2611,7 +2735,9 @@
           "write": "unknown",
           "admin": "unknown"
         },
-        "task_classes": [],
+        "task_classes": [
+          "read-only-service-discovery-after-route-resolution"
+        ],
         "hardware_requirements": [],
         "dependencies": [
           "service-specific host/auth/data sources unresolved"
@@ -2628,7 +2754,14 @@
           "services"
         ],
         "alternative_route_ids": [],
-        "auth_custody": "unknown"
+        "auth_custody": "unknown",
+        "transports": [
+          "service endpoint and invocation unresolved"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "service.brain",
@@ -2648,7 +2781,9 @@
           "write": "unknown",
           "admin": "unknown"
         },
-        "task_classes": [],
+        "task_classes": [
+          "read-only-service-discovery-after-route-resolution"
+        ],
         "hardware_requirements": [],
         "dependencies": [
           "service-specific host/auth/data sources unresolved"
@@ -2665,7 +2800,14 @@
           "services"
         ],
         "alternative_route_ids": [],
-        "auth_custody": "unknown"
+        "auth_custody": "unknown",
+        "transports": [
+          "service endpoint and invocation unresolved"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "service.atlas",
@@ -2685,7 +2827,9 @@
           "write": "unknown",
           "admin": "unknown"
         },
-        "task_classes": [],
+        "task_classes": [
+          "read-only-service-discovery-after-route-resolution"
+        ],
         "hardware_requirements": [],
         "dependencies": [
           "service-specific host/auth/data sources unresolved"
@@ -2702,7 +2846,14 @@
           "services"
         ],
         "alternative_route_ids": [],
-        "auth_custody": "unknown"
+        "auth_custody": "unknown",
+        "transports": [
+          "service endpoint and invocation unresolved"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "service.mission-control",
@@ -2723,7 +2874,9 @@
           "write": "unknown",
           "admin": "unknown"
         },
-        "task_classes": [],
+        "task_classes": [
+          "read-only-current-status-after-route-proof"
+        ],
         "hardware_requirements": [],
         "dependencies": [
           "existing MC service/data pipeline",
@@ -2744,7 +2897,15 @@
           "merges"
         ],
         "alternative_route_ids": [],
-        "auth_custody": "unknown"
+        "auth_custody": "unknown",
+        "transports": [
+          "existing service; Task 15 and PR 131 incumbents retained"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe",
+          "preserve Task 15 and PR 131 incumbent custody"
+        ]
       },
       {
         "id": "service.slack-ingestion",
@@ -2764,7 +2925,9 @@
           "write": "unknown",
           "admin": "unknown"
         },
-        "task_classes": [],
+        "task_classes": [
+          "read-only-checkpoint-reconciliation-after-proof"
+        ],
         "hardware_requirements": [],
         "dependencies": [
           "existing bounded ingestion service"
@@ -2780,7 +2943,14 @@
           "service-slack"
         ],
         "alternative_route_ids": [],
-        "auth_custody": "unknown"
+        "auth_custody": "unknown",
+        "transports": [
+          "existing bounded ingestion service"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       },
       {
         "id": "service.gmail-ingestion",
@@ -2800,7 +2970,9 @@
           "write": "unknown",
           "admin": "unknown"
         },
-        "task_classes": [],
+        "task_classes": [
+          "read-only-checkpoint-reconciliation-after-proof"
+        ],
         "hardware_requirements": [],
         "dependencies": [
           "existing bounded ingestion service"
@@ -2816,7 +2988,14 @@
           "service-slack"
         ],
         "alternative_route_ids": [],
-        "auth_custody": "unknown"
+        "auth_custody": "unknown",
+        "transports": [
+          "existing bounded ingestion service"
+        ],
+        "prerequisites": [
+          "exact current task authority",
+          "fresh route and scope probe"
+        ]
       }
     ],
     "proof_gates": {
@@ -2825,6 +3004,8 @@
       "automatic_failover": "unproven",
       "physical_outage_recovery": "unproven"
     },
-    "failure_domain_basis": "Conservative classification inferred from declared dependencies; not a physical-outage witness"
+    "failure_domain_basis": "Conservative classification inferred from declared dependencies; not a physical-outage witness",
+    "source_review_sha256_verified_by_parent": true,
+    "projection_fidelity": "normalized; not lossless; see docs/CONNECTOR-FABRIC.md"
   }
 }

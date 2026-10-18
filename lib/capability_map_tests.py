@@ -69,6 +69,58 @@ print(json.dumps([entry["id"] for entry in found]))
                       set(entries['surface.dot-cloud']['failure_domains']) &
                       set(entries['surface.bootstrap-cloud']['failure_domains']))
 
+    def test_probe_cannot_be_reused_for_unprobed_operation_or_target(self):
+        # Predecessor negative control: both task classes are advertised by the
+        # row, and its only local receipt is fresh, but it proves scratch only.
+        row = self.contract['route_observation']['entries'][0]
+        self.assertIn('connector-read', row['task_classes'])
+        self.assertIn('portable-source-test', row['task_classes'])
+        for task_class, target in [('connector-read', 'unprobed-provider'),
+                                   ('portable-source-test', 'unpreflighted-source'),
+                                   ('stdlib-computation', 'different-scratch')]:
+            with self.subTest(task_class=task_class, target=target):
+                self.assertEqual(routes.eligible(self.contract, task_class=task_class,
+                    scope='read', target=target,
+                    authority={'approved': True, 'reference': 'fixture-scoped-issue',
+                               'task_class': task_class, 'scope': 'read', 'target': target},
+                    now=self.when), [])
+        changed = copy.deepcopy(self.contract)
+        changed['route_observation']['sources']['cloud-probe-local']['qualified_target'] = 'different-scratch'
+        with self.assertRaises(routes.InvalidMap):
+            routes.validate(changed)
+
+    def test_availability_and_capability_expiry_are_independent_fail_closed_gates(self):
+        observed = routes.timestamp(
+            self.contract['route_observation']['sources']['cloud-probe-local']['observed_at'])
+        self.assertEqual([e['id'] for e in self.select(now=observed + dt.timedelta(seconds=300))],
+                         ['surface.dot-cloud'])
+        for seconds in (301, 899, 901):
+            with self.subTest(seconds=seconds):
+                self.assertEqual(self.select(now=observed + dt.timedelta(seconds=seconds)), [])
+        # A caller cannot make stale capability evidence current by only
+        # changing the row's availability timestamp.
+        changed = copy.deepcopy(self.contract)
+        changed['route_observation']['entries'][0]['availability']['observed_at'] = (
+            observed + dt.timedelta(seconds=800)).isoformat()
+        self.assertEqual(routes.eligible(changed, task_class='stdlib-computation',
+            scope='read', target='scratch-fixture', authority=self.authority(),
+            now=observed + dt.timedelta(seconds=899)), [])
+
+    def test_unavailable_unknown_and_contradictory_state_block(self):
+        self.assertEqual([e['id'] for e in self.select()], ['surface.dot-cloud'])
+        for state in ('UNAVAILABLE', 'unknown', 'degraded', 'historical_success'):
+            with self.subTest(state=state):
+                changed = copy.deepcopy(self.contract)
+                changed['route_observation']['entries'][0]['availability']['state'] = state
+                self.assertEqual(routes.eligible(changed, task_class='stdlib-computation',
+                    scope='read', target='scratch-fixture', authority=self.authority(),
+                    now=self.when), [])
+        changed = copy.deepcopy(self.contract)
+        changed['route_observation']['sources']['cloud-probe']['availability_state'] = 'UNAVAILABLE'
+        self.assertEqual(routes.eligible(changed, task_class='stdlib-computation',
+            scope='read', target='scratch-fixture', authority=self.authority(),
+            now=self.when), [])
+
     def test_references_and_generated_view_are_checked(self):
         changed = copy.deepcopy(self.contract)
         changed['route_observation']['entries'][0]['evidence_refs'] = ['nonexistent']
@@ -79,6 +131,22 @@ print(json.dumps([entry["id"] for entry in found]))
         with self.assertRaises(routes.InvalidMap):
             routes.validate(changed)
         self.assertEqual(routes.VIEW.read_text(), routes.render(self.contract))
+
+    def test_projection_preserves_reviewed_identity_scope_and_safe_context(self):
+        projection = self.contract['route_observation']
+        self.assertEqual(len(projection['entries']), 18)
+        self.assertEqual(len({e['id'] for e in projection['entries']}), 18)
+        self.assertTrue(projection['source_review_sha256_verified_by_parent'])
+        self.assertFalse(projection['source_review_sha256_verified_locally'])
+        self.assertIn('cloud-contract', projection['sources'])
+        self.assertEqual(len(projection['sources']['cloud-probe']['original_output_sha256']), 64)
+        rows = {e['id']: e for e in projection['entries']}
+        self.assertIn('fleet-handoff', rows['connector.github']['evidence_refs'])
+        self.assertIn('surface.dot-cloud', rows['surface.mc-cloud']['alternative_route_ids'])
+        for row in rows.values():
+            self.assertEqual(set(row['scopes']), {'read', 'write', 'admin'})
+            self.assertTrue(row['transports'])
+            self.assertTrue(row['prerequisites'])
 
     def task_state(self):
         task = {'task_id': 'synthetic-task-1', 'result_id': 'synthetic-result-1',
