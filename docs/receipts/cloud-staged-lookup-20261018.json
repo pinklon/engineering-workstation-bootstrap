@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "kind": "cloud_staged_lookup_observation",
+  "observed_at": "2026-10-18T20:54:56.504537+00:00",
+  "source": {
+    "repository": "pinklon/engineering-workstation-bootstrap",
+    "merged_main_commit": "8e88be1ece4cbc26dd03a7b6b66c0c6b16ab27eb",
+    "capability_manifest_sha256": "74fb31f838a4fe3499f6e70b8fe18c6035b4b60ea2388e0572ed35a78775ece2",
+    "stage_loader_sha256": "b7b7e3d51155886c79d228c1dcdd9f045e2b358720b0bbe26724effdbaeae3ea",
+    "skills_manifest_sha256": "bd1b93cb72ff3c0b1fcd525ad95c815a55f82c6259f6913850257f2f8c045355"
+  },
+  "consumer": {
+    "class": "selected-cloud-task; disposable stage only",
+    "os_id": "debian",
+    "os_version": "13",
+    "python": "3.12.14",
+    "node": "v24.19.0",
+    "installed_managed_skill_roots_observed": false
+  },
+  "loader": {
+    "entrypoint": "bin/staged-workstation reconcile",
+    "declared_skill": "workstation-operations",
+    "skill_entrypoint": "skills/workstation-operations/SKILL.md",
+    "stage_file_sha256": {
+      "AGENTS.md": "2790bc3881fe439e608d7f985fce178a169e4e09382503a0dd7062bf5725a2c3",
+      "docs/CAPABILITY-MAP.md": "a37a6b38370d726de246bebad6f14ccfb427a8a7b379a9f2d46a8eb1512a5559",
+      "docs/CONNECTOR-FABRIC.md": "5ea4c07780c45d3a15c1a6551816c2a08f2426393829d6e6616d34ee5216f761",
+      "docs/AGENT-OPERATING-CONTRACT.md": "e7c7ceddcd1767ee9fa7cb85342b4737fe616642e164baac40811d6458bd6956",
+      "manifests/connector-capabilities.json": "74fb31f838a4fe3499f6e70b8fe18c6035b4b60ea2388e0572ed35a78775ece2",
+      "manifests/skills.yaml": "bd1b93cb72ff3c0b1fcd525ad95c815a55f82c6259f6913850257f2f8c045355",
+      "skills/workstation-operations/SKILL.md": "de3293491039878677c99a702d2fa020f0987a139bc641e3238b22b25af568b2"
+    },
+    "all_staged_bytes_match_source": true,
+    "agent_catalog_invocation_observed": false
+  },
+  "selection": {
+    "source_selector": "lib/capability_map.py resume_candidates",
+    "input": "no shared task, checkpoint, commitment or lease",
+    "result": "HOLD",
+    "installed_skill_consumption_observed": false
+  },
+  "profile_doctor": {
+    "declared_profile": "linux-cloud-core",
+    "declared_os": "Ubuntu 24.04",
+    "declared_python": "3.13",
+    "result": "incomplete",
+    "exit_code": 1,
+    "reason": "selected environment is Debian 13; doctor refused before runtime/package qualification",
+    "python_mismatch_also_observed": true,
+    "package_install_attempted": false
+  },
+  "rollback": {
+    "entrypoint": "bin/staged-workstation rollback",
+    "disposable_stage_removed": true
+  },
+  "limits": [
+    "source/staged lookup only; no managed release installation",
+    "not a Skills #323 canonical registry or consumption receipt",
+    "not a Cloud #11 commissioned Python 3.13 Ubuntu profile",
+    "no current dispatcher authority, lease or live broker effect proved",
+    "no Mac or other host adoption inferred"
+  ],
+  "secret_values": false
+}

@@ -24,6 +24,13 @@ The private review audience label, private conversation identifiers, raw
 transcripts, exact scoped credential references, unknown service endpoints
 and unverified saved-environment IDs are intentionally not published.
 
+`bin/staged-workstation reconcile` copies the root agent lookup policy and
+generated capability/operating documents into a disposable stage alongside
+the manifest and workstation-operations skill. This permits a staged
+consumer to resolve those references before a managed release is considered.
+It does not install a skill, prove automatic agent discovery, refresh a
+surface receipt, or qualify the hosted Cloud profile.
+
 This is an incomplete qualification implementation. The HTTP, native Codex client,
 and scoped GitHub canary adapters are implemented. Desktop restart and hosted
 execution still require independent evidence. The doctor
