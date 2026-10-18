@@ -85,6 +85,30 @@ adoption require separate acceptance; a task thread alone proves neither.
   idempotency key, checkpoints and effect-time authority/revocation checks.
   Slack membership and inter-agent requests do not replace these checks.
 
+## Private execution trust boundary
+
+Only verified, trusted owner, orchestrator and designated executor principals
+may participate in the private execution workflow; deny every other principal.
+Owner authorization is distinct from scoped delegation and from execution.
+An agent cannot approve its own assignment, promote an outsider request, or
+turn a message into infrastructure authority. The existing broker/dispatcher
+must check stable principal identity, exact task ID, action, resource and
+artifact scope, expiry, revocation and logical-job idempotency at **intake and
+again at effect time**. A changed target or principal requires fresh
+authorization. Quotes, forwards, edits, display names, channel membership
+and bot mentions are content or routing signals, never authority. Public
+email and Commons routes remain nonmutating.
+
+Required adversarial acceptance for the existing broker includes outsider
+and impersonated-owner requests, forwarded or edited approvals, display-name
+collisions, revoked or expired grants, widened action/resource/artifact scope,
+stale writer epochs, concurrent duplicate logical jobs and replay after a
+committed effect. Source fixtures may test these as synthetic inputs, but
+the broker owner must separately prove authenticated intake, atomic lease
+and idempotency enforcement, effect-time revocation and a real bounded
+consumer. This PR supplies no live broker proof and changes no privileges,
+security settings, email or Commons behavior.
+
 ## Custody and proof
 
 | Duty | Existing owner |
