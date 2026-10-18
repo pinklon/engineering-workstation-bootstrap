@@ -34,47 +34,7 @@ PY
 }
 
 require_owned_stage() {
-  python3 - "$STAGE_ROOT" "$ROOT" <<'PY'
-from pathlib import Path
-import sys
-
-stage, source = Path(sys.argv[1]), Path(sys.argv[2])
-receipt = b'{"schema_version":1,"mode":"staged","status":"ready","secret_values":false}\n'
-directories = {'config', 'config/codex', 'docs', 'manifests', 'skills',
-               'skills/workstation-operations'}
-files = {'AGENTS.md', 'receipt.json', 'config/codex/config.toml',
-         'config/codex/AGENTS.md', 'docs/CAPABILITY-MAP.md',
-         'docs/CONNECTOR-FABRIC.md', 'docs/AGENT-OPERATING-CONTRACT.md',
-         'manifests/skills.yaml', 'manifests/mcp.yaml',
-         'manifests/environment.yaml', 'manifests/connector-capabilities.json',
-         'manifests/connector-hosted-template.json'}
-skill_source = source / 'skills/workstation-operations'
-for item in skill_source.rglob('*'):
-    relative = str(Path('skills/workstation-operations') / item.relative_to(skill_source))
-    (directories if item.is_dir() else files).add(relative)
-
-def refuse():
-    print('REFUSE: nonempty staged target is not the unchanged managed stage; preserve its existing policy.', file=sys.stderr)
-    raise SystemExit(64)
-
-try:
-    if not stage.is_dir():
-        refuse()
-    if any(item.is_symlink() for item in stage.rglob('*')):
-        refuse()
-    if {str(item.relative_to(stage)) for item in stage.rglob('*')} != directories | files:
-        refuse()
-    if any(not (stage / path).is_dir() for path in directories):
-        refuse()
-    if any(not (stage / path).is_file() for path in files):
-        refuse()
-    if (stage / 'receipt.json').read_bytes() != receipt:
-        refuse()
-    if (stage / 'AGENTS.md').read_bytes() != (source / 'AGENTS.md').read_bytes():
-        refuse()
-except OSError:
-    refuse()
-PY
+  python3 -B "$ROOT/lib/staged_workstation_receipt.py" verify "$STAGE_ROOT" "$ROOT"
 }
 
 render_stage() {
@@ -87,13 +47,12 @@ render_stage() {
   cp "$ROOT/AGENTS.md" "$STAGE_ROOT/AGENTS.md"
   cp "$ROOT/docs/CAPABILITY-MAP.md" "$ROOT/docs/CONNECTOR-FABRIC.md" \
     "$ROOT/docs/AGENT-OPERATING-CONTRACT.md" "$STAGE_ROOT/docs/"
-  cp "$ROOT/config/codex/config.toml.template" "$STAGE_ROOT/config/codex/config.toml"
-  sed -i.bak "s#{{STAGE_ROOT}}#$STAGE_ROOT#g" "$STAGE_ROOT/config/codex/config.toml" && rm -f "$STAGE_ROOT/config/codex/config.toml.bak"
+  python3 -B "$ROOT/lib/staged_workstation_receipt.py" render-config "$STAGE_ROOT" "$ROOT"
   cp "$ROOT/config/codex/AGENTS.md" "$STAGE_ROOT/config/codex/AGENTS.md"
   cp "$ROOT/manifests/skills.yaml" "$ROOT/manifests/mcp.yaml" "$ROOT/manifests/environment.yaml" "$STAGE_ROOT/manifests/"
   cp "$ROOT/manifests/connector-capabilities.json" "$ROOT/manifests/connector-hosted-template.json" "$STAGE_ROOT/manifests/"
   cp -R "$ROOT/skills/workstation-operations" "$STAGE_ROOT/skills/"
-  printf '{"schema_version":1,"mode":"staged","status":"ready","secret_values":false}\n' > "$STAGE_ROOT/receipt.json"
+  python3 -B "$ROOT/lib/staged_workstation_receipt.py" seal "$STAGE_ROOT" "$ROOT"
 }
 
 case "$MODE" in

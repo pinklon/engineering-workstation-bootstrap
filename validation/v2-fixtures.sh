@@ -227,6 +227,11 @@ printf 'Validating staged reconcile idempotence...\n'
 stage_root="$profile_tmp/stage"
 WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null
 first="$(shasum -a 256 "$stage_root/receipt.json" | awk '{print $1}')"
+test "$(jq -r '.schema_version' "$stage_root/receipt.json")" = 2
+for managed in config/codex/AGENTS.md config/codex/config.toml; do
+  test "$(jq -r --arg name "$managed" '.managed_sha256[$name]' "$stage_root/receipt.json")" = \
+    "$(shasum -a 256 "$stage_root/$managed" | awk '{print $1}')"
+done
 WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null
 test "$first" = "$(shasum -a 256 "$stage_root/receipt.json" | awk '{print $1}')"
 for file in AGENTS.md docs/CAPABILITY-MAP.md docs/CONNECTOR-FABRIC.md \
@@ -237,6 +242,23 @@ done
 rg -q 'docs/AGENT-OPERATING-CONTRACT.md' "$stage_root/AGENTS.md"
 rg -q 'manifests/connector-capabilities.json#route_observation' \
   "$stage_root/skills/workstation-operations/SKILL.md"
+for nested in config/codex/AGENTS.md config/codex/config.toml; do
+  cp "$stage_root/$nested" "$profile_tmp/nested-original"
+  printf '\nunrelated nested edit\n' >> "$stage_root/$nested"
+  edited_hash="$(shasum -a 256 "$stage_root/$nested" | awk '{print $1}')"
+  if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null 2>&1; then exit 1; fi
+  if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation rollback >/dev/null 2>&1; then exit 1; fi
+  test "$edited_hash" = "$(shasum -a 256 "$stage_root/$nested" | awk '{print $1}')"
+  cp "$profile_tmp/nested-original" "$stage_root/$nested"
+done
+printf '{"schema_version":1,"mode":"staged","status":"ready","secret_values":false}\n' > "$stage_root/receipt.json"
+cp "$stage_root/config/codex/config.toml" "$profile_tmp/legacy-config-original"
+printf '\nlegacy nested edit\n' >> "$stage_root/config/codex/config.toml"
+if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null 2>&1; then exit 1; fi
+if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation rollback >/dev/null 2>&1; then exit 1; fi
+cp "$profile_tmp/legacy-config-original" "$stage_root/config/codex/config.toml"
+WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null
+test "$(jq -r '.schema_version' "$stage_root/receipt.json")" = 2
 printf 'unrelated nested content\n' > "$stage_root/docs/unrelated.txt"
 if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null 2>&1; then exit 1; fi
 if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation rollback >/dev/null 2>&1; then exit 1; fi

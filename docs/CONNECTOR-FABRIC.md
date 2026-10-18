@@ -32,8 +32,12 @@ It does not install a skill, prove automatic agent discovery, refresh a
 surface receipt, or qualify the hosted Cloud profile.
 The stage root must be an absolute directory beneath `/tmp` or `/private/tmp`.
 An empty target is accepted; a nonempty target is accepted only when its
-managed stage receipt and root `AGENTS.md` match this source. Reconcile refuses
-unrelated policy before copying, and rollback refuses unowned targets.
+managed file inventory and each file's SHA-256 match its version 2 receipt.
+This includes the root and nested `AGENTS.md` files and the rendered
+`config/codex/config.toml`. A legacy version 1 receipt is accepted only when
+every staged file still exactly matches the current source; reconcile upgrades
+it to version 2. Reconcile refuses changed or unrelated policy before copying,
+and rollback refuses changed or unowned targets.
 
 This is an incomplete qualification implementation. The HTTP, native Codex client,
 and scoped GitHub canary adapters are implemented. Desktop restart and hosted
