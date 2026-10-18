@@ -20,6 +20,9 @@ original bytes, so the manifest records those two claims separately. Source
 blob/output hashes and relevant historical links are retained as reported,
 without promoting parent summaries into direct local evidence. Installed
 adoption and automatic failover require separate real consumer proof.
+The private review audience label, private conversation identifiers, raw
+transcripts, exact scoped credential references, unknown service endpoints
+and unverified saved-environment IDs are intentionally not published.
 
 This is an incomplete qualification implementation. The HTTP, native Codex client,
 and scoped GitHub canary adapters are implemented. Desktop restart and hosted

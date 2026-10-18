@@ -30,6 +30,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### surface.dot-cloud
 
 - Task classes: stdlib-computation, portable-source-test, connector-read
+- Identity observation: runtime_observed
+- Operator admission: dot-within-current-task-authority
 - Hardware: none declared
 - Transport: current cloud shell, connected plugins
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -41,6 +43,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### surface.mac-studio
 
 - Task classes: desktop-local
+- Identity observation: parent_verified
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: macos
 - Transport: authorized connected-computer task
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -52,6 +56,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### surface.hyperion
 
 - Task classes: host-specific, gpu
+- Identity observation: unknown
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: hyperion
 - Transport: existing authorized host task after route preflight
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -63,6 +69,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### surface.ghostmesh-vps
 
 - Task classes: admitted-service
+- Identity observation: unknown
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: vps
 - Transport: existing governed runner after custodian admission
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -74,6 +82,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### surface.bootstrap-cloud
 
 - Task classes: fresh-cloud-task
+- Identity observation: unknown
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: saved environment via verified environmentConfigId
 - Prerequisites: exact current task authority, fresh route and scope probe, verified saved environment ID and repository binding
@@ -85,6 +95,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### surface.mc-cloud
 
 - Task classes: fresh-cloud-task
+- Identity observation: unknown
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: saved environment via verified environmentConfigId
 - Prerequisites: exact current task authority, fresh route and scope probe, verified saved environment ID and repository binding
@@ -96,6 +108,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### route.dc-directory
 
 - Task classes: device-inventory
+- Identity observation: parent_verified
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: directory metadata read only
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -107,6 +121,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### route.dc-command
 
 - Task classes: authorized-device-command-after-proof
+- Identity observation: unknown
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: command through authorized computer task only
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -118,6 +134,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### connector.github
 
 - Task classes: repository-read, issue-read
+- Identity observation: parent_verified
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: platform GitHub connector
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -129,6 +147,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### connector.slack
 
 - Task classes: owner-conversation-read
+- Identity observation: parent_verified
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: connected Slack owner conversation
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -140,6 +160,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### connector.cloudflare
 
 - Task classes: provider-read-after-route-preflight
+- Identity observation: unknown
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: direct connector absent in reviewed surface; local route unverified
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -151,6 +173,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### connector.netlify
 
 - Task classes: authorized-repeat-deploy-after-refreshed-proof
+- Identity observation: parent_verified
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: historically qualified Mac deployment route
 - Prerequisites: exact current task authority, fresh route and scope probe, exact site and release authority, current Mac and Netlify authentication
@@ -162,6 +186,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### service.reasonpack
 
 - Task classes: read-only-service-discovery-after-route-resolution
+- Identity observation: unknown
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: service endpoint and invocation unresolved
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -173,6 +199,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### service.brain
 
 - Task classes: read-only-service-discovery-after-route-resolution
+- Identity observation: unknown
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: service endpoint and invocation unresolved
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -184,6 +212,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### service.atlas
 
 - Task classes: read-only-service-discovery-after-route-resolution
+- Identity observation: unknown
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: service endpoint and invocation unresolved
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -195,6 +225,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### service.mission-control
 
 - Task classes: read-only-current-status-after-route-proof
+- Identity observation: unknown
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: existing service; Task 15 and PR 131 incumbents retained
 - Prerequisites: exact current task authority, fresh route and scope probe, preserve Task 15 and PR 131 incumbent custody
@@ -206,6 +238,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### service.slack-ingestion
 
 - Task classes: read-only-checkpoint-reconciliation-after-proof
+- Identity observation: unknown
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: existing bounded ingestion service
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -217,6 +251,8 @@ is pending source receipts. A candidate route is not a permission grant.
 ### service.gmail-ingestion
 
 - Task classes: read-only-checkpoint-reconciliation-after-proof
+- Identity observation: unknown
+- Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
 - Transport: existing bounded ingestion service
 - Prerequisites: exact current task authority, fresh route and scope probe
@@ -228,6 +264,8 @@ is pending source receipts. A candidate route is not a permission grant.
 Freshness: availability 300 seconds, authenticated read 900 seconds,
 inventory 86400 seconds. These intervals are proposed, not an installed
 monitor. Null or expired time and indirect evidence block route selection.
+Reprobe on dispatch, expiry, authentication failure, executor restart,
+source/profile or network change, and conflicting evidence.
 Task authority, exact target, current grants and required hardware are
 checked separately. Historical success cannot authorize a write or admin action.
 

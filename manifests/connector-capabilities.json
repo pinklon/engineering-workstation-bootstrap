@@ -1999,7 +1999,19 @@
       "availability_ttl_seconds": 300,
       "authenticated_read_ttl_seconds": 900,
       "inventory_ttl_seconds": 86400,
-      "no_monitor_installed": true
+      "no_monitor_installed": true,
+      "authority_rule": "Refresh exact actor, resource, action, current grants and task scope before consequential action; TTL never grants permission",
+      "reprobe_triggers": [
+        "dispatch",
+        "expiry",
+        "401/403",
+        "executor-restart",
+        "source-or-profile-change",
+        "network-change",
+        "conflicting-evidence"
+      ],
+      "reprobe_method": "Smallest authorized read-only or local deterministic probe; do not run write/admin canaries merely to refresh status",
+      "null_timestamp": "unknown freshness; no dispatch"
     },
     "sources": {
       "contract": {
@@ -2012,13 +2024,16 @@
       "cloud-gap": {
         "kind": "historical_source_record",
         "observed_at": "2026-10-18T19:50:53Z",
-        "ref": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/11#issuecomment-6218162063"
+        "ref": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/11#issuecomment-6218162063",
+        "event_date": "2026-10-16",
+        "description": "Historical Cloud #11 environment and cold-task gap record; no current executor proof."
       },
       "fleet-handoff": {
         "kind": "historical_source_record",
         "observed_at": "2026-10-18T19:50:53Z",
         "ref": "https://github.com/pinklon/shareplane-control-tower/issues/1051#issuecomment-6230576879",
-        "qualification": "Historical draft source status superseded by October 17 merges; runtime gaps remain."
+        "qualification": "Historical draft source status superseded by October 17 merges; runtime gaps remain.",
+        "event_at": "2026-10-17T06:14:00Z"
       },
       "cloud-probe": {
         "kind": "direct_execution",
@@ -2030,12 +2045,14 @@
       "mac": {
         "kind": "parent_verified_summary",
         "observed_at": "2026-10-18T19:27:00Z",
-        "ref": null
+        "ref": null,
+        "description": "Mac Studio connection and task access parent verified; no fresh command witness in this snapshot."
       },
       "dc": {
         "kind": "parent_verified_summary",
         "observed_at": "2026-10-18T19:47:00Z",
-        "ref": null
+        "ref": null,
+        "description": "Connected device directory listed multiple hosts online; metadata only, not command proof."
       },
       "github": {
         "kind": "parent_verified_summary",
@@ -2150,7 +2167,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "runtime_observed",
+        "operator_admission": "dot-within-current-task-authority"
       },
       {
         "id": "surface.mac-studio",
@@ -2202,7 +2221,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "parent_verified",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "surface.hyperion",
@@ -2258,7 +2279,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "unknown",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "surface.ghostmesh-vps",
@@ -2313,7 +2336,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "unknown",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "surface.bootstrap-cloud",
@@ -2368,7 +2393,9 @@
           "exact current task authority",
           "fresh route and scope probe",
           "verified saved environment ID and repository binding"
-        ]
+        ],
+        "identity_verification": "unknown",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "surface.mc-cloud",
@@ -2423,7 +2450,9 @@
           "exact current task authority",
           "fresh route and scope probe",
           "verified saved environment ID and repository binding"
-        ]
+        ],
+        "identity_verification": "unknown",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "route.dc-directory",
@@ -2467,7 +2496,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "parent_verified",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "route.dc-command",
@@ -2514,7 +2545,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "unknown",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "connector.github",
@@ -2566,7 +2599,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "parent_verified",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "connector.slack",
@@ -2614,7 +2649,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "parent_verified",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "connector.cloudflare",
@@ -2662,7 +2699,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "unknown",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "connector.netlify",
@@ -2715,7 +2754,9 @@
           "fresh route and scope probe",
           "exact site and release authority",
           "current Mac and Netlify authentication"
-        ]
+        ],
+        "identity_verification": "parent_verified",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "service.reasonpack",
@@ -2761,7 +2802,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "unknown",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "service.brain",
@@ -2807,7 +2850,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "unknown",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "service.atlas",
@@ -2853,7 +2898,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "unknown",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "service.mission-control",
@@ -2905,7 +2952,9 @@
           "exact current task authority",
           "fresh route and scope probe",
           "preserve Task 15 and PR 131 incumbent custody"
-        ]
+        ],
+        "identity_verification": "unknown",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "service.slack-ingestion",
@@ -2950,7 +2999,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "unknown",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       },
       {
         "id": "service.gmail-ingestion",
@@ -2995,7 +3046,9 @@
         "prerequisites": [
           "exact current task authority",
           "fresh route and scope probe"
-        ]
+        ],
+        "identity_verification": "unknown",
+        "operator_admission": "task-specific-authority-and-current-grant-required"
       }
     ],
     "proof_gates": {

@@ -56,6 +56,8 @@ def validate(contract):
     for key in ('availability_ttl_seconds', 'authenticated_read_ttl_seconds', 'inventory_ttl_seconds'):
         if not isinstance(policy.get(key), int) or policy[key] <= 0:
             raise InvalidMap('invalid freshness interval')
+    if not policy.get('reprobe_triggers') or not policy.get('authority_rule'):
+        raise InvalidMap('missing freshness authority rule')
     entries = projection.get('entries')
     if not isinstance(entries, list) or not entries:
         raise InvalidMap('empty route observation')
@@ -67,6 +69,13 @@ def validate(contract):
     for entry in entries:
         if entry.get('observation_state') not in OBSERVATIONS:
             raise InvalidMap('invalid observation state')
+        if entry.get('identity_verification') not in {'runtime_observed', 'parent_verified', 'unknown'}:
+            raise InvalidMap('invalid identity observation')
+        if entry.get('operator_admission') not in {
+            'dot-within-current-task-authority',
+            'task-specific-authority-and-current-grant-required'
+        }:
+            raise InvalidMap('invalid operator admission')
         if entry.get('canonical_connector_id') is not None and entry['canonical_connector_id'] not in connector_ids:
             raise InvalidMap('unknown canonical connector')
         if set(entry.get('scopes', {})) != {'read', 'write', 'admin'} or any(
@@ -249,6 +258,8 @@ def render(contract):
             '### ' + entry['id'],
             '',
             '- Task classes: ' + (', '.join(entry['task_classes']) or 'none qualified'),
+            '- Identity observation: ' + entry['identity_verification'],
+            '- Operator admission: ' + entry['operator_admission'],
             '- Hardware: ' + (', '.join(entry['hardware_requirements']) or 'none declared'),
             '- Transport: ' + (', '.join(entry['transports']) or 'unresolved'),
             '- Prerequisites: ' + (', '.join(entry['prerequisites']) or 'none declared'),
@@ -262,6 +273,8 @@ def render(contract):
         'Freshness: availability 300 seconds, authenticated read 900 seconds,',
         'inventory 86400 seconds. These intervals are proposed, not an installed',
         'monitor. Null or expired time and indirect evidence block route selection.',
+        'Reprobe on dispatch, expiry, authentication failure, executor restart,',
+        'source/profile or network change, and conflicting evidence.',
         'Task authority, exact target, current grants and required hardware are',
         'checked separately. Historical success cannot authorize a write or admin action.',
         '',

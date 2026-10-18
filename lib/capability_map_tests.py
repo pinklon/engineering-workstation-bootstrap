@@ -140,6 +140,7 @@ print(json.dumps([entry["id"] for entry in found]))
         self.assertFalse(projection['source_review_sha256_verified_locally'])
         self.assertIn('cloud-contract', projection['sources'])
         self.assertEqual(len(projection['sources']['cloud-probe']['original_output_sha256']), 64)
+        self.assertIn('conflicting-evidence', projection['freshness_policy']['reprobe_triggers'])
         rows = {e['id']: e for e in projection['entries']}
         self.assertIn('fleet-handoff', rows['connector.github']['evidence_refs'])
         self.assertIn('surface.dot-cloud', rows['surface.mc-cloud']['alternative_route_ids'])
@@ -147,6 +148,9 @@ print(json.dumps([entry["id"] for entry in found]))
             self.assertEqual(set(row['scopes']), {'read', 'write', 'admin'})
             self.assertTrue(row['transports'])
             self.assertTrue(row['prerequisites'])
+            self.assertIn(row['identity_verification'],
+                          {'runtime_observed', 'parent_verified', 'unknown'})
+            self.assertTrue(row['operator_admission'])
 
     def task_state(self):
         task = {'task_id': 'synthetic-task-1', 'result_id': 'synthetic-result-1',
