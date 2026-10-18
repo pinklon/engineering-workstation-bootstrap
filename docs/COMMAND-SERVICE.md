@@ -108,6 +108,11 @@ make doctor
 ```
 
 Reconcile is intended to be idempotent. Two consecutive reconcile runs on an unchanged host should produce no material configuration drift.
+For `staged-workstation`, set `WORKSTATION_STAGE_ROOT` to an absolute disposable
+directory beneath `/tmp` or `/private/tmp`. An unchanged managed stage may be
+reconciled again. Its receipt binds the contents of every managed file, including
+nested agent policy and the rendered Codex config. Changed bytes or extra files
+block both reconcile and rollback; rollback accepts only an owned temporary stage.
 
 ## Native command equivalents
 

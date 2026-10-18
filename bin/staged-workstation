@@ -6,31 +6,60 @@ MODE="${1:-status}"
 STAGE_ROOT="${WORKSTATION_STAGE_ROOT:-}"
 
 require_stage() {
-  [[ -n "$STAGE_ROOT" ]] || { printf 'REFUSE: set WORKSTATION_STAGE_ROOT to a disposable non-home target.\n' >&2; exit 64; }
-  case "$STAGE_ROOT" in "$HOME"|"$HOME"/*) printf 'REFUSE: staged target must not be inside HOME.\n' >&2; exit 64;; esac
+  command -v python3 >/dev/null 2>&1 || { printf 'REFUSE: python3 is required to verify a staged target.\n' >&2; exit 64; }
+  STAGE_ROOT="$(python3 - "$STAGE_ROOT" "$HOME" <<'PY'
+from pathlib import Path
+import sys
+
+raw = Path(sys.argv[1])
+home = Path(sys.argv[2]).resolve()
+
+def refuse(message):
+    print('REFUSE: ' + message, file=sys.stderr)
+    raise SystemExit(64)
+
+if not sys.argv[1] or not raw.is_absolute() or '..' in raw.parts or raw.is_symlink():
+    refuse('WORKSTATION_STAGE_ROOT must be an absolute disposable directory, not a symlink.')
+stage = raw.resolve()
+if stage == home or home in stage.parents:
+    refuse('staged target must not be inside HOME.')
+temp_roots = {Path('/tmp').resolve(), Path('/private/tmp').resolve()}
+if not any(root in stage.parents for root in temp_roots):
+    refuse('staged target must be beneath /tmp or /private/tmp so rollback can remove it.')
+if stage.exists() and not stage.is_dir():
+    refuse('staged target exists but is not a directory.')
+print(stage)
+PY
+)"
+}
+
+require_owned_stage() {
+  python3 -B "$ROOT/lib/staged_workstation_receipt.py" verify "$STAGE_ROOT" "$ROOT"
 }
 
 render_stage() {
   require_stage
+  if [[ -d "$STAGE_ROOT" && -n "$(command ls -A "$STAGE_ROOT")" ]]; then
+    require_owned_stage
+  fi
   mkdir -p "$STAGE_ROOT/config/codex" "$STAGE_ROOT/manifests" "$STAGE_ROOT/skills" "$STAGE_ROOT/docs"
   # Keep the stage's skill lookup chain resolvable without activating a home.
   cp "$ROOT/AGENTS.md" "$STAGE_ROOT/AGENTS.md"
   cp "$ROOT/docs/CAPABILITY-MAP.md" "$ROOT/docs/CONNECTOR-FABRIC.md" \
     "$ROOT/docs/AGENT-OPERATING-CONTRACT.md" "$STAGE_ROOT/docs/"
-  cp "$ROOT/config/codex/config.toml.template" "$STAGE_ROOT/config/codex/config.toml"
-  sed -i.bak "s#{{STAGE_ROOT}}#$STAGE_ROOT#g" "$STAGE_ROOT/config/codex/config.toml" && rm -f "$STAGE_ROOT/config/codex/config.toml.bak"
+  python3 -B "$ROOT/lib/staged_workstation_receipt.py" render-config "$STAGE_ROOT" "$ROOT"
   cp "$ROOT/config/codex/AGENTS.md" "$STAGE_ROOT/config/codex/AGENTS.md"
   cp "$ROOT/manifests/skills.yaml" "$ROOT/manifests/mcp.yaml" "$ROOT/manifests/environment.yaml" "$STAGE_ROOT/manifests/"
   cp "$ROOT/manifests/connector-capabilities.json" "$ROOT/manifests/connector-hosted-template.json" "$STAGE_ROOT/manifests/"
   cp -R "$ROOT/skills/workstation-operations" "$STAGE_ROOT/skills/"
-  printf '{"schema_version":1,"mode":"staged","status":"ready","secret_values":false}\n' > "$STAGE_ROOT/receipt.json"
+  python3 -B "$ROOT/lib/staged_workstation_receipt.py" seal "$STAGE_ROOT" "$ROOT"
 }
 
 case "$MODE" in
   status) printf 'STAGED_TARGET=%s\n' "${STAGE_ROOT:-unset}"; printf 'LIVE_ACTIVATION=disabled\n' ;;
   reconcile) render_stage; printf 'PASS: staged reconcile completed\n' ;;
   repair) bash "$ROOT/validation/validate.sh"; render_stage; printf 'PASS: staged repair completed\n' ;;
-  rollback) require_stage; case "$STAGE_ROOT" in /private/tmp/*|/tmp/*) rm -rf "$STAGE_ROOT";; *) printf 'REFUSE: rollback accepts only /tmp or /private/tmp staged targets.\n' >&2; exit 64;; esac; printf 'PASS: staged target removed\n' ;;
+  rollback) require_stage; require_owned_stage; rm -rf "$STAGE_ROOT"; printf 'PASS: staged target removed\n' ;;
   package-drive)
     printf 'REFUSE: use workstation-publish-drive with an explicit publication contract.\n' >&2
     exit 64

@@ -224,18 +224,74 @@ if WORKSTATION_TRANSACTION_ID=unsafe bash bin/workstation-activate --activation-
   --private-profile "$tmp/unsafe-profile.json" --home "$fixture_home" --version fixture-v1 >/dev/null 2>&1; then exit 1; fi
 
 printf 'Validating staged reconcile idempotence...\n'
-WORKSTATION_STAGE_ROOT="$tmp/stage" bash bin/staged-workstation reconcile >/dev/null
-first="$(shasum -a 256 "$tmp/stage/receipt.json" | awk '{print $1}')"
-WORKSTATION_STAGE_ROOT="$tmp/stage" bash bin/staged-workstation reconcile >/dev/null
-test "$first" = "$(shasum -a 256 "$tmp/stage/receipt.json" | awk '{print $1}')"
+stage_root="$profile_tmp/stage"
+WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null
+first="$(shasum -a 256 "$stage_root/receipt.json" | awk '{print $1}')"
+test "$(jq -r '.schema_version' "$stage_root/receipt.json")" = 2
+for managed in config/codex/AGENTS.md config/codex/config.toml; do
+  test "$(jq -r --arg name "$managed" '.managed_sha256[$name]' "$stage_root/receipt.json")" = \
+    "$(shasum -a 256 "$stage_root/$managed" | awk '{print $1}')"
+done
+WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null
+test "$first" = "$(shasum -a 256 "$stage_root/receipt.json" | awk '{print $1}')"
 for file in AGENTS.md docs/CAPABILITY-MAP.md docs/CONNECTOR-FABRIC.md \
   docs/AGENT-OPERATING-CONTRACT.md manifests/connector-capabilities.json \
   skills/workstation-operations/SKILL.md; do
-  cmp "$file" "$tmp/stage/$file"
+  cmp "$file" "$stage_root/$file"
 done
-rg -q 'docs/AGENT-OPERATING-CONTRACT.md' "$tmp/stage/AGENTS.md"
+rg -q 'docs/AGENT-OPERATING-CONTRACT.md' "$stage_root/AGENTS.md"
 rg -q 'manifests/connector-capabilities.json#route_observation' \
-  "$tmp/stage/skills/workstation-operations/SKILL.md"
+  "$stage_root/skills/workstation-operations/SKILL.md"
+for nested in config/codex/AGENTS.md config/codex/config.toml; do
+  cp "$stage_root/$nested" "$profile_tmp/nested-original"
+  printf '\nunrelated nested edit\n' >> "$stage_root/$nested"
+  edited_hash="$(shasum -a 256 "$stage_root/$nested" | awk '{print $1}')"
+  if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null 2>&1; then exit 1; fi
+  if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation rollback >/dev/null 2>&1; then exit 1; fi
+  test "$edited_hash" = "$(shasum -a 256 "$stage_root/$nested" | awk '{print $1}')"
+  cp "$profile_tmp/nested-original" "$stage_root/$nested"
+done
+printf '{"schema_version":1,"mode":"staged","status":"ready","secret_values":false}\n' > "$stage_root/receipt.json"
+cp "$stage_root/config/codex/config.toml" "$profile_tmp/legacy-config-original"
+printf '\nlegacy nested edit\n' >> "$stage_root/config/codex/config.toml"
+if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null 2>&1; then exit 1; fi
+if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation rollback >/dev/null 2>&1; then exit 1; fi
+cp "$profile_tmp/legacy-config-original" "$stage_root/config/codex/config.toml"
+WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null
+test "$(jq -r '.schema_version' "$stage_root/receipt.json")" = 2
+printf 'unrelated nested content\n' > "$stage_root/docs/unrelated.txt"
+if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null 2>&1; then exit 1; fi
+if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation rollback >/dev/null 2>&1; then exit 1; fi
+test "$(cat "$stage_root/docs/unrelated.txt")" = 'unrelated nested content'
+rm "$stage_root/docs/unrelated.txt"
+cp "$stage_root/AGENTS.md" "$profile_tmp/managed-stage-policy"
+printf 'changed stage policy\n' > "$stage_root/AGENTS.md"
+if WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation reconcile >/dev/null 2>&1; then exit 1; fi
+test "$(cat "$stage_root/AGENTS.md")" = 'changed stage policy'
+cp "$profile_tmp/managed-stage-policy" "$stage_root/AGENTS.md"
+WORKSTATION_STAGE_ROOT="$stage_root" bash bin/staged-workstation rollback >/dev/null
+test ! -e "$stage_root"
+
+printf 'Validating stage-root custody before any policy replacement...\n'
+unrelated_stage="$profile_tmp/unrelated-stage"
+mkdir -p "$unrelated_stage"
+printf 'unrelated agent policy\n' > "$unrelated_stage/AGENTS.md"
+if WORKSTATION_STAGE_ROOT="$unrelated_stage" bash bin/staged-workstation reconcile >/dev/null 2>&1; then exit 1; fi
+test "$(cat "$unrelated_stage/AGENTS.md")" = 'unrelated agent policy'
+test ! -e "$unrelated_stage/receipt.json"
+if WORKSTATION_STAGE_ROOT="$unrelated_stage" bash bin/staged-workstation rollback >/dev/null 2>&1; then exit 1; fi
+test "$(cat "$unrelated_stage/AGENTS.md")" = 'unrelated agent policy'
+ln -s "$unrelated_stage" "$profile_tmp/alias-stage"
+if WORKSTATION_STAGE_ROOT="$profile_tmp/alias-stage" bash bin/staged-workstation reconcile >/dev/null 2>&1; then exit 1; fi
+test "$(cat "$unrelated_stage/AGENTS.md")" = 'unrelated agent policy'
+mkdir -p "$profile_tmp/relative-cwd"
+repo_root="$(pwd -P)"
+(
+  cd "$profile_tmp/relative-cwd"
+  if WORKSTATION_STAGE_ROOT=relative-stage bash "$repo_root/bin/staged-workstation" reconcile >/dev/null 2>&1; then exit 1; fi
+  test ! -e relative-stage
+  if WORKSTATION_STAGE_ROOT=relative-stage bash "$repo_root/bin/staged-workstation" rollback >/dev/null 2>&1; then exit 1; fi
+)
 
 printf 'Validating package reproducibility and private-overlay exclusion...\n'
 bash packaging/build-package.sh 0.2.0-fixture >/dev/null
