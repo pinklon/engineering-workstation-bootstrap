@@ -30,6 +30,10 @@ the manifest and workstation-operations skill. This permits a staged
 consumer to resolve those references before a managed release is considered.
 It does not install a skill, prove automatic agent discovery, refresh a
 surface receipt, or qualify the hosted Cloud profile.
+The stage root must be an absolute directory beneath `/tmp` or `/private/tmp`.
+An empty target is accepted; a nonempty target is accepted only when its
+managed stage receipt and root `AGENTS.md` match this source. Reconcile refuses
+unrelated policy before copying, and rollback refuses unowned targets.
 
 This is an incomplete qualification implementation. The HTTP, native Codex client,
 and scoped GitHub canary adapters are implemented. Desktop restart and hosted
