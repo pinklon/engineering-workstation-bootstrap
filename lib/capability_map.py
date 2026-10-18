@@ -109,7 +109,8 @@ def validate(contract):
                 receipt = json.loads(receipt_path.read_text())
             except (OSError, json.JSONDecodeError) as exc:
                 raise InvalidMap('missing or unreadable local receipt') from exc
-            if (receipt.get('kind') != source.get('kind') or
+            if (receipt.get('result') != 'PASS' or
+                receipt.get('kind') != source.get('kind') or
                 receipt.get('observed_at') != source.get('observed_at') or
                 receipt.get('output_sha256') != source.get('output_sha256') or
                 receipt.get('operation') != source.get('qualified_operation') or
@@ -270,8 +271,10 @@ def render(contract):
             '',
         ]
     lines += [
-        'Freshness: availability 300 seconds, authenticated read 900 seconds,',
-        'inventory 86400 seconds. These intervals are proposed, not an installed',
+        f"Freshness: availability {projection['freshness_policy']['availability_ttl_seconds']} seconds, "
+        f"authenticated read {projection['freshness_policy']['authenticated_read_ttl_seconds']} seconds,",
+        f"inventory {projection['freshness_policy']['inventory_ttl_seconds']} seconds. "
+        'These intervals are proposed, not an installed',
         'monitor. Null or expired time and indirect evidence block route selection.',
         'Reprobe on dispatch, expiry, authentication failure, executor restart,',
         'source/profile or network change, and conflicting evidence.',

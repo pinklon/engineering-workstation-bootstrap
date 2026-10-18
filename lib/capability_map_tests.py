@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import capability_map as routes
 
@@ -131,6 +132,38 @@ print(json.dumps([entry["id"] for entry in found]))
         with self.assertRaises(routes.InvalidMap):
             routes.validate(changed)
         self.assertEqual(routes.VIEW.read_text(), routes.render(self.contract))
+
+    def test_failed_or_unknown_local_receipt_cannot_validate_or_select(self):
+        source = self.contract['route_observation']['sources']['cloud-probe-local']
+        original = json.loads((routes.ROOT / source['ref']).read_text())
+        for result in ('FAIL', 'UNKNOWN', None):
+            with self.subTest(result=result), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                receipt_path = root / source['ref']
+                receipt_path.parent.mkdir(parents=True)
+                changed = dict(original)
+                if result is None:
+                    changed.pop('result')
+                else:
+                    changed['result'] = result
+                receipt_path.write_text(json.dumps(changed))
+                with mock.patch.object(routes, 'ROOT', root):
+                    with self.assertRaises(routes.InvalidMap):
+                        routes.validate(self.contract)
+                    with self.assertRaises(routes.InvalidMap):
+                        self.select()
+
+    def test_generated_view_uses_changed_manifest_freshness_intervals(self):
+        changed = copy.deepcopy(self.contract)
+        policy = changed['route_observation']['freshness_policy']
+        policy.update(availability_ttl_seconds=17,
+                      authenticated_read_ttl_seconds=43,
+                      inventory_ttl_seconds=721)
+        view = routes.render(changed)
+        self.assertIn('Freshness: availability 17 seconds, authenticated read 43 seconds,', view)
+        self.assertIn('inventory 721 seconds.', view)
+        self.assertNotIn('availability 300 seconds', view)
+        self.assertNotEqual(view, routes.render(self.contract))
 
     def test_projection_preserves_reviewed_identity_scope_and_safe_context(self):
         projection = self.contract['route_observation']
