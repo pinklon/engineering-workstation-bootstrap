@@ -43,6 +43,20 @@ if [[ "$AUTOMATIC" == 0 ]]; then
   trap 'rmdir "$lock" 2>/dev/null || true' EXIT
 fi
 
+if [[ "$(jq -r '.recoveryProtocol // 0' "$RECEIPT")" == 1 ]]; then
+  if [[ "$AUTOMATIC" == 1 ]]; then
+    [[ -f "$lock/owner.json" ]] || ws_die "automatic recovery requires its parent activation lock"
+    [[ "$(jq -r .pid "$lock/owner.json")" == "$PPID" ]] || ws_die "automatic recovery is not owned by the activation parent"
+    [[ "$(jq -r .transactionId "$lock/owner.json")" == "$transaction_id" ]] || ws_die "automatic recovery lock belongs to another transaction"
+  fi
+  ws_recovery recover "$RECEIPT" "$TARGET_HOME"
+  rollback_receipt="$(jq -r .rollbackReceipt "$RECEIPT")"
+  printf 'PASS: restored transaction %s\nReceipt: %s\n' "$transaction_id" "$rollback_receipt"
+  exit 0
+fi
+
+# Completed legacy receipts retain their existing rollback protocol. New
+# interrupted transitions require the bound recoveryProtocol preimages above.
 if [[ -f "$state_root/current-transaction" ]]; then
   [[ "$(sed -n '1p' "$state_root/current-transaction")" == "$transaction_id" ]] || ws_die "receipt is not the active transaction"
 elif [[ "$AUTOMATIC" == 0 ]]; then

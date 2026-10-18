@@ -80,14 +80,14 @@ if [[ -n "$codex_model" ]]; then
   [[ "$codex_model" =~ ^[a-z0-9][a-z0-9._-]{0,127}$ ]] || ws_die "activation contract contains invalid Codex model ID"
 fi
 manage_skill_roots="$(jq -r '.manageSkillRoots // false' "$CONTRACT")"
+transaction_id="${WORKSTATION_TRANSACTION_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+[[ "$transaction_id" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || ws_die "transaction id contains unsafe characters"
 state_root="$TARGET_HOME/.local/state/engineering-workstation-bootstrap"
 share_root="$TARGET_HOME/.local/share/engineering-workstation-bootstrap"
 mkdir -p "$state_root/receipts" "$state_root/backups" "$share_root/versions"
 lock="$state_root/activation.lock"
 mkdir "$lock" 2>/dev/null || ws_die "another activation or rollback holds $lock"
 
-transaction_id="${WORKSTATION_TRANSACTION_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
-[[ "$transaction_id" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || ws_die "transaction id contains unsafe characters"
 release_dir="$share_root/versions/$VERSION-$transaction_id"
 backup_root="$state_root/backups/$transaction_id"
 receipt="$state_root/receipts/activation-$transaction_id.json"
@@ -97,18 +97,27 @@ backup_manifest="$backup_root/manifest.json"
 applied=0
 applied_paths=0
 
-cleanup_lock() { rmdir "$lock" 2>/dev/null || true; }
+cleanup_lock() {
+  if [[ -f "$lock/owner.json" ]] && [[ "$(jq -r .pid "$lock/owner.json")" == "$$" ]] && [[ "$(jq -r .transactionId "$lock/owner.json")" == "$transaction_id" ]]; then
+    rm -f "$lock/owner.json"
+  fi
+  rmdir "$lock" 2>/dev/null || true
+}
 rollback_on_error() {
   local status=$?
   trap - ERR
   if [[ "$applied" == 1 && -f "$receipt" ]]; then
-    bash "$ROOT/bin/workstation-rollback" --receipt "$receipt" --home "$TARGET_HOME" --automatic >/dev/null 2>&1 || true
+    if ! bash "$ROOT/bin/workstation-rollback" --receipt "$receipt" --home "$TARGET_HOME" --automatic; then
+      ws_recovery patch "$receipt" '{"status":"recovery-required"}' || true
+      printf 'REQUIRES_OWNER: managed rollback is incomplete; retain the exact receipt and backups.\n' >&2
+    fi
   fi
   cleanup_lock
   exit "$status"
 }
 trap rollback_on_error ERR
 trap cleanup_lock EXIT
+jq -n --arg pid "$$" --arg txn "$transaction_id" '{pid:$pid,transactionId:$txn}' | ws_recovery write-json "$lock/owner.json"
 
 [[ ! -e "$release_dir" ]] || ws_die "version transaction already exists: $release_dir"
 mkdir -p "$release_dir/config/codex" "$release_dir/runtime" "$release_dir/private-bin" \
@@ -274,6 +283,9 @@ done < "$prestate_tsv"
 jq -Rn --arg transactionId "$transaction_id" --arg targetHome "$TARGET_HOME" --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
   [inputs | split("\t") | {relativePath:.[0],originalType:.[1],backupRelative:.[2],sha256:(if .[3] == "" then null else .[3] end),linkTarget:(if .[4] == "" then null else .[4] end)}]
   | {schemaVersion:1,transactionId:$transactionId,targetHome:$targetHome,createdAt:$createdAt,paths:.}' < "$prestate_tsv" > "$backup_manifest"
+ws_recovery seal "$TARGET_HOME" "$release_dir" "$backup_manifest" "$install_map"
+backup_manifest_sha="$(ws_sha256 "$backup_manifest")"
+ws_transition_checkpoint after-backups
 
 previous_current=''
 if [[ -L "$share_root/current" ]]; then
@@ -286,40 +298,62 @@ previous_transaction=''
 jq -n --arg transactionId "$transaction_id" --arg version "$VERSION" --arg targetHome "$TARGET_HOME" \
   --arg authorityReference "$authority_reference" --arg releaseDir "$release_dir" --arg backupManifest "$backup_manifest" \
   --arg previousCurrent "$previous_current" --arg previousTransaction "$previous_transaction" --arg startedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg manifestSha "$backup_manifest_sha" \
   '{schemaVersion:1,transactionId:$transactionId,version:$version,targetHome:$targetHome,authorityReference:$authorityReference,
     releaseDir:$releaseDir,backupManifest:$backupManifest,previousCurrent:$previousCurrent,previousTransaction:$previousTransaction,status:"applying",startedAt:$startedAt,
-    secretValues:false,liveHomeActivated:false}' > "$receipt"
+    secretValues:false,liveHomeActivated:false,recoveryProtocol:1,phase:"prepared",backupManifestSha256:$manifestSha}' | ws_recovery write-json "$receipt"
 
-ws_atomic_symlink "$release_dir" "$share_root/current"
+ws_recovery validate-start "$receipt" "$TARGET_HOME"
+# Intent and sealed preimages exist before the first live effect. Recovery uses
+# the exact receipt lineage rather than forcing an active transaction marker.
 applied=1
+ws_transition_checkpoint after-intent
+ws_recovery patch "$receipt" '{"phase":"publishing-pointer"}'
+ws_atomic_symlink "$release_dir" "$share_root/current"
+ws_transition_checkpoint after-current
+ws_recovery patch "$receipt" '{"phase":"publishing-marker"}'
+ws_recovery write-text "$state_root/current-transaction" "$transaction_id"
+ws_transition_checkpoint after-marker
 while IFS=$'\t' read -r relative kind source; do
+  delta="$(jq -cn --arg path "$relative" '{phase:"replacing-paths",pendingPath:$path}')"
+  ws_recovery patch "$receipt" "$delta"
+  ws_transition_checkpoint "before-path:$relative"
+  ws_recovery validate-current "$receipt" "$TARGET_HOME"
   live="$TARGET_HOME/$relative"
   ws_assert_under_home "$TARGET_HOME" "$live"
   if [[ -L "$live" || -e "$live" ]]; then
     ws_remove_exact_path "$TARGET_HOME" "$live"
   fi
+  ws_transition_checkpoint "after-remove:$relative"
   mkdir -p "$(dirname "$live")"
   if [[ "$kind" == link ]]; then
     ln -s "$share_root/current/$source" "$live"
   else
     cp "$source" "$live"
   fi
+  ws_recovery sync-parent "$live"
   applied_paths=$((applied_paths + 1))
+  ws_recovery patch "$receipt" '{"pendingPath":null}'
+  ws_transition_checkpoint "after-path:$relative"
   if [[ "${WORKSTATION_FAIL_AFTER_PATHS:-0}" == "$applied_paths" ]]; then
     false
   fi
 done < "$install_map"
-printf '%s\n' "$transaction_id" > "$state_root/current-transaction"
+ws_recovery patch "$receipt" '{"phase":"checking"}'
+ws_transition_checkpoint before-doctor
 
 doctor_args=(--activation --home "$TARGET_HOME" --receipt-root "$state_root/receipts")
 [[ -n "$PRIVATE_PROFILE" ]] && doctor_args+=(--private-profile "$PRIVATE_PROFILE")
 if ! bash "$release_dir/runtime/bin/workstation-doctor" "${doctor_args[@]}"; then
-  bash "$release_dir/runtime/bin/workstation-rollback" --receipt "$receipt" --home "$TARGET_HOME" --automatic
-  ws_die "post-activation doctor failed; rollback completed"
+  printf 'Post-activation doctor failed; invoking exact receipt recovery.\n' >&2
+  false
 fi
+ws_transition_checkpoint after-doctor
+ws_transition_checkpoint before-active-receipt
 
-receipt_tmp="$receipt.tmp"
 jq --arg completedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson live "$([[ "$TARGET_HOME" == "$(ws_real_dir "$HOME")" ]] && printf true || printf false)" \
-  '.status="active" | .completedAt=$completedAt | .liveHomeActivated=$live' "$receipt" > "$receipt_tmp"
-mv "$receipt_tmp" "$receipt"
+  '.status="active" | .phase="active" | .completedAt=$completedAt | .liveHomeActivated=$live' "$receipt" | ws_recovery write-json "$receipt"
+# Notification failure cannot undo a successfully committed active receipt.
+applied=0
+ws_transition_checkpoint after-active
 printf 'PASS: activation transaction %s\nReceipt: %s\n' "$transaction_id" "$receipt"
