@@ -1984,5 +1984,837 @@
       "unsupported_claimed": false,
       "instruction": "Do not connect, authenticate, install, or perform additional qualification work on Figma or Canva."
     }
-  ]
+  ],
+  "route_observation": {
+    "schema_version": 1,
+    "status": "REVIEW_EVIDENCE_PENDING_SOURCE_RECEIPTS",
+    "snapshot_id": "ghostmesh-capability-map-2026-10-18-v1",
+    "source_review_sha256": "d5432a450e788ed5b5bd2129fe9df7eab3d8a7bb3dcefa0900b9bb81c9034061",
+    "source_review_sha256_verified_locally": false,
+    "authority_notice": "Descriptive evidence only. No access, task authority, publication, deployment or new credential grant.",
+    "maintenance_owner": "Workstation #18 for this projection; Cloud #11 and Skills #323 retain their own acceptance gates",
+    "freshness_policy": {
+      "schema_version": 1,
+      "status": "PROPOSED_NOT_DEPLOYED",
+      "availability_ttl_seconds": 300,
+      "authenticated_read_ttl_seconds": 900,
+      "inventory_ttl_seconds": 86400,
+      "no_monitor_installed": true
+    },
+    "sources": {
+      "contract": {
+        "kind": "direct_connector_read",
+        "observed_at": "2026-10-18T19:52:08Z",
+        "ref": "manifests/connector-capabilities.json"
+      },
+      "cloud-gap": {
+        "kind": "historical_source_record",
+        "observed_at": "2026-10-18T19:50:53Z",
+        "ref": "https://github.com/pinklon/engineering-workstation-bootstrap/issues/11#issuecomment-6218162063"
+      },
+      "fleet-handoff": {
+        "kind": "historical_source_record",
+        "observed_at": "2026-10-18T19:50:53Z",
+        "ref": "https://github.com/pinklon/shareplane-control-tower/issues/1051#issuecomment-6230576879"
+      },
+      "cloud-probe": {
+        "kind": "direct_execution",
+        "observed_at": "2026-10-18T19:50:21Z",
+        "ref": "parent review snapshot; direct stdlib scratch probe"
+      },
+      "mac": {
+        "kind": "parent_verified_summary",
+        "observed_at": "2026-10-18T19:27:00Z",
+        "ref": null
+      },
+      "dc": {
+        "kind": "parent_verified_summary",
+        "observed_at": "2026-10-18T19:47:00Z",
+        "ref": null
+      },
+      "github": {
+        "kind": "parent_verified_summary",
+        "observed_at": "2026-10-18T19:51:51Z",
+        "ref": null
+      },
+      "slack": {
+        "kind": "parent_verified_summary",
+        "observed_at": "2026-10-18T19:41:00Z",
+        "ref": null
+      },
+      "netlify": {
+        "kind": "parent_verified_summary",
+        "observed_at": "2026-10-18T14:24:00Z",
+        "ref": null
+      },
+      "services": {
+        "kind": "parent_verified_summary",
+        "observed_at": "2026-10-18T16:24:00Z",
+        "ref": null
+      },
+      "service-slack": {
+        "kind": "parent_verified_summary",
+        "observed_at": "2026-10-18T13:31:00Z",
+        "ref": null
+      },
+      "merges": {
+        "kind": "parent_verified_summary",
+        "observed_at": "2026-10-18T19:51:51Z",
+        "ref": null
+      },
+      "cloud-probe-local": {
+        "kind": "direct_execution",
+        "observed_at": "2026-10-18T20:05:12.753751+00:00",
+        "ref": "docs/receipts/capability-map-cloud-probe-20261018.json",
+        "output_sha256": "076320a2a08267b4c026d06573bba408ea68841e73cdc20e62cce59de165ece3"
+      }
+    },
+    "entries": [
+      {
+        "id": "surface.dot-cloud",
+        "label": "dot cloud workspace",
+        "kind": "execution",
+        "canonical_connector_id": null,
+        "observation_state": "tested",
+        "availability": {
+          "state": "observed_available",
+          "observed_at": "2026-10-18T20:05:12.753751+00:00",
+          "evidence_refs": [
+            "cloud-probe",
+            "cloud-probe-local"
+          ]
+        },
+        "scopes": {
+          "read": "tested",
+          "write": "tested_local_scratch_only",
+          "admin": "unknown"
+        },
+        "task_classes": [
+          "stdlib-computation",
+          "portable-source-test",
+          "connector-read"
+        ],
+        "hardware_requirements": [],
+        "dependencies": [
+          "OpenAI task runtime",
+          "platform connector custody",
+          "authorized scratch"
+        ],
+        "failure_domains": [
+          "OpenAI task runtime",
+          "platform connector custody",
+          "authorized scratch"
+        ],
+        "limits": [
+          "Python 3.12.14; Node 24.19.0; Git 2.52.0",
+          "Not linux-cloud-core Python 3.13",
+          "Allowlisted shell network",
+          "Restart and failover unproven",
+          "No GPU or private-network readiness established"
+        ],
+        "maintenance_owner": "Workstation #18; Cloud #11 qualification",
+        "evidence_refs": [
+          "cloud-probe",
+          "cloud-probe-local"
+        ],
+        "alternative_route_ids": [
+          "surface.bootstrap-cloud"
+        ],
+        "auth_custody": "platform-scoped"
+      },
+      {
+        "id": "surface.mac-studio",
+        "label": "Mac Studio",
+        "kind": "execution",
+        "canonical_connector_id": null,
+        "observation_state": "discovered",
+        "availability": {
+          "state": "connected_metadata",
+          "observed_at": "2026-10-18T19:27:00Z",
+          "evidence_refs": [
+            "mac"
+          ]
+        },
+        "scopes": {
+          "read": "unknown",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [
+          "desktop-local"
+        ],
+        "hardware_requirements": [
+          "macos"
+        ],
+        "dependencies": [
+          "Mac power/network",
+          "task transport"
+        ],
+        "failure_domains": [
+          "Mac power/network",
+          "task transport"
+        ],
+        "limits": [
+          "Connected status is not execution proof",
+          "Task-specific grant required"
+        ],
+        "maintenance_owner": "Workstation #18 / Mac custodian",
+        "evidence_refs": [
+          "mac"
+        ],
+        "alternative_route_ids": [
+          "surface.dot-cloud"
+        ],
+        "auth_custody": "device-scoped-unverified"
+      },
+      {
+        "id": "surface.hyperion",
+        "label": "Hyperion",
+        "kind": "execution",
+        "canonical_connector_id": null,
+        "observation_state": "discovered",
+        "availability": {
+          "state": "directory_online",
+          "observed_at": "2026-10-18T19:47:00Z",
+          "evidence_refs": [
+            "dc",
+            "fleet-handoff"
+          ]
+        },
+        "scopes": {
+          "read": "unknown",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [
+          "host-specific",
+          "gpu"
+        ],
+        "hardware_requirements": [
+          "hyperion"
+        ],
+        "dependencies": [
+          "Hyperion power/network",
+          "scoped host authentication"
+        ],
+        "failure_domains": [
+          "Hyperion power/network",
+          "scoped host authentication"
+        ],
+        "limits": [
+          "Directory online only",
+          "GPU tool use, restore and role qualification unproven"
+        ],
+        "maintenance_owner": "Workstation #34; Skills #323",
+        "evidence_refs": [
+          "dc",
+          "fleet-handoff"
+        ],
+        "alternative_route_ids": [
+          "surface.dot-cloud"
+        ],
+        "auth_custody": "host-scoped-unverified"
+      },
+      {
+        "id": "surface.ghostmesh-vps",
+        "label": "GhostMesh VPS",
+        "kind": "execution",
+        "canonical_connector_id": null,
+        "observation_state": "discovered",
+        "availability": {
+          "state": "directory_online",
+          "observed_at": "2026-10-18T19:47:00Z",
+          "evidence_refs": [
+            "dc",
+            "services"
+          ]
+        },
+        "scopes": {
+          "read": "unknown",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [
+          "admitted-service"
+        ],
+        "hardware_requirements": [
+          "vps"
+        ],
+        "dependencies": [
+          "VPS",
+          "existing runner control plane"
+        ],
+        "failure_domains": [
+          "VPS",
+          "existing runner control plane"
+        ],
+        "limits": [
+          "No new command witness",
+          "Scratch admission and recovery unproven",
+          "Task 15 privileged executor unassigned"
+        ],
+        "maintenance_owner": "Control Tower #1023 / existing fleet runner",
+        "evidence_refs": [
+          "dc",
+          "services"
+        ],
+        "alternative_route_ids": [
+          "surface.dot-cloud"
+        ],
+        "auth_custody": "runner-scoped-unverified"
+      },
+      {
+        "id": "surface.bootstrap-cloud",
+        "label": "Saved Bootstrap Cloud",
+        "kind": "execution",
+        "canonical_connector_id": null,
+        "observation_state": "discovered",
+        "availability": {
+          "state": "saved_configuration_only",
+          "observed_at": null,
+          "evidence_refs": [
+            "cloud-gap"
+          ]
+        },
+        "scopes": {
+          "read": "unknown",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [
+          "fresh-cloud-task"
+        ],
+        "hardware_requirements": [],
+        "dependencies": [
+          "OpenAI cloud provisioner",
+          "repository binding",
+          "task-scoped source access"
+        ],
+        "failure_domains": [
+          "OpenAI cloud provisioner",
+          "repository binding",
+          "task-scoped source access"
+        ],
+        "limits": [
+          "Saved configuration is not a running executor",
+          "Cold exact-artifact review and skill consumption unproven"
+        ],
+        "maintenance_owner": "Cloud #11",
+        "evidence_refs": [
+          "cloud-gap"
+        ],
+        "alternative_route_ids": [
+          "surface.dot-cloud"
+        ],
+        "auth_custody": "platform-scoped-unverified"
+      },
+      {
+        "id": "surface.mc-cloud",
+        "label": "Saved Mission Control cloud",
+        "kind": "execution",
+        "canonical_connector_id": null,
+        "observation_state": "discovered",
+        "availability": {
+          "state": "saved_configuration_only",
+          "observed_at": null,
+          "evidence_refs": [
+            "cloud-gap"
+          ]
+        },
+        "scopes": {
+          "read": "unknown",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [
+          "fresh-cloud-task"
+        ],
+        "hardware_requirements": [],
+        "dependencies": [
+          "OpenAI cloud provisioner",
+          "repository binding",
+          "task-scoped source access"
+        ],
+        "failure_domains": [
+          "OpenAI cloud provisioner",
+          "repository binding",
+          "task-scoped source access"
+        ],
+        "limits": [
+          "Saved configuration is not a running executor",
+          "Task 15 source and PR 131 executor are separate"
+        ],
+        "maintenance_owner": "Cloud #11 / Mission Control incumbent",
+        "evidence_refs": [
+          "cloud-gap"
+        ],
+        "alternative_route_ids": [],
+        "auth_custody": "platform-scoped-unverified"
+      },
+      {
+        "id": "route.dc-directory",
+        "label": "Desktop Commander directory",
+        "kind": "metadata",
+        "canonical_connector_id": null,
+        "observation_state": "discovered",
+        "availability": {
+          "state": "observed_available",
+          "observed_at": "2026-10-18T19:47:00Z",
+          "evidence_refs": [
+            "dc"
+          ]
+        },
+        "scopes": {
+          "read": "tested_metadata_only",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [
+          "device-inventory"
+        ],
+        "hardware_requirements": [],
+        "dependencies": [],
+        "failure_domains": [],
+        "limits": [
+          "Not an executable command route",
+          "Online does not prove shell, auth or tools"
+        ],
+        "maintenance_owner": "Desktop Commander connector custodian",
+        "evidence_refs": [
+          "dc"
+        ],
+        "alternative_route_ids": [],
+        "auth_custody": "platform-scoped"
+      },
+      {
+        "id": "route.dc-command",
+        "label": "Desktop Commander command route",
+        "kind": "execution",
+        "canonical_connector_id": null,
+        "observation_state": "unknown",
+        "availability": {
+          "state": "unknown",
+          "observed_at": null,
+          "evidence_refs": [
+            "dc"
+          ]
+        },
+        "scopes": {
+          "read": "unknown",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [],
+        "hardware_requirements": [],
+        "dependencies": [],
+        "failure_domains": [],
+        "limits": [
+          "Directory result does not qualify command route"
+        ],
+        "maintenance_owner": "Device/task custodian",
+        "evidence_refs": [
+          "dc"
+        ],
+        "alternative_route_ids": [
+          "surface.mac-studio",
+          "surface.dot-cloud"
+        ],
+        "auth_custody": "device-scoped-unverified"
+      },
+      {
+        "id": "connector.github",
+        "label": "GitHub connected read",
+        "kind": "connector",
+        "canonical_connector_id": "github-readonly",
+        "observation_state": "tested",
+        "availability": {
+          "state": "observed_available",
+          "observed_at": "2026-10-18T19:50:53Z",
+          "evidence_refs": [
+            "github",
+            "contract"
+          ]
+        },
+        "scopes": {
+          "read": "tested",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [
+          "repository-read",
+          "issue-read"
+        ],
+        "hardware_requirements": [],
+        "dependencies": [
+          "GitHub",
+          "platform connector auth"
+        ],
+        "failure_domains": [
+          "GitHub",
+          "platform connector auth"
+        ],
+        "limits": [
+          "Mutation tool names do not prove hard read-only enforcement",
+          "Exact source review needs pinned commit and bytes"
+        ],
+        "maintenance_owner": "Portfolio Agent Bootstrap #15 auth; Workstation #18 contract",
+        "evidence_refs": [
+          "github",
+          "contract"
+        ],
+        "alternative_route_ids": [],
+        "auth_custody": "platform-scoped"
+      },
+      {
+        "id": "connector.slack",
+        "label": "Slack",
+        "kind": "connector",
+        "canonical_connector_id": null,
+        "observation_state": "tested",
+        "availability": {
+          "state": "observed_available",
+          "observed_at": "2026-10-18T19:41:00Z",
+          "evidence_refs": [
+            "slack"
+          ]
+        },
+        "scopes": {
+          "read": "parent_verified",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [
+          "owner-conversation-read"
+        ],
+        "hardware_requirements": [],
+        "dependencies": [
+          "Slack",
+          "platform connector auth"
+        ],
+        "failure_domains": [
+          "Slack",
+          "platform connector auth"
+        ],
+        "limits": [
+          "No standing send grant",
+          "Resolve exact conversation at use time"
+        ],
+        "maintenance_owner": "Slack connector custodian",
+        "evidence_refs": [
+          "slack"
+        ],
+        "alternative_route_ids": [],
+        "auth_custody": "platform-scoped"
+      },
+      {
+        "id": "connector.cloudflare",
+        "label": "Cloudflare API",
+        "kind": "connector",
+        "canonical_connector_id": "cloudflare-api",
+        "observation_state": "unknown",
+        "availability": {
+          "state": "unknown",
+          "observed_at": null,
+          "evidence_refs": [
+            "contract"
+          ]
+        },
+        "scopes": {
+          "read": "unknown",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [],
+        "hardware_requirements": [],
+        "dependencies": [
+          "Cloudflare",
+          "surface-specific credentials"
+        ],
+        "failure_domains": [
+          "Cloudflare",
+          "surface-specific credentials"
+        ],
+        "limits": [
+          "Direct connector absent on observed surface",
+          "Local authentication unknown; no global outage inference"
+        ],
+        "maintenance_owner": "Cloudflare provider custodian; Workstation #18",
+        "evidence_refs": [
+          "contract"
+        ],
+        "alternative_route_ids": [],
+        "auth_custody": "surface-isolated-unverified"
+      },
+      {
+        "id": "connector.netlify",
+        "label": "Netlify",
+        "kind": "connector",
+        "canonical_connector_id": null,
+        "observation_state": "tested",
+        "availability": {
+          "state": "historical_success",
+          "observed_at": "2026-10-18T14:24:00Z",
+          "evidence_refs": [
+            "netlify"
+          ]
+        },
+        "scopes": {
+          "read": "unknown",
+          "write": "historical_parent_verified",
+          "admin": "unknown"
+        },
+        "task_classes": [],
+        "hardware_requirements": [],
+        "dependencies": [
+          "Mac route",
+          "Netlify auth",
+          "exact site/release authority"
+        ],
+        "failure_domains": [
+          "Mac route",
+          "Netlify auth",
+          "exact site/release authority"
+        ],
+        "limits": [
+          "Historical deploy is not current grant or connection proof"
+        ],
+        "maintenance_owner": "Netlify publication owner",
+        "evidence_refs": [
+          "netlify"
+        ],
+        "alternative_route_ids": [
+          "surface.mac-studio"
+        ],
+        "auth_custody": "mac-scoped-unverified"
+      },
+      {
+        "id": "service.reasonpack",
+        "label": "ReasonPack",
+        "kind": "service",
+        "canonical_connector_id": null,
+        "observation_state": "unknown",
+        "availability": {
+          "state": "unknown",
+          "observed_at": null,
+          "evidence_refs": [
+            "services"
+          ]
+        },
+        "scopes": {
+          "read": "unknown",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [],
+        "hardware_requirements": [],
+        "dependencies": [
+          "service-specific host/auth/data sources unresolved"
+        ],
+        "failure_domains": [
+          "service-specific host/auth/data sources unresolved"
+        ],
+        "limits": [
+          "No per-service health or invocation witness"
+        ],
+        "maintenance_owner": "Existing service custodian; unresolved",
+        "evidence_refs": [
+          "services"
+        ],
+        "alternative_route_ids": [],
+        "auth_custody": "unknown"
+      },
+      {
+        "id": "service.brain",
+        "label": "Tony Brain",
+        "kind": "service",
+        "canonical_connector_id": null,
+        "observation_state": "unknown",
+        "availability": {
+          "state": "unknown",
+          "observed_at": null,
+          "evidence_refs": [
+            "services"
+          ]
+        },
+        "scopes": {
+          "read": "unknown",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [],
+        "hardware_requirements": [],
+        "dependencies": [
+          "service-specific host/auth/data sources unresolved"
+        ],
+        "failure_domains": [
+          "service-specific host/auth/data sources unresolved"
+        ],
+        "limits": [
+          "No per-service health or invocation witness"
+        ],
+        "maintenance_owner": "Existing service custodian; unresolved",
+        "evidence_refs": [
+          "services"
+        ],
+        "alternative_route_ids": [],
+        "auth_custody": "unknown"
+      },
+      {
+        "id": "service.atlas",
+        "label": "Atlas",
+        "kind": "service",
+        "canonical_connector_id": null,
+        "observation_state": "unknown",
+        "availability": {
+          "state": "unknown",
+          "observed_at": null,
+          "evidence_refs": [
+            "services"
+          ]
+        },
+        "scopes": {
+          "read": "unknown",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [],
+        "hardware_requirements": [],
+        "dependencies": [
+          "service-specific host/auth/data sources unresolved"
+        ],
+        "failure_domains": [
+          "service-specific host/auth/data sources unresolved"
+        ],
+        "limits": [
+          "No per-service health or invocation witness"
+        ],
+        "maintenance_owner": "Existing service custodian; unresolved",
+        "evidence_refs": [
+          "services"
+        ],
+        "alternative_route_ids": [],
+        "auth_custody": "unknown"
+      },
+      {
+        "id": "service.mission-control",
+        "label": "Mission Control",
+        "kind": "service",
+        "canonical_connector_id": null,
+        "observation_state": "discovered",
+        "availability": {
+          "state": "parent_reported_legacy_active",
+          "observed_at": "2026-10-18T16:24:00Z",
+          "evidence_refs": [
+            "services",
+            "merges"
+          ]
+        },
+        "scopes": {
+          "read": "unknown",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [],
+        "hardware_requirements": [],
+        "dependencies": [
+          "existing MC service/data pipeline",
+          "separate privileged execution custody"
+        ],
+        "failure_domains": [
+          "existing MC service/data pipeline",
+          "separate privileged execution custody"
+        ],
+        "limits": [
+          "Task 15 source prep is not privileged executor assignment",
+          "Merged MC 77 is not runtime deployment proof",
+          "Preserve PR 131 incumbent"
+        ],
+        "maintenance_owner": "Mission Control source/runtime incumbents",
+        "evidence_refs": [
+          "services",
+          "merges"
+        ],
+        "alternative_route_ids": [],
+        "auth_custody": "unknown"
+      },
+      {
+        "id": "service.slack-ingestion",
+        "label": "Slack service ingestion",
+        "kind": "service",
+        "canonical_connector_id": null,
+        "observation_state": "tested",
+        "availability": {
+          "state": "historical_success",
+          "observed_at": "2026-10-18T13:31:00Z",
+          "evidence_refs": [
+            "service-slack"
+          ]
+        },
+        "scopes": {
+          "read": "historical_parent_verified",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [],
+        "hardware_requirements": [],
+        "dependencies": [
+          "existing bounded ingestion service"
+        ],
+        "failure_domains": [
+          "existing bounded ingestion service"
+        ],
+        "limits": [
+          "Checkpoint 819649 is historical; no full coverage or latency proof"
+        ],
+        "maintenance_owner": "Service ingestion custodian",
+        "evidence_refs": [
+          "service-slack"
+        ],
+        "alternative_route_ids": [],
+        "auth_custody": "unknown"
+      },
+      {
+        "id": "service.gmail-ingestion",
+        "label": "Gmail service ingestion",
+        "kind": "service",
+        "canonical_connector_id": "gmail",
+        "observation_state": "tested",
+        "availability": {
+          "state": "historical_success",
+          "observed_at": "2026-10-18T13:31:00Z",
+          "evidence_refs": [
+            "service-slack"
+          ]
+        },
+        "scopes": {
+          "read": "historical_parent_verified",
+          "write": "unknown",
+          "admin": "unknown"
+        },
+        "task_classes": [],
+        "hardware_requirements": [],
+        "dependencies": [
+          "existing bounded ingestion service"
+        ],
+        "failure_domains": [
+          "existing bounded ingestion service"
+        ],
+        "limits": [
+          "Checkpoint 1309 is historical; no full coverage or latency proof"
+        ],
+        "maintenance_owner": "Service ingestion custodian",
+        "evidence_refs": [
+          "service-slack"
+        ],
+        "alternative_route_ids": [],
+        "auth_custody": "unknown"
+      }
+    ],
+    "proof_gates": {
+      "source_integrated": "candidate",
+      "installed_fleet_adoption": "unproven",
+      "automatic_failover": "unproven",
+      "physical_outage_recovery": "unproven"
+    }
+  }
 }
