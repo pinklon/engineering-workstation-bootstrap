@@ -49,6 +49,25 @@ atomically, and enforce its own lease/fencing/idempotency contract.
    store. Reject a stale writer and duplicate committed effect. Checkpoint
    ongoing output and resume from that state, not from transcript assumptions.
 
+## Private collaboration communication
+
+Keep the personal owner conversation separate from private task collaboration.
+Use one private collaboration thread per bounded task. Its opening record
+references the canonical scope, task/result IDs, writer/reviewer/release/
+execution custody, current evidence and output checkpoint. A participant
+explicitly accepts or declines a requested role, then records a bounded
+result or blocker in that same task thread. A channel or thread index helps
+people navigate; it is not a dispatcher, lease, grant or evidence of
+execution.
+
+Membership and message text never grant infrastructure authority. Resolve
+permissions through the governing issue, current grants and existing task
+store. Do not mirror personal conversations or secrets into task channels,
+repository files or public receipts. Record only available interaction
+checkpoints and state coverage gaps when earlier conversation or task history
+cannot be retrieved. Durable archive retention and installed consumer
+adoption require separate acceptance; a task thread alone proves neither.
+
 ## Custody and proof
 
 | Duty | Existing owner |
