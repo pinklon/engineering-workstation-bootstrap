@@ -68,6 +68,23 @@ checkpoints and state coverage gaps when earlier conversation or task history
 cannot be retrieved. Durable archive retention and installed consumer
 adoption require separate acceptance; a task thread alone proves neither.
 
+## Human and agent roles
+
+- **Owner:** sets priorities and grants exact task-specific authority,
+  including any consequential boundary that requires an owner decision.
+- **dot:** coordinates retrieved context, capability lookup, accepted
+  assignments, dependencies, independent review and completion evidence.
+  Coordination is not an infrastructure grant.
+- **GhostMesh:** an openly AI bounded executor or coordinator only on a
+  verified eligible host and within the accepted task scope. It may not
+  self-assign a protected writer or infer authority from a conversation.
+- **Independent reviewer:** checks the exact artifact and source head without
+  becoming the writer or release custodian.
+- **Existing dispatch/broker owners:** preserve the shared task/result ID,
+  authenticated actor/resource/action scope, writer lease and fencing,
+  idempotency key, checkpoints and effect-time authority/revocation checks.
+  Slack membership and inter-agent requests do not replace these checks.
+
 ## Custody and proof
 
 | Duty | Existing owner |
