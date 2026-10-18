@@ -48,6 +48,8 @@ def validate(contract):
         raise InvalidMap('missing route observation version')
     if projection.get('status') != 'REVIEW_EVIDENCE_PENDING_SOURCE_RECEIPTS':
         raise InvalidMap('unexpected route observation status')
+    if not projection.get('failure_domain_basis'):
+        raise InvalidMap('missing failure domain basis')
     policy = projection.get('freshness_policy', {})
     if policy.get('status') != 'PROPOSED_NOT_DEPLOYED' or policy.get('no_monitor_installed') is not True:
         raise InvalidMap('freshness policy overclaimed')
@@ -227,7 +229,8 @@ def render(contract):
             '',
             '- Task classes: ' + (', '.join(entry['task_classes']) or 'none qualified'),
             '- Hardware: ' + (', '.join(entry['hardware_requirements']) or 'none declared'),
-            '- Dependencies / failure domains: ' + (', '.join(entry['dependencies']) or 'none declared'),
+            '- Dependencies: ' + (', '.join(entry['dependencies']) or 'none declared'),
+            '- Failure domains (inferred): ' + (', '.join(entry['failure_domains']) or 'none classified'),
             '- Evidence: ' + ', '.join(entry['evidence_refs']),
             '- Limits: ' + '; '.join(entry['limits']),
             '',

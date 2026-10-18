@@ -64,6 +64,10 @@ print(json.dumps([entry["id"] for entry in found]))
                 self.assertEqual(self.select(task=task), [])
         self.assertEqual(self.select(now=self.when + dt.timedelta(minutes=16)), [])
         self.assertEqual(self.select(now=self.when - dt.timedelta(minutes=2)), [])
+        entries = {e['id']: e for e in self.contract['route_observation']['entries']}
+        self.assertIn('openai-task-control-plane',
+                      set(entries['surface.dot-cloud']['failure_domains']) &
+                      set(entries['surface.bootstrap-cloud']['failure_domains']))
 
     def test_references_and_generated_view_are_checked(self):
         changed = copy.deepcopy(self.contract)

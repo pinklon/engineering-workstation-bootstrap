@@ -2101,9 +2101,9 @@
           "authorized scratch"
         ],
         "failure_domains": [
-          "OpenAI task runtime",
-          "platform connector custody",
-          "authorized scratch"
+          "openai-task-control-plane",
+          "platform-connectors",
+          "workspace-scratch"
         ],
         "limits": [
           "Python 3.12.14; Node 24.19.0; Git 2.52.0",
@@ -2151,8 +2151,8 @@
           "task transport"
         ],
         "failure_domains": [
-          "Mac power/network",
-          "task transport"
+          "mac-host",
+          "task-transport"
         ],
         "limits": [
           "Connected status is not execution proof",
@@ -2198,8 +2198,9 @@
           "scoped host authentication"
         ],
         "failure_domains": [
-          "Hyperion power/network",
-          "scoped host authentication"
+          "hyperion-host",
+          "task-transport",
+          "scoped-host-auth"
         ],
         "limits": [
           "Directory online only",
@@ -2245,8 +2246,8 @@
           "existing runner control plane"
         ],
         "failure_domains": [
-          "VPS",
-          "existing runner control plane"
+          "vps-host",
+          "runner-control-plane"
         ],
         "limits": [
           "No new command witness",
@@ -2291,9 +2292,9 @@
           "task-scoped source access"
         ],
         "failure_domains": [
-          "OpenAI cloud provisioner",
-          "repository binding",
-          "task-scoped source access"
+          "openai-task-control-plane",
+          "repository-binding",
+          "task-scoped-source-auth"
         ],
         "limits": [
           "Saved configuration is not a running executor",
@@ -2336,9 +2337,9 @@
           "task-scoped source access"
         ],
         "failure_domains": [
-          "OpenAI cloud provisioner",
-          "repository binding",
-          "task-scoped source access"
+          "openai-task-control-plane",
+          "repository-binding",
+          "task-scoped-source-auth"
         ],
         "limits": [
           "Saved configuration is not a running executor",
@@ -2374,7 +2375,9 @@
         ],
         "hardware_requirements": [],
         "dependencies": [],
-        "failure_domains": [],
+        "failure_domains": [
+          "desktop-commander-service"
+        ],
         "limits": [
           "Not an executable command route",
           "Online does not prove shell, auth or tools"
@@ -2407,7 +2410,10 @@
         "task_classes": [],
         "hardware_requirements": [],
         "dependencies": [],
-        "failure_domains": [],
+        "failure_domains": [
+          "desktop-commander-service",
+          "device-task-auth"
+        ],
         "limits": [
           "Directory result does not qualify command route"
         ],
@@ -2450,8 +2456,8 @@
           "platform connector auth"
         ],
         "failure_domains": [
-          "GitHub",
-          "platform connector auth"
+          "github-service",
+          "platform-connectors"
         ],
         "limits": [
           "Mutation tool names do not prove hard read-only enforcement",
@@ -2492,8 +2498,8 @@
           "platform connector auth"
         ],
         "failure_domains": [
-          "Slack",
-          "platform connector auth"
+          "slack-service",
+          "platform-connectors"
         ],
         "limits": [
           "No standing send grant",
@@ -2531,8 +2537,8 @@
           "surface-specific credentials"
         ],
         "failure_domains": [
-          "Cloudflare",
-          "surface-specific credentials"
+          "cloudflare-service",
+          "surface-specific-auth"
         ],
         "limits": [
           "Direct connector absent on observed surface",
@@ -2571,9 +2577,9 @@
           "exact site/release authority"
         ],
         "failure_domains": [
-          "Mac route",
-          "Netlify auth",
-          "exact site/release authority"
+          "netlify-service",
+          "mac-host",
+          "site-grant"
         ],
         "limits": [
           "Historical deploy is not current grant or connection proof"
@@ -2611,7 +2617,8 @@
           "service-specific host/auth/data sources unresolved"
         ],
         "failure_domains": [
-          "service-specific host/auth/data sources unresolved"
+          "service-host-unknown",
+          "service-auth-unknown"
         ],
         "limits": [
           "No per-service health or invocation witness"
@@ -2647,7 +2654,8 @@
           "service-specific host/auth/data sources unresolved"
         ],
         "failure_domains": [
-          "service-specific host/auth/data sources unresolved"
+          "service-host-unknown",
+          "service-auth-unknown"
         ],
         "limits": [
           "No per-service health or invocation witness"
@@ -2683,7 +2691,8 @@
           "service-specific host/auth/data sources unresolved"
         ],
         "failure_domains": [
-          "service-specific host/auth/data sources unresolved"
+          "service-host-unknown",
+          "service-auth-unknown"
         ],
         "limits": [
           "No per-service health or invocation witness"
@@ -2721,8 +2730,8 @@
           "separate privileged execution custody"
         ],
         "failure_domains": [
-          "existing MC service/data pipeline",
-          "separate privileged execution custody"
+          "mission-control-runtime",
+          "privileged-executor"
         ],
         "limits": [
           "Task 15 source prep is not privileged executor assignment",
@@ -2761,7 +2770,7 @@
           "existing bounded ingestion service"
         ],
         "failure_domains": [
-          "existing bounded ingestion service"
+          "service-ingestion-runtime"
         ],
         "limits": [
           "Checkpoint 819649 is historical; no full coverage or latency proof"
@@ -2797,7 +2806,7 @@
           "existing bounded ingestion service"
         ],
         "failure_domains": [
-          "existing bounded ingestion service"
+          "service-ingestion-runtime"
         ],
         "limits": [
           "Checkpoint 1309 is historical; no full coverage or latency proof"
@@ -2815,6 +2824,7 @@
       "installed_fleet_adoption": "unproven",
       "automatic_failover": "unproven",
       "physical_outage_recovery": "unproven"
-    }
+    },
+    "failure_domain_basis": "Conservative classification inferred from declared dependencies; not a physical-outage witness"
   }
 }

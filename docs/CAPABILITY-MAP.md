@@ -31,7 +31,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: stdlib-computation, portable-source-test, connector-read
 - Hardware: none declared
-- Dependencies / failure domains: OpenAI task runtime, platform connector custody, authorized scratch
+- Dependencies: OpenAI task runtime, platform connector custody, authorized scratch
+- Failure domains (inferred): openai-task-control-plane, platform-connectors, workspace-scratch
 - Evidence: cloud-probe, cloud-probe-local
 - Limits: Python 3.12.14; Node 24.19.0; Git 2.52.0; Not linux-cloud-core Python 3.13; Allowlisted shell network; Restart and failover unproven; No GPU or private-network readiness established
 
@@ -39,7 +40,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: desktop-local
 - Hardware: macos
-- Dependencies / failure domains: Mac power/network, task transport
+- Dependencies: Mac power/network, task transport
+- Failure domains (inferred): mac-host, task-transport
 - Evidence: mac
 - Limits: Connected status is not execution proof; Task-specific grant required
 
@@ -47,7 +49,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: host-specific, gpu
 - Hardware: hyperion
-- Dependencies / failure domains: Hyperion power/network, scoped host authentication
+- Dependencies: Hyperion power/network, scoped host authentication
+- Failure domains (inferred): hyperion-host, task-transport, scoped-host-auth
 - Evidence: dc, fleet-handoff
 - Limits: Directory online only; GPU tool use, restore and role qualification unproven
 
@@ -55,7 +58,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: admitted-service
 - Hardware: vps
-- Dependencies / failure domains: VPS, existing runner control plane
+- Dependencies: VPS, existing runner control plane
+- Failure domains (inferred): vps-host, runner-control-plane
 - Evidence: dc, services
 - Limits: No new command witness; Scratch admission and recovery unproven; Task 15 privileged executor unassigned
 
@@ -63,7 +67,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: fresh-cloud-task
 - Hardware: none declared
-- Dependencies / failure domains: OpenAI cloud provisioner, repository binding, task-scoped source access
+- Dependencies: OpenAI cloud provisioner, repository binding, task-scoped source access
+- Failure domains (inferred): openai-task-control-plane, repository-binding, task-scoped-source-auth
 - Evidence: cloud-gap
 - Limits: Saved configuration is not a running executor; Cold exact-artifact review and skill consumption unproven
 
@@ -71,7 +76,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: fresh-cloud-task
 - Hardware: none declared
-- Dependencies / failure domains: OpenAI cloud provisioner, repository binding, task-scoped source access
+- Dependencies: OpenAI cloud provisioner, repository binding, task-scoped source access
+- Failure domains (inferred): openai-task-control-plane, repository-binding, task-scoped-source-auth
 - Evidence: cloud-gap
 - Limits: Saved configuration is not a running executor; Task 15 source and PR 131 executor are separate
 
@@ -79,7 +85,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: device-inventory
 - Hardware: none declared
-- Dependencies / failure domains: none declared
+- Dependencies: none declared
+- Failure domains (inferred): desktop-commander-service
 - Evidence: dc
 - Limits: Not an executable command route; Online does not prove shell, auth or tools
 
@@ -87,7 +94,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: none qualified
 - Hardware: none declared
-- Dependencies / failure domains: none declared
+- Dependencies: none declared
+- Failure domains (inferred): desktop-commander-service, device-task-auth
 - Evidence: dc
 - Limits: Directory result does not qualify command route
 
@@ -95,7 +103,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: repository-read, issue-read
 - Hardware: none declared
-- Dependencies / failure domains: GitHub, platform connector auth
+- Dependencies: GitHub, platform connector auth
+- Failure domains (inferred): github-service, platform-connectors
 - Evidence: github, contract
 - Limits: Mutation tool names do not prove hard read-only enforcement; Exact source review needs pinned commit and bytes
 
@@ -103,7 +112,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: owner-conversation-read
 - Hardware: none declared
-- Dependencies / failure domains: Slack, platform connector auth
+- Dependencies: Slack, platform connector auth
+- Failure domains (inferred): slack-service, platform-connectors
 - Evidence: slack
 - Limits: No standing send grant; Resolve exact conversation at use time
 
@@ -111,7 +121,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: none qualified
 - Hardware: none declared
-- Dependencies / failure domains: Cloudflare, surface-specific credentials
+- Dependencies: Cloudflare, surface-specific credentials
+- Failure domains (inferred): cloudflare-service, surface-specific-auth
 - Evidence: contract
 - Limits: Direct connector absent on observed surface; Local authentication unknown; no global outage inference
 
@@ -119,7 +130,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: none qualified
 - Hardware: none declared
-- Dependencies / failure domains: Mac route, Netlify auth, exact site/release authority
+- Dependencies: Mac route, Netlify auth, exact site/release authority
+- Failure domains (inferred): netlify-service, mac-host, site-grant
 - Evidence: netlify
 - Limits: Historical deploy is not current grant or connection proof
 
@@ -127,7 +139,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: none qualified
 - Hardware: none declared
-- Dependencies / failure domains: service-specific host/auth/data sources unresolved
+- Dependencies: service-specific host/auth/data sources unresolved
+- Failure domains (inferred): service-host-unknown, service-auth-unknown
 - Evidence: services
 - Limits: No per-service health or invocation witness
 
@@ -135,7 +148,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: none qualified
 - Hardware: none declared
-- Dependencies / failure domains: service-specific host/auth/data sources unresolved
+- Dependencies: service-specific host/auth/data sources unresolved
+- Failure domains (inferred): service-host-unknown, service-auth-unknown
 - Evidence: services
 - Limits: No per-service health or invocation witness
 
@@ -143,7 +157,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: none qualified
 - Hardware: none declared
-- Dependencies / failure domains: service-specific host/auth/data sources unresolved
+- Dependencies: service-specific host/auth/data sources unresolved
+- Failure domains (inferred): service-host-unknown, service-auth-unknown
 - Evidence: services
 - Limits: No per-service health or invocation witness
 
@@ -151,7 +166,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: none qualified
 - Hardware: none declared
-- Dependencies / failure domains: existing MC service/data pipeline, separate privileged execution custody
+- Dependencies: existing MC service/data pipeline, separate privileged execution custody
+- Failure domains (inferred): mission-control-runtime, privileged-executor
 - Evidence: services, merges
 - Limits: Task 15 source prep is not privileged executor assignment; Merged MC 77 is not runtime deployment proof; Preserve PR 131 incumbent
 
@@ -159,7 +175,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: none qualified
 - Hardware: none declared
-- Dependencies / failure domains: existing bounded ingestion service
+- Dependencies: existing bounded ingestion service
+- Failure domains (inferred): service-ingestion-runtime
 - Evidence: service-slack
 - Limits: Checkpoint 819649 is historical; no full coverage or latency proof
 
@@ -167,7 +184,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 - Task classes: none qualified
 - Hardware: none declared
-- Dependencies / failure domains: existing bounded ingestion service
+- Dependencies: existing bounded ingestion service
+- Failure domains (inferred): service-ingestion-runtime
 - Evidence: service-slack
 - Limits: Checkpoint 1309 is historical; no full coverage or latency proof
 
