@@ -12,7 +12,11 @@ require_stage() {
 
 render_stage() {
   require_stage
-  mkdir -p "$STAGE_ROOT/config/codex" "$STAGE_ROOT/manifests" "$STAGE_ROOT/skills"
+  mkdir -p "$STAGE_ROOT/config/codex" "$STAGE_ROOT/manifests" "$STAGE_ROOT/skills" "$STAGE_ROOT/docs"
+  # Keep the stage's skill lookup chain resolvable without activating a home.
+  cp "$ROOT/AGENTS.md" "$STAGE_ROOT/AGENTS.md"
+  cp "$ROOT/docs/CAPABILITY-MAP.md" "$ROOT/docs/CONNECTOR-FABRIC.md" \
+    "$ROOT/docs/AGENT-OPERATING-CONTRACT.md" "$STAGE_ROOT/docs/"
   cp "$ROOT/config/codex/config.toml.template" "$STAGE_ROOT/config/codex/config.toml"
   sed -i.bak "s#{{STAGE_ROOT}}#$STAGE_ROOT#g" "$STAGE_ROOT/config/codex/config.toml" && rm -f "$STAGE_ROOT/config/codex/config.toml.bak"
   cp "$ROOT/config/codex/AGENTS.md" "$STAGE_ROOT/config/codex/AGENTS.md"

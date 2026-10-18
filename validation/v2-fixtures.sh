@@ -228,6 +228,14 @@ WORKSTATION_STAGE_ROOT="$tmp/stage" bash bin/staged-workstation reconcile >/dev/
 first="$(shasum -a 256 "$tmp/stage/receipt.json" | awk '{print $1}')"
 WORKSTATION_STAGE_ROOT="$tmp/stage" bash bin/staged-workstation reconcile >/dev/null
 test "$first" = "$(shasum -a 256 "$tmp/stage/receipt.json" | awk '{print $1}')"
+for file in AGENTS.md docs/CAPABILITY-MAP.md docs/CONNECTOR-FABRIC.md \
+  docs/AGENT-OPERATING-CONTRACT.md manifests/connector-capabilities.json \
+  skills/workstation-operations/SKILL.md; do
+  cmp "$file" "$tmp/stage/$file"
+done
+rg -q 'docs/AGENT-OPERATING-CONTRACT.md' "$tmp/stage/AGENTS.md"
+rg -q 'manifests/connector-capabilities.json#route_observation' \
+  "$tmp/stage/skills/workstation-operations/SKILL.md"
 
 printf 'Validating package reproducibility and private-overlay exclusion...\n'
 bash packaging/build-package.sh 0.2.0-fixture >/dev/null
