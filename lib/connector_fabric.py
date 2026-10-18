@@ -122,6 +122,13 @@ def load_manifest():
     for p in m['profiles'].values():
         if not set(p['required']).issubset(ids):
             raise Refusal('unknown profile capability')
+    # Route observations are a projection within this same authority, not a
+    # replacement for connector health or per-surface conformance receipts.
+    import capability_map
+    try:
+        capability_map.validate(m)
+    except capability_map.InvalidMap as exc:
+        raise Refusal('invalid route observation') from exc
     return m
 
 

@@ -4,6 +4,26 @@
 capability authority; `manifests/mcp.yaml` retains the older activation policy for
 compatibility. A legacy doctor pass does not qualify connector parity.
 
+The manifest's versioned `route_observation` section carries the reviewed
+cross-surface route map. `python3 lib/capability_map.py render` generates
+`docs/CAPABILITY-MAP.md`; `python3 lib/capability_map.py check-view` rejects
+a stale view. `lib/capability_map.py` validates references and returns only
+fresh, directly evidenced candidates for an exact task class, target, scope
+and separately supplied authority. It does not dispatch work or grant access.
+Review evidence missing an underlying receipt stays unresolved. The 18-entry
+projection is **normalized, not lossless**: route and prerequisite descriptions
+are concise nonsecret summaries, conditional task classes do not qualify an
+unknown route, and private conversation identifiers/content and scoped
+credential material are excluded. The parent's original snapshot checksum
+was independently verified; this cloud executor did not materialize those
+original bytes, so the manifest records those two claims separately. Source
+blob/output hashes and relevant historical links are retained as reported,
+without promoting parent summaries into direct local evidence. Installed
+adoption and automatic failover require separate real consumer proof.
+The private review audience label, private conversation identifiers, raw
+transcripts, exact scoped credential references, unknown service endpoints
+and unverified saved-environment IDs are intentionally not published.
+
 This is an incomplete qualification implementation. The HTTP, native Codex client,
 and scoped GitHub canary adapters are implemented. Desktop restart and hosted
 execution still require independent evidence. The doctor

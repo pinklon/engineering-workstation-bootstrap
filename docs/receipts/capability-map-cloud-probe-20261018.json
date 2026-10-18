@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "kind": "direct_execution",
+  "observed_at": "2026-10-18T20:05:12.753751+00:00",
+  "result": "PASS",
+  "operation": "stdlib scratch write/hash/reread",
+  "output_sha256": "076320a2a08267b4c026d06573bba408ea68841e73cdc20e62cce59de165ece3",
+  "python": "3.12.14",
+  "node": "v24.19.0",
+  "git": "git version 2.52.0",
+  "source_head": "36b86ce99c7536017822630a75cea8d5abe8ab4b",
+  "scope": "this cloud task only; no hosted profile, restart, network, GPU or failover qualification",
+  "secret_values": false,
+  "qualified_task_class": "stdlib-computation",
+  "qualified_target": "scratch-fixture",
+  "qualified_scope": "read",
+  "availability_state": "observed_available"
+}
