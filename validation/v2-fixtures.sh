@@ -14,8 +14,9 @@ printf '%s\n' '# invalid internal layer' > "$fixture_home/.codex/skills/legacy/l
 mkdir -p "$tmp/system-original/skill-creator/scripts"
 printf '%s\n' '---' 'name: skill-creator' 'description: built-in fixture' '---' \
   > "$tmp/system-original/skill-creator/SKILL.md"
-for n in {01..48}; do
-  printf 'built-in asset %s\n' "$n" > "$tmp/system-original/skill-creator/scripts/asset-$n"
+for n in {1..48}; do
+  printf -v padded '%02d' "$n"
+  printf 'built-in asset %s\n' "$padded" > "$tmp/system-original/skill-creator/scripts/asset-$padded"
 done
 chmod 755 "$tmp/system-original/skill-creator/scripts/asset-01"
 ln -s asset-01 "$tmp/system-original/skill-creator/scripts/current"
