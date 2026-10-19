@@ -80,6 +80,14 @@ if [[ -n "$codex_model" ]]; then
   [[ "$codex_model" =~ ^[a-z0-9][a-z0-9._-]{0,127}$ ]] || ws_die "activation contract contains invalid Codex model ID"
 fi
 manage_skill_roots="$(jq -r '.manageSkillRoots // false' "$CONTRACT")"
+catalog_bridge="$(jq -r '.codexSystemCatalogBridge // empty' "$CONTRACT")"
+if [[ -n "$catalog_bridge" ]]; then
+  [[ "$manage_skill_roots" == true && "$catalog_bridge" == review-agent ]] \
+    || ws_die "unsupported Codex .system catalog bridge"
+  jq -e '.codexSystemSkills[]? | select(.name == "review-agent" and
+    .classification == "openai-builtin" and .action == "preserve")' "$CONTRACT" >/dev/null \
+    || ws_die "review-agent catalog bridge requires a preserved classified built-in"
+fi
 if [[ "$manage_skill_roots" == true && -n "$PRIVATE_PROFILE" && -d "$TARGET_HOME/.codex/skills/.system" ]]; then
   while IFS= read -r builtin; do
     builtin_dir="$(basename "$(dirname "$builtin")")"
@@ -238,6 +246,24 @@ if [[ "$manage_skill_roots" == true ]]; then
   mkdir -p "$release_dir/codex-skills/.system"
   python3 "$ROOT/lib/workstation-recovery.py" system-skills-stage "$CONTRACT" "$TARGET_HOME" \
     "$release_dir/codex-skills/.system" || ws_die "Codex .system staging failed"
+  if [[ "$catalog_bridge" == review-agent ]]; then
+    library="$release_dir/codex-skills/.system/review-agent"
+    [[ -f "$library/SKILL.md" ]] || ws_die "review-agent catalog bridge target is missing"
+    active="$release_dir/codex-skills/review-agent"
+    mkdir -p "$active"
+    cat > "$active/SKILL.md" <<EOF
+---
+name: review-agent
+description: Managed discovery entrypoint for the fingerprint-bound review-agent package.
+---
+
+# Workstation .system catalog bridge: review-agent
+
+Read and follow the complete skill at \`$library/SKILL.md\`. Resolve every relative
+reference from \`$library\`. The package is the classified, fingerprint-bound
+Codex .system copy; this wrapper exists only for catalog discovery.
+EOF
+  fi
 fi
 
 managed_commands=(workstation-bootstrap workstation-activate workstation-rollback workstation-doctor connector-doctor workstation-cloudflare-mcp workstation-toolsets workstation-publish-drive workstation-private-profile environment-inventory browser-gate-python github-auth-doctor cloudflare-auth-doctor)

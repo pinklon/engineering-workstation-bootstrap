@@ -53,6 +53,7 @@ bash bin/workstation-bootstrap dry-run
 
 printf 'Validating v2 staged fixtures...\n'
 bash validation/v2-fixtures.sh
+bash validation/review-agent-catalog-bridge-fixtures.sh
 python3 -B validation/staged-receipt-upgrade-fixtures.py
 
 printf 'Validating package build...\n'

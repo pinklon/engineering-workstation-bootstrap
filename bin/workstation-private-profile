@@ -47,6 +47,17 @@ record_skill() {
   source_dir="$(dirname "$skill_file")"
   name="$(awk -F': *' '$1 == "name" {gsub(/^"|"$/, "", $2); print $2; exit}' "$skill_file")"
   [[ -n "$name" ]] || name="$(basename "$source_dir")"
+  # This generated entrypoint makes a classified built-in visible to Codex's
+  # catalog. Its package lives under .system and must not become a private
+  # profile copy on the next managed release.
+  if [[ "$install_root" == codex-skills && "$name" == review-agent &&
+        "$source_dir" == "$HOME/.codex/skills/review-agent" &&
+        -n "$managed_library" &&
+        -f "$current_release/codex-skills/.system/review-agent/SKILL.md" ]] &&
+     rg -Fqx '# Workstation .system catalog bridge: review-agent' "$skill_file" &&
+     rg -Fq "$current_release/codex-skills/.system/review-agent/SKILL.md" "$skill_file"; then
+    return 0
+  fi
   # Historical VSOK/LLMStack governors are not admitted by the active Skills
   # registry. Never re-export them, including via an archived private profile.
   case "$name" in
