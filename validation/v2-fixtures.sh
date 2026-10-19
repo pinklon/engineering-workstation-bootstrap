@@ -11,6 +11,22 @@ printf '%s\n' '# user-owned-start' 'export USER_SETTING=preserved' > "$fixture_h
 printf '%s\n' 'model = "fixture-model"' 'approvals_reviewer = "user"' '' '[mcp_servers."supabase-fixture"]' 'url = "https://example.invalid/mcp"' 'bearer_token_env_var = "SUPABASE_ACCESS_TOKEN"' 'enabled = true' > "$fixture_home/.codex/config.toml"
 printf '%s\n' '---' 'name: legacy' 'description: fixture' '---' > "$fixture_home/.codex/skills/legacy/SKILL.md"
 printf '%s\n' '# invalid internal layer' > "$fixture_home/.codex/skills/legacy/layers/00/SKILL.md"
+mkdir -p "$tmp/system-original/skill-creator/scripts"
+printf '%s\n' '---' 'name: skill-creator' 'description: built-in fixture' '---' \
+  > "$tmp/system-original/skill-creator/SKILL.md"
+for n in {01..48}; do
+  printf 'built-in asset %s\n' "$n" > "$tmp/system-original/skill-creator/scripts/asset-$n"
+done
+chmod 755 "$tmp/system-original/skill-creator/scripts/asset-01"
+ln -s asset-01 "$tmp/system-original/skill-creator/scripts/current"
+test "$(find "$tmp/system-original" -type f | wc -l | tr -d ' ')" = 49
+printf 'Codex system marker fixture\n' > "$tmp/system-original/.codex-system-skills.marker"
+mkdir -p "$tmp/system-original/vsok-ticket-runner"
+printf '%s\n' '---' 'name: vsok-ticket-runner' 'description: retired fixture' '---' \
+  > "$tmp/system-original/vsok-ticket-runner/SKILL.md"
+cp -pR "$tmp/system-original" "$fixture_home/.codex/skills/.system"
+cp -pR "$tmp/system-original" "$tmp/system-preserved"
+rm -r "$tmp/system-preserved/vsok-ticket-runner"
 printf '%s\n' '---' 'name: layered-fixture' 'description: fixture layered skill' '---' '# fixture' > "$tmp/source-skill/SKILL.md"
 printf '%s\n' '# invalid internal layer kept outside discovery' > "$tmp/source-skill/layers/00/SKILL.md"
 printf '%s\n' '#!/usr/bin/env bash' 'printf "reasonpack fixture\\n"' > "$tmp/reasonpack"
@@ -40,6 +56,10 @@ printf '%s\n' '---' 'name: linked-codex' 'description: managed entrypoint fixtur
   '# managed wrapper, not the package' > "$managed_release/codex-skills/linked-codex/SKILL.md"
 printf '%s\n' '---' 'name: linked-agent' 'description: managed entrypoint fixture' '---' \
   '# managed wrapper, not the package' > "$managed_release/agent-skills/linked-agent/SKILL.md"
+mkdir -p "$managed_release/codex-skills/.system/skill-creator/scripts"
+printf '%s\n' '---' 'name: skill-creator' 'description: built-in fixture' '---' \
+  > "$managed_release/codex-skills/.system/skill-creator/SKILL.md"
+printf 'built-in support asset\n' > "$managed_release/codex-skills/.system/skill-creator/scripts/helper.txt"
 printf '%s\n' '---' 'name: linked-codex' \
   'description: Managed entrypoint for the externally stored linked-codex skill package.' '---' '' \
   "Read and follow the complete skill at \`$inventory_home/.local/share/engineering-workstation-bootstrap/versions/canonical/linked-codex/SKILL.md\`. Resolve every relative reference from the package." \
@@ -72,6 +92,8 @@ test "$(jq '.skills | length' "$profile_tmp/inventoried-profile.json")" = 2
 test "$(jq '.taskScopedSkills | length' "$profile_tmp/inventoried-profile.json")" = 1
 test "$(jq -r '.taskScopedSkills[0].name' "$profile_tmp/inventoried-profile.json")" = hyperframes
 test "$(jq -r '[.skills[].name] | sort | join(",")' "$profile_tmp/inventoried-profile.json")" = 'linked-agent,linked-codex'
+test ! -e "$profile_tmp/inventoried-profile.assets/skills/skill-creator"
+test -f "$managed_release/codex-skills/.system/skill-creator/scripts/helper.txt"
 test ! -e "$profile_tmp/inventoried-profile.assets/skills/governed-edit-protocol"
 test ! -e "$profile_tmp/inventoried-profile.assets/skills/llmstack-installer-discipline"
 test ! -e "$profile_tmp/inventoried-profile.assets/skills/vsok-refactor-protocol"
@@ -95,9 +117,26 @@ profile_sha="$(shasum -a 256 "$tmp/private-profile.json" | awk '{print $1}')"
 
 write_activation_contract() {
   local version="$1" output="$2" model="${3:-}"
+  local builtin_fp marker_fp legacy_fp
+  builtin_fp="$(python3 lib/workstation-recovery.py fingerprint "$fixture_home/.codex/skills/.system/skill-creator")"
+  marker_fp="$(python3 lib/workstation-recovery.py fingerprint "$fixture_home/.codex/skills/.system/.codex-system-skills.marker")"
+  legacy_fp='null'
+  if [[ -d "$fixture_home/.codex/skills/.system/vsok-ticket-runner" ]]; then
+    legacy_fp="$(python3 lib/workstation-recovery.py fingerprint "$fixture_home/.codex/skills/.system/vsok-ticket-runner")"
+  fi
   jq -n --arg targetHome "$fixture_home" --arg version "$version" --arg profileSha "$profile_sha" --arg model "$model" \
+    --argjson builtinFp "$builtin_fp" --argjson markerFp "$marker_fp" --argjson legacyFp "$legacy_fp" \
     '{schemaVersion:1,activationAuthorized:true,allowLiveHome:false,authorityReference:"fixture:activation",
-      targetHome:$targetHome,version:$version,privateProfileSha256:$profileSha,manageSkillRoots:true}
+      targetHome:$targetHome,version:$version,privateProfileSha256:$profileSha,manageSkillRoots:true,
+      codexSystemSkills:([{name:"skill-creator",classification:"openai-builtin",action:"preserve",
+        evidenceReference:"fixture:verified-openai-builtin",authorityReference:"fixture:owner",
+        fingerprint:$builtinFp},
+        {name:".codex-system-skills.marker",classification:"openai-builtin",action:"preserve",
+        evidenceReference:"fixture:verified-codex-marker",authorityReference:"fixture:owner",
+        fingerprint:$markerFp}]
+        + (if $legacyFp == null then [] else [{name:"vsok-ticket-runner",classification:"retired-legacy",
+          action:"exclude",evidenceReference:"fixture:oct-12-retirement",authorityReference:"fixture:owner",
+          fingerprint:$legacyFp}] end))}
       + (if $model == "" then {} else {codexModel:$model} end)' > "$output"
 }
 
@@ -112,6 +151,19 @@ printf 'Validating explicit activation gate...\n'
 if bash bin/workstation-activate --home "$fixture_home" --version fixture >/dev/null 2>&1; then exit 1; fi
 
 printf 'Validating transactional activation and pre-state receipt...\n'
+printf 'Validating stale private-profile built-in rejection...\n'
+jq '.skills += [{name:"skill-creator",sourceDir:"private-profile.assets/skills/layered-fixture",installRoot:"codex-skills",state:"enabled"}]' \
+  "$tmp/private-profile.json" > "$tmp/system-duplicate-profile.json"
+system_duplicate_sha="$(shasum -a 256 "$tmp/system-duplicate-profile.json" | awk '{print $1}')"
+write_activation_contract fixture-system-duplicate "$tmp/activation-system-duplicate-base.json"
+jq --arg sha "$system_duplicate_sha" '.privateProfileSha256=$sha' \
+  "$tmp/activation-system-duplicate-base.json" > "$tmp/activation-system-duplicate.json"
+if WORKSTATION_TRANSACTION_ID=fixture-system-duplicate bash bin/workstation-activate \
+  --activation-contract "$tmp/activation-system-duplicate.json" --private-profile "$tmp/system-duplicate-profile.json" \
+  --home "$fixture_home" --version fixture-system-duplicate >"$tmp/system-duplicate.log" 2>&1; then exit 1; fi
+grep -Fq 'private profile duplicates a reserved Codex .system skill' "$tmp/system-duplicate.log"
+test ! -e "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-system-duplicate-fixture-system-duplicate"
+diff -qr "$tmp/system-original" "$fixture_home/.codex/skills/.system"
 printf 'Validating retired-governor activation rejection...\n'
 write_activation_contract fixture-retired "$tmp/activation-retired-base.json"
 jq '.skills += [{name:"governed-edit-protocol",sourceDir:"private-profile.assets/skills/layered-fixture",installRoot:"codex-skills",state:"enabled"}]' \
@@ -145,6 +197,36 @@ if WORKSTATION_TRANSACTION_ID=fixture-creative-global bash bin/workstation-activ
   --home "$fixture_home" --version fixture-retired >"$tmp/creative-global.log" 2>&1; then exit 1; fi
 grep -Fq 'creative skills must be staged for task-scoped use' "$tmp/creative-global.log"
 
+printf 'Validating unknown and stale Codex .system classifications fail closed...\n'
+write_activation_contract fixture-resurrection "$tmp/activation-resurrection-base.json"
+jq '(.codexSystemSkills[] | select(.name == "vsok-ticket-runner")) |=
+    (.classification = "owner-managed" | .action = "preserve")' \
+  "$tmp/activation-resurrection-base.json" > "$tmp/activation-resurrection.json"
+if WORKSTATION_TRANSACTION_ID=fixture-resurrection bash bin/workstation-activate \
+  --activation-contract "$tmp/activation-resurrection.json" --private-profile "$tmp/private-profile.json" \
+  --home "$fixture_home" --version fixture-resurrection >"$tmp/resurrection.log" 2>&1; then exit 1; fi
+grep -Fq 'retired legacy Codex .system skill cannot be preserved' "$tmp/resurrection.log"
+test ! -e "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-resurrection-fixture-resurrection"
+write_activation_contract fixture-unknown "$tmp/activation-unknown.json"
+mkdir -p "$fixture_home/.codex/skills/.system/unclassified-local"
+printf '%s\n' '---' 'name: unclassified-local' 'description: unknown' '---' \
+  > "$fixture_home/.codex/skills/.system/unclassified-local/SKILL.md"
+if WORKSTATION_TRANSACTION_ID=fixture-unknown bash bin/workstation-activate \
+  --activation-contract "$tmp/activation-unknown.json" --private-profile "$tmp/private-profile.json" \
+  --home "$fixture_home" --version fixture-unknown >"$tmp/unknown.log" 2>&1; then exit 1; fi
+grep -Fq 'Codex .system has unclassified entries' "$tmp/unknown.log"
+test ! -e "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-unknown-fixture-unknown"
+test -f "$fixture_home/.codex/skills/.system/unclassified-local/SKILL.md"
+rm -r "$fixture_home/.codex/skills/.system/unclassified-local"
+write_activation_contract fixture-stale "$tmp/activation-stale.json"
+printf 'changed after classification\n' >> "$fixture_home/.codex/skills/.system/skill-creator/SKILL.md"
+if WORKSTATION_TRANSACTION_ID=fixture-stale bash bin/workstation-activate \
+  --activation-contract "$tmp/activation-stale.json" --private-profile "$tmp/private-profile.json" \
+  --home "$fixture_home" --version fixture-stale >"$tmp/stale.log" 2>&1; then exit 1; fi
+grep -Fq 'Codex .system classification is stale' "$tmp/stale.log"
+test ! -e "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-stale-fixture-stale"
+cp "$tmp/system-original/skill-creator/SKILL.md" "$fixture_home/.codex/skills/.system/skill-creator/SKILL.md"
+
 write_activation_contract fixture-v1 "$tmp/activation-v1.json"
 WORKSTATION_TRANSACTION_ID=fixture-v1 bash bin/workstation-activate \
   --activation-contract "$tmp/activation-v1.json" --private-profile "$tmp/private-profile.json" \
@@ -169,6 +251,12 @@ rg -q '^cgh\(\)' "$fixture_home/.config/engineering-workstation-bootstrap/functi
 rg -q '^lgh\(\)' "$fixture_home/.config/engineering-workstation-bootstrap/functions.zsh"
 test "$(find -L "$fixture_home/.codex/skills" "$fixture_home/.agents/skills" -type f -path '*/layers/*/SKILL.md' | wc -l | tr -d ' ')" = 0
 test -f "$fixture_home/.local/share/engineering-workstation-bootstrap/current/skill-library/layered-fixture/layers/00/SKILL.md"
+diff -qr "$tmp/system-preserved" "$fixture_home/.codex/skills/.system"
+test ! -e "$fixture_home/.codex/skills/.system/vsok-ticket-runner"
+test -f "$fixture_home/.local/state/engineering-workstation-bootstrap/backups/fixture-v1/files/.codex/skills/.system/vsok-ticket-runner/SKILL.md"
+test -x "$fixture_home/.codex/skills/.system/skill-creator/scripts/asset-01"
+cmp "$tmp/system-original/.codex-system-skills.marker" "$fixture_home/.codex/skills/.system/.codex-system-skills.marker"
+test "$(readlink "$fixture_home/.codex/skills/.system/skill-creator/scripts/current")" = asset-01
 test -f "$fixture_home/.local/share/engineering-workstation-bootstrap/current/task-scoped-skills/hyperframes/SKILL.md"
 test ! -e "$fixture_home/.agents/skills/hyperframes"
 test ! -e "$fixture_home/.codex/skills/vsok-ticket-runner"
@@ -189,10 +277,13 @@ activation_two="$fixture_home/.local/state/engineering-workstation-bootstrap/rec
 test "$(grep -Fxc 'model = "gpt-6-astra"' "$fixture_home/.codex/config.toml")" = 1
 test "$(grep -Fxc 'approvals_reviewer = "auto_review"' "$fixture_home/.codex/config.toml")" = 1
 test "$(readlink "$fixture_home/.local/share/engineering-workstation-bootstrap/current")" = "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-v1-fixture-v2"
+diff -qr "$tmp/system-preserved" "$fixture_home/.codex/skills/.system"
 bash bin/workstation-rollback --receipt "$activation_two" --home "$fixture_home" >/dev/null
+diff -qr "$tmp/system-preserved" "$fixture_home/.codex/skills/.system"
 test "$(grep -Fxc 'model = "fixture-model"' "$fixture_home/.codex/config.toml")" = 1
 test "$(cat "$fixture_home/.local/state/engineering-workstation-bootstrap/current-transaction")" = fixture-v1
 bash bin/workstation-rollback --receipt "$activation_one" --home "$fixture_home" >/dev/null
+diff -qr "$tmp/system-original" "$fixture_home/.codex/skills/.system"
 test ! -L "$fixture_home/.local/share/engineering-workstation-bootstrap/current"
 test "$(sed -n '1p' "$fixture_home/.zshrc")" = '# user-owned-start'
 test -f "$fixture_home/.codex/skills/legacy/layers/00/SKILL.md"

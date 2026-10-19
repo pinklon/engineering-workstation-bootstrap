@@ -60,7 +60,7 @@ class RecoveryBoundaries(unittest.TestCase):
         contract.write_text(json.dumps({'schemaVersion': 1, 'activationAuthorized': True,
                                        'allowLiveHome': False, 'authorityReference': 'fixture:owned-recovery',
                                        'targetHome': str(self.home), 'version': self.txn,
-                                       'manageSkillRoots': True}))
+                                       'manageSkillRoots': True, 'codexSystemSkills': []}))
         return subprocess.run(['bash', str(ROOT / 'bin/workstation-activate'),
                                '--activation-contract', str(contract), '--home', str(self.home)],
                               env=dict(self.env, WORKSTATION_TRANSACTION_ID=self.txn, **extra),

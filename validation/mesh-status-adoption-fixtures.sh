@@ -57,7 +57,7 @@ class NativeAdoption(unittest.TestCase):
             'authorityReference': 'fixture:source-only-native-mechanics',
             'targetHome': str(self.home), 'version': 'fixture-native',
             'privateProfileSha256': hashlib.sha256(self.profile.read_bytes()).hexdigest(),
-            'manageSkillRoots': True}))
+            'manageSkillRoots': True, 'codexSystemSkills': []}))
         self.env = dict(os.environ, WORKSTATION_TRANSACTION_ID='fixture-native')
         self.env.pop('PYTHONPATH', None)
         # The disposable target is always different from the invoking home.

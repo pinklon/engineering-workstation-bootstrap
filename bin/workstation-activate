@@ -80,6 +80,21 @@ if [[ -n "$codex_model" ]]; then
   [[ "$codex_model" =~ ^[a-z0-9][a-z0-9._-]{0,127}$ ]] || ws_die "activation contract contains invalid Codex model ID"
 fi
 manage_skill_roots="$(jq -r '.manageSkillRoots // false' "$CONTRACT")"
+if [[ "$manage_skill_roots" == true && -n "$PRIVATE_PROFILE" && -d "$TARGET_HOME/.codex/skills/.system" ]]; then
+  while IFS= read -r builtin; do
+    builtin_dir="$(basename "$(dirname "$builtin")")"
+    builtin_name="$(awk -F': *' '$1 == "name" {gsub(/^"|"$/, "", $2); print $2; exit}' "$builtin")"
+    if jq -e --arg dir "$builtin_dir" --arg name "$builtin_name" \
+      '.skills[]? | select(.installRoot == "codex-skills" and (.name == $dir or .name == $name))' \
+      "$PRIVATE_PROFILE" >/dev/null; then
+      ws_die "private profile duplicates a reserved Codex .system skill; regenerate it"
+    fi
+  done < <(find "$TARGET_HOME/.codex/skills/.system" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print)
+fi
+if [[ "$manage_skill_roots" == true ]]; then
+  python3 "$ROOT/lib/workstation-recovery.py" system-skills-check "$CONTRACT" "$TARGET_HOME" \
+    || ws_die "Codex .system classification failed before activation"
+fi
 transaction_id="${WORKSTATION_TRANSACTION_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
 [[ "$transaction_id" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || ws_die "transaction id contains unsafe characters"
 state_root="$TARGET_HOME/.local/state/engineering-workstation-bootstrap"
@@ -179,6 +194,7 @@ if [[ -n "$PRIVATE_PROFILE" ]]; then
     [[ "$source_dir" == /* ]] || source_dir="$profile_root/$source_dir"
     install_root="$(jq -r '.installRoot' <<<"$skill")"
     safe_name="$(printf '%s' "$name" | sed 's/[^A-Za-z0-9._-]/-/g')"
+    [[ "$install_root" != codex-skills || "$safe_name" != .system ]] || ws_die "Codex .system skill root is reserved"
     [[ -f "$source_dir/SKILL.md" ]] || ws_die "skill entrypoint is missing: $name"
     [[ "$(sed -n '1p' "$source_dir/SKILL.md")" == '---' ]] || ws_die "skill entrypoint lacks frontmatter: $name"
     case "$install_root" in codex-skills|agent-skills) ;; *) ws_die "invalid skill install root: $install_root" ;; esac
@@ -214,6 +230,14 @@ EOF
     esac
     cp -R "$source_dir" "$release_dir/task-scoped-skills/$name"
   done < <(jq -c '.taskScopedSkills[]?' "$PRIVATE_PROFILE")
+fi
+
+# An owner-classified, fingerprint-bound subset is carried forward. The
+# contract explicitly excludes only retired identities; unknown entries block.
+if [[ "$manage_skill_roots" == true ]]; then
+  mkdir -p "$release_dir/codex-skills/.system"
+  python3 "$ROOT/lib/workstation-recovery.py" system-skills-stage "$CONTRACT" "$TARGET_HOME" \
+    "$release_dir/codex-skills/.system" || ws_die "Codex .system staging failed"
 fi
 
 managed_commands=(workstation-bootstrap workstation-activate workstation-rollback workstation-doctor connector-doctor workstation-cloudflare-mcp workstation-toolsets workstation-publish-drive workstation-private-profile environment-inventory browser-gate-python github-auth-doctor cloudflare-auth-doctor)
@@ -284,6 +308,10 @@ jq -Rn --arg transactionId "$transaction_id" --arg targetHome "$TARGET_HOME" --a
   [inputs | split("\t") | {relativePath:.[0],originalType:.[1],backupRelative:.[2],sha256:(if .[3] == "" then null else .[3] end),linkTarget:(if .[4] == "" then null else .[4] end)}]
   | {schemaVersion:1,transactionId:$transactionId,targetHome:$targetHome,createdAt:$createdAt,paths:.}' < "$prestate_tsv" > "$backup_manifest"
 ws_recovery seal "$TARGET_HOME" "$release_dir" "$backup_manifest" "$install_map"
+if [[ "$manage_skill_roots" == true ]]; then
+  python3 "$ROOT/lib/workstation-recovery.py" system-skills-check "$CONTRACT" "$TARGET_HOME" \
+    || ws_die "Codex .system changed after staging"
+fi
 backup_manifest_sha="$(ws_sha256 "$backup_manifest")"
 ws_transition_checkpoint after-backups
 

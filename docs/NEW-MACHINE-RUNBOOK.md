@@ -57,7 +57,19 @@ jq -n --arg home "$(cd "$HOME" && pwd -P)" \
 ```
 
 Set `manageSkillRoots` only when a local private profile has inventoried and
-checksum-bound every active skill entrypoint.
+checksum-bound every user-managed active skill entrypoint. The reserved Codex
+`.system` subtree is classified per top-level entry in the same activation
+contract's `codexSystemSkills` array, rather than exported as private-profile
+skill wrappers. Record the exact subtree fingerprint, evidence and owner
+authority for each verified OpenAI built-in or owner-managed entry to preserve.
+An explicitly retired governor/VSOK entry can be excluded only with its cleanup
+authority and fingerprint; unknown entries block activation. An empty array is
+valid only when the subtree has no entries. Verify retained and excluded entries,
+plus the exact rollback backup, in a disposable projection before any live
+activation. See [skill discovery](TONY-WORKSTATION-V2.md#skill-discovery) for
+the contract fields and provenance rules.
+Regenerate older private profiles that listed `.system` built-ins as ordinary
+skills; activation rejects those duplicates.
 
 An owner may optionally pin a **verified account-supported Codex model** for a
 single managed activation by adding `codexModel` to that same exact activation
