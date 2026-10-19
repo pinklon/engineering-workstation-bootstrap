@@ -4,11 +4,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 printf 'Validating shell syntax...\n'
-while IFS= read -r file; do bash -n "$file"; done < <(find bin bootstrap packaging validation -maxdepth 2 -type f | sort)
+while IFS= read -r file; do bash -n "$file"; done < <(find bin bootstrap packaging validation -maxdepth 2 -type f ! -name '*.py' | sort)
 bash -n install.sh
 python3 - <<'PY'
 import ast, pathlib
-for path in pathlib.Path('lib').glob('*.py'):
+for path in (*pathlib.Path('lib').glob('*.py'), *pathlib.Path('validation').glob('*.py')):
     ast.parse(path.read_text(), filename=str(path))
 PY
 
@@ -53,6 +53,7 @@ bash bin/workstation-bootstrap dry-run
 
 printf 'Validating v2 staged fixtures...\n'
 bash validation/v2-fixtures.sh
+python3 -B validation/staged-receipt-upgrade-fixtures.py
 
 printf 'Validating package build...\n'
 bash packaging/build-package.sh 0.0.0-validation

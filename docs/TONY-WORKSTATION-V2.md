@@ -36,6 +36,51 @@ activation it copies full source packages to `skill-library`, outside both activ
 discovery roots, and generates one frontmatter-valid wrapper per enabled skill.
 Internal layers remain available to their loader but are never scanned as
 standalone skills. Duplicate names are canonicalized during inventory.
+Codex's reserved `.codex/skills/.system` tree is not a user-skill package in
+the private profile. When activation manages the Codex skill root, the existing
+owner-authorized activation contract must classify **every top-level entry** in
+that tree under `codexSystemSkills`, including any Codex-owned regular-file
+marker alongside skill package directories. Each record names the entry, its complete
+`fingerprint` (from `python3 lib/workstation-recovery.py fingerprint <entry>`),
+`evidenceReference`, `authorityReference`, `classification`, and `action`.
+Verified `openai-builtin` and approved `owner-managed` entries use `preserve`;
+the source gate permits `retired-legacy` with `exclude` only for the repository's
+explicit retired governor/VSOK identities from source PRs #30 and #31. The
+retired decision needs an owner authority reference and that retirement
+evidence, not a guess from the `.system`
+pathname. Unknown, missing, changed, or unclassified entries block activation
+before a live replacement. There is no automatic cleanup of unknown entries.
+The staged release copies and verifies complete preserved entries, including
+entrypoints, support files and classified markers. Excluded entries stay in the transaction's exact
+pre-state backup and are restored on rollback. Later Codex updates against an
+installed managed root need separate host verification and fresh fingerprints.
+The `hyperframes` family and `media-use` remain task-scoped even if a local
+classification attempts to place them under `.system`; activation checks both
+the directory and its declared entrypoint name and refuses global discovery.
+Preserved package links must be relative, resolve to
+existing content inside the same package, and remain contained after staging.
+Absolute, escaping, dangling, cyclic, or overly long link chains are refused
+before replacement. A link's text alone does not bind bytes outside the package.
+For example, an owner-reviewed contract record has this shape (the fingerprint
+must be computed from the actual entry; these values are illustrative):
+
+```json
+{"name":"skill-creator","classification":"openai-builtin","action":"preserve",
+ "evidenceReference":"local:verified-codex-builtin-inventory",
+ "authorityReference":"owner:approved-skill-root-projection",
+ "fingerprint":{"type":"directory","sha256":"<actual 64-character digest>","mode":493}}
+```
+
+Place such records in `codexSystemSkills` on the existing activation contract.
+An empty array is valid only for an empty or absent `.system` tree. Do not
+derive a built-in classification merely from its directory name. A retired
+entry instead uses `classification:"retired-legacy"`, `action:"exclude"` and
+the owner-approved retirement evidence. The activation contract remains the
+single local authority document for that transaction.
+PR #32 covers reversible Codex config cleanup; it does not classify a skill as
+retired or turn an unknown `.system` entry into a built-in.
+Regenerate a private profile captured before this rule if it exported built-ins
+as ordinary Codex skills; activation refuses that duplicate discovery state.
 
 ## Lean installed skill profile
 

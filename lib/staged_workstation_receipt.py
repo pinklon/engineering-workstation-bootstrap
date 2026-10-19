@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import tempfile
 
@@ -73,12 +74,39 @@ def expected_legacy_bytes(name, stage, source):
     return (source / name).read_bytes()
 
 
+def recorded_inventory(hashes):
+    """Recover an old v2 stage's file inventory without trusting a new checkout."""
+    required = DIRECT_FILES | {'config/codex/config.toml', 'skills/workstation-operations/SKILL.md'}
+    if not isinstance(hashes, dict) or not required.issubset(hashes):
+        refuse('managed stage receipt file inventory changed')
+    files = set(hashes)
+    directories = set(FIXED_DIRECTORIES)
+    for name, expected in hashes.items():
+        if not isinstance(name, str) or not isinstance(expected, str):
+            refuse('invalid managed stage receipt file entry')
+        parts = name.split('/')
+        if (any(part in ('', '.', '..') for part in parts) or '\\' in name or
+            not re.fullmatch(r'[a-f0-9]{64}', expected)):
+            refuse('invalid managed stage receipt file entry')
+        if name not in required and not name.startswith('skills/workstation-operations/'):
+            refuse('managed stage receipt contains an unsupported path')
+        for index in range(1, len(parts)):
+            directories.add('/'.join(parts[:index]))
+    if files & directories:
+        refuse('managed stage receipt has conflicting file and directory paths')
+    return files, directories
+
+
 def verify(stage, source):
-    files, directories = inventory(source)
-    inspect_stage(stage, files, directories, receipt_required=True)
+    if not stage.is_dir() or stage.is_symlink():
+        refuse('stage is not an owned directory')
     receipt_path = stage / 'receipt.json'
+    if receipt_path.is_symlink() or not receipt_path.is_file():
+        refuse('managed stage receipt is missing or not a regular file')
     raw = receipt_path.read_bytes()
     if raw == LEGACY_RECEIPT:
+        files, directories = inventory(source)
+        inspect_stage(stage, files, directories, receipt_required=True)
         # A v1 stage has no hashes. Accept it only if every file still matches
         # the current source, including the path-rendered config.
         for name in files:
@@ -96,8 +124,8 @@ def verify(stage, source):
         receipt['stage_root'] != str(stage)):
         refuse('managed stage receipt identity changed')
     hashes = receipt['managed_sha256']
-    if not isinstance(hashes, dict) or set(hashes) != files:
-        refuse('managed stage receipt file inventory changed')
+    files, directories = recorded_inventory(hashes)
+    inspect_stage(stage, files, directories, receipt_required=True)
     for name, expected in hashes.items():
         if not isinstance(expected, str) or digest(stage / name) != expected:
             refuse('managed stage contents changed: ' + name)
