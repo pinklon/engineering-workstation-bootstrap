@@ -233,6 +233,25 @@ grep -Fq 'task-scoped creative skill cannot be globally discovered' "$tmp/system
 test ! -e "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-system-alias-fixture-system-alias"
 rm -r "$fixture_home/.codex/skills/.system/owner-alias"
 
+printf 'Validating retired identities cannot be preserved through Codex .system aliases...\n'
+for declared_retired in governed-edit-protocol vsok-ticket-runner vsok-unregistered; do
+  for category in owner-managed openai-builtin; do
+    mkdir -p "$fixture_home/.codex/skills/.system/owner-alias"
+    printf '%s\n' '---' "name: \"$declared_retired\"" 'description: aliased retired fixture' '---' \
+      > "$fixture_home/.codex/skills/.system/owner-alias/SKILL.md"
+    alias_fp="$(python3 lib/workstation-recovery.py fingerprint "$fixture_home/.codex/skills/.system/owner-alias")"
+    write_activation_contract fixture-system-retired-alias "$tmp/activation-system-retired-alias-base.json"
+    jq --arg category "$category" --argjson fingerprint "$alias_fp" \
+      '.codexSystemSkills += [{name:"owner-alias",classification:$category,action:"preserve",
+        evidenceReference:"fixture:retired-alias",authorityReference:"fixture:owner",fingerprint:$fingerprint}]' \
+      "$tmp/activation-system-retired-alias-base.json" > "$tmp/activation-system-retired-alias.json"
+    if python3 lib/workstation-recovery.py system-skills-check "$tmp/activation-system-retired-alias.json" \
+      "$fixture_home" >"$tmp/system-retired-alias.log" 2>&1; then exit 1; fi
+    grep -Fq 'retired legacy Codex .system skill cannot be preserved' "$tmp/system-retired-alias.log"
+    rm -r "$fixture_home/.codex/skills/.system/owner-alias"
+  done
+done
+
 printf 'Validating nested Codex .system links stay inside their package...\n'
 system_scripts="$fixture_home/.codex/skills/.system/skill-creator/scripts"
 for link_case in absolute escaping dangling chained; do

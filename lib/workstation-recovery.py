@@ -94,6 +94,10 @@ def task_scoped_creative(name):
     return bool(name and (name == 'hyperframes' or name.startswith('hyperframes-') or name == 'media-use'))
 
 
+def retired_system_skill(name):
+    return bool(name and (name in RETIRED_SYSTEM_SKILLS or name.startswith('vsok-')))
+
+
 def verify_system_skill_links(package):
     """A preserved link must resolve entirely within its relocated package."""
     root = package.resolve(strict=True)
@@ -186,7 +190,7 @@ def system_skill_plan(contract_path, home):
             raise ValueError('invalid Codex .system action: ' + name)
         if task_scoped_creative(name):
             raise ValueError('task-scoped creative skill cannot be globally discovered: ' + name)
-        if (name in RETIRED_SYSTEM_SKILLS or name.startswith('vsok-')) and category != 'retired-legacy':
+        if retired_system_skill(name) and category != 'retired-legacy':
             raise ValueError('retired legacy Codex .system skill cannot be preserved: ' + name)
         if category == 'retired-legacy' and name not in RETIRED_SYSTEM_SKILLS:
             raise ValueError('legacy exclusion lacks repository retirement authority: ' + name)
@@ -200,6 +204,8 @@ def system_skill_plan(contract_path, home):
             declared_name = system_skill_declared_name(actual[name])
             if task_scoped_creative(declared_name):
                 raise ValueError('task-scoped creative skill cannot be globally discovered: ' + declared_name)
+            if retired_system_skill(declared_name):
+                raise ValueError('retired legacy Codex .system skill cannot be preserved: ' + declared_name)
         observed = fingerprint(actual[name])
         if item.get('fingerprint') != observed:
             raise ValueError('Codex .system classification is stale: ' + name)
