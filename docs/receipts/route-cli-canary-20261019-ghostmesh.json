@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "kind": "direct_execution",
+  "observed_at": "2026-10-19T11:44:33Z",
+  "result": "PASS",
+  "operation": "read-only Codex CLI unittest in disposable scratch",
+  "output_sha256": "0454d2a26e8cf16e75bc5b83a2c0dcecebf9ce7b6b7d1d857ff55adc1c370b09",
+  "secret_values": false,
+  "qualified_task_class": "stdlib-computation",
+  "qualified_target": "scratch-fixture",
+  "qualified_scope": "read",
+  "availability_state": "observed_available",
+  "operator_role": "existing unprivileged VPS account",
+  "transport": "Desktop Commander to Codex CLI",
+  "codex_cli_version": "0.162.1",
+  "task_id_sha256": "613839ecdc0619944e5fb5a4fb67e337388ebefd0c585f2861fd1cb73d5be50c",
+  "sandbox": "read-only",
+  "ephemeral": true,
+  "stdin_closed": true,
+  "timeout_seconds": 60,
+  "thread_started": true,
+  "turn_completed": true,
+  "test_count": 1,
+  "test_exit_code": 0,
+  "cli_exit_code": 0,
+  "test_input_sha256": {
+    "calc.py": "ba1a531f581d2e6094e978ed6f7aca7a8d92eeb62c6e7ad73ee692f7f18bc772",
+    "test_calc.py": "d6e71317f7bad32002388a0c1bb4257a5495edb934875a18c20665090ee1dd45"
+  },
+  "input_hashes_unchanged": true,
+  "shared_checkout_status_before_after": "clean",
+  "scope_note": "One isolated stdlib test only; no representative source work, runner admission, restart, Docker, service, or credential qualification. Availability requires fresh re-probe."
+}

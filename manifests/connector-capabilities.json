@@ -2106,6 +2106,30 @@
         "observed_at": "2026-10-18T19:50:39Z",
         "ref": "https://github.com/pinklon/engineering-workstation-bootstrap/blob/main/docs/CLOUD-SETUP.md",
         "original_git_blob_sha": "a130da828812d3f309a11281e721c2a99672fde7"
+      },
+      "route-cli-canary-hyperion-20261019": {
+        "kind": "direct_execution",
+        "observed_at": "2026-10-19T11:44:19Z",
+        "ref": "docs/receipts/route-cli-canary-20261019-hyperion.json",
+        "output_sha256": "66dc0bd963b83e31e4fee61eb8757d5661a433a189c07c5e951b128fec5b4c1a",
+        "qualified_task_class": "stdlib-computation",
+        "qualified_target": "scratch-fixture",
+        "qualified_scope": "read",
+        "qualified_operation": "read-only Codex CLI unittest in disposable scratch",
+        "availability_state": "observed_available",
+        "description": "Historical, read-only Codex CLI scratch unittest. Five-minute availability expires; refresh exact actor, task and grant before dispatch."
+      },
+      "route-cli-canary-ghostmesh-20261019": {
+        "kind": "direct_execution",
+        "observed_at": "2026-10-19T11:44:33Z",
+        "ref": "docs/receipts/route-cli-canary-20261019-ghostmesh.json",
+        "output_sha256": "0454d2a26e8cf16e75bc5b83a2c0dcecebf9ce7b6b7d1d857ff55adc1c370b09",
+        "qualified_task_class": "stdlib-computation",
+        "qualified_target": "scratch-fixture",
+        "qualified_scope": "read",
+        "qualified_operation": "read-only Codex CLI unittest in disposable scratch",
+        "availability_state": "observed_available",
+        "description": "Historical, read-only Codex CLI scratch unittest. Five-minute availability expires; refresh exact actor, task and grant before dispatch."
       }
     },
     "entries": [
@@ -2230,23 +2254,23 @@
         "label": "Hyperion",
         "kind": "execution",
         "canonical_connector_id": null,
-        "observation_state": "discovered",
+        "observation_state": "tested",
         "availability": {
-          "state": "directory_online",
-          "observed_at": "2026-10-18T19:47:00Z",
+          "state": "observed_available",
+          "observed_at": "2026-10-19T11:44:19Z",
           "evidence_refs": [
-            "dc",
-            "fleet-handoff"
+            "route-cli-canary-hyperion-20261019"
           ]
         },
         "scopes": {
-          "read": "unknown",
+          "read": "tested",
           "write": "unknown",
           "admin": "unknown"
         },
         "task_classes": [
           "host-specific",
-          "gpu"
+          "gpu",
+          "stdlib-computation"
         ],
         "hardware_requirements": [
           "hyperion"
@@ -2261,13 +2285,15 @@
           "scoped-host-auth"
         ],
         "limits": [
-          "Directory online only",
-          "GPU tool use, restore and role qualification unproven"
+          "GPU tool use, restore and role qualification unproven",
+          "One historical read-only scratch unittest only; fresh preflight and current authority required",
+          "GPU, host-specific engineering work and recovery unproven"
         ],
         "maintenance_owner": "Workstation #34; Skills #323",
         "evidence_refs": [
           "dc",
-          "fleet-handoff"
+          "fleet-handoff",
+          "route-cli-canary-hyperion-20261019"
         ],
         "alternative_route_ids": [
           "surface.dot-cloud"
@@ -2288,22 +2314,22 @@
         "label": "GhostMesh VPS",
         "kind": "execution",
         "canonical_connector_id": null,
-        "observation_state": "discovered",
+        "observation_state": "tested",
         "availability": {
-          "state": "directory_online",
-          "observed_at": "2026-10-18T19:47:00Z",
+          "state": "observed_available",
+          "observed_at": "2026-10-19T11:44:33Z",
           "evidence_refs": [
-            "dc",
-            "services"
+            "route-cli-canary-ghostmesh-20261019"
           ]
         },
         "scopes": {
-          "read": "unknown",
+          "read": "tested",
           "write": "unknown",
           "admin": "unknown"
         },
         "task_classes": [
-          "admitted-service"
+          "admitted-service",
+          "stdlib-computation"
         ],
         "hardware_requirements": [
           "vps"
@@ -2317,21 +2343,23 @@
           "runner-control-plane"
         ],
         "limits": [
-          "No new command witness",
-          "Scratch admission and recovery unproven",
-          "Task 15 privileged executor unassigned"
+          "Task 15 privileged executor unassigned",
+          "One historical read-only scratch unittest only; fresh preflight and current authority required",
+          "Docker socket and privileged gmadmin access denied; service runner not qualified by this canary"
         ],
         "maintenance_owner": "Control Tower #1023 / existing fleet runner",
         "evidence_refs": [
           "dc",
-          "services"
+          "services",
+          "route-cli-canary-ghostmesh-20261019"
         ],
         "alternative_route_ids": [
           "surface.dot-cloud"
         ],
         "auth_custody": "runner-scoped-unverified",
         "transports": [
-          "existing governed runner after custodian admission"
+          "existing governed runner after custodian admission",
+          "existing authorized unprivileged host task after route preflight"
         ],
         "prerequisites": [
           "exact current task authority",

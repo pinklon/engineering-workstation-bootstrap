@@ -58,6 +58,40 @@ print(json.dumps([entry["id"] for entry in found]))
         self.assertEqual(self.select(scope='admin'), [])
         self.assertEqual(self.select(authority={**self.authority(), 'target': 'other'}), [])
 
+    def test_host_canaries_qualify_only_the_exact_scratch_route_while_fresh(self):
+        projection = self.contract['route_observation']
+        cases = (
+            ('route-cli-canary-hyperion-20261019', 'surface.hyperion', 'hyperion'),
+            ('route-cli-canary-ghostmesh-20261019', 'surface.ghostmesh-vps', 'vps'),
+        )
+        for ref, route_id, hardware in cases:
+            with self.subTest(route=route_id):
+                observed = routes.timestamp(projection['sources'][ref]['observed_at'])
+                now = observed + dt.timedelta(seconds=39)
+                kwargs = dict(task_class='stdlib-computation', scope='read',
+                              target='scratch-fixture', authority=self.authority(), now=now)
+                self.assertEqual([r['id'] for r in routes.eligible(self.contract,
+                    hardware=(hardware,), **kwargs)], [route_id])
+                self.assertEqual(routes.eligible(self.contract, hardware=(), **kwargs), [])
+                self.assertEqual(routes.eligible(self.contract, hardware=(hardware,),
+                    **{**kwargs, 'authority': {}}), [])
+                for task_class in ('gpu', 'host-specific', 'admitted-service'):
+                    self.assertEqual(routes.eligible(self.contract, hardware=(hardware,),
+                        task_class=task_class, scope='read', target='scratch-fixture',
+                        authority=self.authority(task_class), now=now), [])
+                for scope in ('write', 'admin'):
+                    self.assertEqual(routes.eligible(self.contract, hardware=(hardware,),
+                        task_class='stdlib-computation', scope=scope,
+                        target='scratch-fixture', authority=self.authority(scope=scope),
+                        now=now), [])
+                self.assertEqual(routes.eligible(self.contract, hardware=(hardware,),
+                    **{**kwargs, 'target': 'real-repository',
+                       'authority': {**self.authority(), 'target': 'real-repository'}}), [])
+                self.assertEqual(routes.eligible(self.contract, hardware=(hardware,),
+                    **{**kwargs, 'now': observed + dt.timedelta(seconds=301)}), [])
+                self.assertEqual(routes.eligible(self.contract, hardware=(hardware,),
+                    **{**kwargs, 'now': dt.datetime.now(dt.timezone.utc)}), [])
+
     def test_unknown_discovered_historical_and_indirect_evidence_block(self):
         for task in ['gpu', 'desktop-local', 'fresh-cloud-task', 'repository-read',
                      'device-inventory', 'owner-conversation-read']:

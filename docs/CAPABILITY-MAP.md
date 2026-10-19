@@ -8,8 +8,8 @@ is pending source receipts. A candidate route is not a permission grant.
 | --- | --- | --- | --- | --- | --- | --- |
 | surface.dot-cloud | tested | observed_available | tested | tested_local_scratch_only | unknown | Workstation #18; Cloud #11 qualification |
 | surface.mac-studio | discovered | connected_metadata | unknown | unknown | unknown | Workstation #18 / Mac custodian |
-| surface.hyperion | discovered | directory_online | unknown | unknown | unknown | Workstation #34; Skills #323 |
-| surface.ghostmesh-vps | discovered | directory_online | unknown | unknown | unknown | Control Tower #1023 / existing fleet runner |
+| surface.hyperion | tested | observed_available | tested | unknown | unknown | Workstation #34; Skills #323 |
+| surface.ghostmesh-vps | tested | observed_available | tested | unknown | unknown | Control Tower #1023 / existing fleet runner |
 | surface.bootstrap-cloud | discovered | saved_configuration_only | unknown | unknown | unknown | Cloud #11 |
 | surface.mc-cloud | discovered | saved_configuration_only | unknown | unknown | unknown | Cloud #11 / Mission Control incumbent |
 | route.dc-directory | discovered | observed_available | tested_metadata_only | unknown | unknown | Desktop Commander connector custodian |
@@ -30,6 +30,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### surface.dot-cloud
 
 - Task classes: stdlib-computation, portable-source-test, connector-read
+- Availability observed at: 2026-10-18T20:05:12.753751+00:00
 - Identity observation: runtime_observed
 - Operator admission: dot-within-current-task-authority
 - Hardware: none declared
@@ -43,6 +44,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### surface.mac-studio
 
 - Task classes: desktop-local
+- Availability observed at: 2026-10-18T19:27:00Z
 - Identity observation: parent_verified
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: macos
@@ -55,7 +57,8 @@ is pending source receipts. A candidate route is not a permission grant.
 
 ### surface.hyperion
 
-- Task classes: host-specific, gpu
+- Task classes: host-specific, gpu, stdlib-computation
+- Availability observed at: 2026-10-19T11:44:19Z
 - Identity observation: unknown
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: hyperion
@@ -63,25 +66,27 @@ is pending source receipts. A candidate route is not a permission grant.
 - Prerequisites: exact current task authority, fresh route and scope probe
 - Dependencies: Hyperion power/network, scoped host authentication
 - Failure domains (inferred): hyperion-host, task-transport, scoped-host-auth
-- Evidence: dc, fleet-handoff
-- Limits: Directory online only; GPU tool use, restore and role qualification unproven
+- Evidence: dc, fleet-handoff, route-cli-canary-hyperion-20261019
+- Limits: GPU tool use, restore and role qualification unproven; One historical read-only scratch unittest only; fresh preflight and current authority required; GPU, host-specific engineering work and recovery unproven
 
 ### surface.ghostmesh-vps
 
-- Task classes: admitted-service
+- Task classes: admitted-service, stdlib-computation
+- Availability observed at: 2026-10-19T11:44:33Z
 - Identity observation: unknown
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: vps
-- Transport: existing governed runner after custodian admission
+- Transport: existing governed runner after custodian admission, existing authorized unprivileged host task after route preflight
 - Prerequisites: exact current task authority, fresh route and scope probe
 - Dependencies: VPS, existing runner control plane
 - Failure domains (inferred): vps-host, runner-control-plane
-- Evidence: dc, services
-- Limits: No new command witness; Scratch admission and recovery unproven; Task 15 privileged executor unassigned
+- Evidence: dc, services, route-cli-canary-ghostmesh-20261019
+- Limits: Task 15 privileged executor unassigned; One historical read-only scratch unittest only; fresh preflight and current authority required; Docker socket and privileged gmadmin access denied; service runner not qualified by this canary
 
 ### surface.bootstrap-cloud
 
 - Task classes: fresh-cloud-task
+- Availability observed at: unknown
 - Identity observation: unknown
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -95,6 +100,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### surface.mc-cloud
 
 - Task classes: fresh-cloud-task
+- Availability observed at: unknown
 - Identity observation: unknown
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -108,6 +114,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### route.dc-directory
 
 - Task classes: device-inventory
+- Availability observed at: 2026-10-18T19:47:00Z
 - Identity observation: parent_verified
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -121,6 +128,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### route.dc-command
 
 - Task classes: authorized-device-command-after-proof
+- Availability observed at: unknown
 - Identity observation: unknown
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -134,6 +142,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### connector.github
 
 - Task classes: repository-read, issue-read
+- Availability observed at: 2026-10-18T19:50:53Z
 - Identity observation: parent_verified
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -147,6 +156,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### connector.slack
 
 - Task classes: owner-conversation-read
+- Availability observed at: 2026-10-18T19:41:00Z
 - Identity observation: parent_verified
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -160,6 +170,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### connector.cloudflare
 
 - Task classes: provider-read-after-route-preflight
+- Availability observed at: unknown
 - Identity observation: unknown
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -173,6 +184,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### connector.netlify
 
 - Task classes: authorized-repeat-deploy-after-refreshed-proof
+- Availability observed at: 2026-10-18T14:24:00Z
 - Identity observation: parent_verified
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -186,6 +198,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### service.reasonpack
 
 - Task classes: read-only-service-discovery-after-route-resolution
+- Availability observed at: unknown
 - Identity observation: unknown
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -199,6 +212,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### service.brain
 
 - Task classes: read-only-service-discovery-after-route-resolution
+- Availability observed at: unknown
 - Identity observation: unknown
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -212,6 +226,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### service.atlas
 
 - Task classes: read-only-service-discovery-after-route-resolution
+- Availability observed at: unknown
 - Identity observation: unknown
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -225,6 +240,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### service.mission-control
 
 - Task classes: read-only-current-status-after-route-proof
+- Availability observed at: 2026-10-18T16:24:00Z
 - Identity observation: unknown
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -238,6 +254,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### service.slack-ingestion
 
 - Task classes: read-only-checkpoint-reconciliation-after-proof
+- Availability observed at: 2026-10-18T13:31:00Z
 - Identity observation: unknown
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared
@@ -251,6 +268,7 @@ is pending source receipts. A candidate route is not a permission grant.
 ### service.gmail-ingestion
 
 - Task classes: read-only-checkpoint-reconciliation-after-proof
+- Availability observed at: 2026-10-18T13:31:00Z
 - Identity observation: unknown
 - Operator admission: task-specific-authority-and-current-grant-required
 - Hardware: none declared

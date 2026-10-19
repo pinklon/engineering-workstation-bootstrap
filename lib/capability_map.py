@@ -259,6 +259,7 @@ def render(contract):
             '### ' + entry['id'],
             '',
             '- Task classes: ' + (', '.join(entry['task_classes']) or 'none qualified'),
+            '- Availability observed at: ' + (entry['availability']['observed_at'] or 'unknown'),
             '- Identity observation: ' + entry['identity_verification'],
             '- Operator admission: ' + entry['operator_admission'],
             '- Hardware: ' + (', '.join(entry['hardware_requirements']) or 'none declared'),
