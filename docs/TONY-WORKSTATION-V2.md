@@ -54,6 +54,13 @@ The staged release copies and verifies complete preserved entries, including
 entrypoints, support files and classified markers. Excluded entries stay in the transaction's exact
 pre-state backup and are restored on rollback. Later Codex updates against an
 installed managed root need separate host verification and fresh fingerprints.
+The `hyperframes` family and `media-use` remain task-scoped even if a local
+classification attempts to place them under `.system`; activation checks both
+the directory and its declared entrypoint name and refuses global discovery.
+Preserved package links must be relative, resolve to
+existing content inside the same package, and remain contained after staging.
+Absolute, escaping, dangling, cyclic, or overly long link chains are refused
+before replacement. A link's text alone does not bind bytes outside the package.
 For example, an owner-reviewed contract record has this shape (the fingerprint
 must be computed from the actual entry; these values are illustrative):
 

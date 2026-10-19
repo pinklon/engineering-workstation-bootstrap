@@ -19,6 +19,7 @@ for n in {01..48}; do
 done
 chmod 755 "$tmp/system-original/skill-creator/scripts/asset-01"
 ln -s asset-01 "$tmp/system-original/skill-creator/scripts/current"
+ln -s current "$tmp/system-original/skill-creator/scripts/chained"
 test "$(find "$tmp/system-original" -type f | wc -l | tr -d ' ')" = 49
 printf 'Codex system marker fixture\n' > "$tmp/system-original/.codex-system-skills.marker"
 mkdir -p "$tmp/system-original/vsok-ticket-runner"
@@ -197,6 +198,64 @@ if WORKSTATION_TRANSACTION_ID=fixture-creative-global bash bin/workstation-activ
   --home "$fixture_home" --version fixture-retired >"$tmp/creative-global.log" 2>&1; then exit 1; fi
 grep -Fq 'creative skills must be staged for task-scoped use' "$tmp/creative-global.log"
 
+printf 'Validating task-scoped creative skills cannot enter Codex .system...\n'
+for creative in hyperframes hyperframes-animation media-use; do
+  mkdir -p "$fixture_home/.codex/skills/.system/$creative"
+  printf '%s\n' '---' "name: $creative" 'description: scoped fixture' '---' \
+    > "$fixture_home/.codex/skills/.system/$creative/SKILL.md"
+  creative_fp="$(python3 lib/workstation-recovery.py fingerprint "$fixture_home/.codex/skills/.system/$creative")"
+  write_activation_contract fixture-system-creative "$tmp/activation-system-creative-base.json"
+  jq --arg name "$creative" --argjson fingerprint "$creative_fp" \
+    '.codexSystemSkills += [{name:$name,classification:"owner-managed",action:"preserve",
+      evidenceReference:"fixture:creative",authorityReference:"fixture:owner",fingerprint:$fingerprint}]' \
+    "$tmp/activation-system-creative-base.json" > "$tmp/activation-system-creative.json"
+  if WORKSTATION_TRANSACTION_ID=fixture-system-creative bash bin/workstation-activate \
+    --activation-contract "$tmp/activation-system-creative.json" --private-profile "$tmp/private-profile.json" \
+    --home "$fixture_home" --version fixture-system-creative >"$tmp/system-creative.log" 2>&1; then exit 1; fi
+  grep -Fq 'task-scoped creative skill cannot be globally discovered' "$tmp/system-creative.log"
+  test ! -e "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-system-creative-fixture-system-creative"
+  rm -r "$fixture_home/.codex/skills/.system/$creative"
+done
+mkdir -p "$fixture_home/.codex/skills/.system/owner-alias"
+printf '%s\n' '---' 'name: "hyperframes"' 'description: aliased scoped fixture' '---' \
+  > "$fixture_home/.codex/skills/.system/owner-alias/SKILL.md"
+alias_fp="$(python3 lib/workstation-recovery.py fingerprint "$fixture_home/.codex/skills/.system/owner-alias")"
+write_activation_contract fixture-system-alias "$tmp/activation-system-alias-base.json"
+jq --argjson fingerprint "$alias_fp" \
+  '.codexSystemSkills += [{name:"owner-alias",classification:"owner-managed",action:"preserve",
+    evidenceReference:"fixture:alias",authorityReference:"fixture:owner",fingerprint:$fingerprint}]' \
+  "$tmp/activation-system-alias-base.json" > "$tmp/activation-system-alias.json"
+if WORKSTATION_TRANSACTION_ID=fixture-system-alias bash bin/workstation-activate \
+  --activation-contract "$tmp/activation-system-alias.json" --private-profile "$tmp/private-profile.json" \
+  --home "$fixture_home" --version fixture-system-alias >"$tmp/system-alias.log" 2>&1; then exit 1; fi
+grep -Fq 'task-scoped creative skill cannot be globally discovered' "$tmp/system-alias.log"
+test ! -e "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-system-alias-fixture-system-alias"
+rm -r "$fixture_home/.codex/skills/.system/owner-alias"
+
+printf 'Validating nested Codex .system links stay inside their package...\n'
+system_scripts="$fixture_home/.codex/skills/.system/skill-creator/scripts"
+for link_case in absolute escaping dangling chained; do
+  rm "$system_scripts/current"
+  case "$link_case" in
+    absolute) ln -s "$system_scripts/asset-01" "$system_scripts/current"; expected_link_error='absolute link is forbidden' ;;
+    escaping) ln -s '../../vsok-ticket-runner/SKILL.md' "$system_scripts/current"; expected_link_error='link leaves its package' ;;
+    dangling) ln -s missing-asset "$system_scripts/current"; expected_link_error='link is dangling' ;;
+    chained)
+      ln -s '../../vsok-ticket-runner/SKILL.md' "$system_scripts/hop"
+      ln -s hop "$system_scripts/current"
+      expected_link_error='link leaves its package' ;;
+  esac
+  write_activation_contract "fixture-link-$link_case" "$tmp/activation-link-$link_case.json"
+  if WORKSTATION_TRANSACTION_ID="fixture-link-$link_case" bash bin/workstation-activate \
+    --activation-contract "$tmp/activation-link-$link_case.json" --private-profile "$tmp/private-profile.json" \
+    --home "$fixture_home" --version "fixture-link-$link_case" >"$tmp/link-$link_case.log" 2>&1; then exit 1; fi
+  grep -Fq "$expected_link_error" "$tmp/link-$link_case.log"
+  test ! -e "$fixture_home/.local/share/engineering-workstation-bootstrap/versions/fixture-link-$link_case-fixture-link-$link_case"
+  rm "$system_scripts/current"
+  if [[ "$link_case" == chained ]]; then rm "$system_scripts/hop"; fi
+  ln -s asset-01 "$system_scripts/current"
+done
+
 printf 'Validating unknown and stale Codex .system classifications fail closed...\n'
 write_activation_contract fixture-resurrection "$tmp/activation-resurrection-base.json"
 jq '(.codexSystemSkills[] | select(.name == "vsok-ticket-runner")) |=
@@ -257,6 +316,7 @@ test -f "$fixture_home/.local/state/engineering-workstation-bootstrap/backups/fi
 test -x "$fixture_home/.codex/skills/.system/skill-creator/scripts/asset-01"
 cmp "$tmp/system-original/.codex-system-skills.marker" "$fixture_home/.codex/skills/.system/.codex-system-skills.marker"
 test "$(readlink "$fixture_home/.codex/skills/.system/skill-creator/scripts/current")" = asset-01
+test "$(readlink "$fixture_home/.codex/skills/.system/skill-creator/scripts/chained")" = current
 test -f "$fixture_home/.local/share/engineering-workstation-bootstrap/current/task-scoped-skills/hyperframes/SKILL.md"
 test ! -e "$fixture_home/.agents/skills/hyperframes"
 test ! -e "$fixture_home/.codex/skills/vsok-ticket-runner"

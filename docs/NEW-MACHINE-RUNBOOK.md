@@ -67,7 +67,9 @@ authority and fingerprint; unknown entries block activation. An empty array is
 valid only when the subtree has no entries. Verify retained and excluded entries,
 plus the exact rollback backup, in a disposable projection before any live
 activation. See [skill discovery](TONY-WORKSTATION-V2.md#skill-discovery) for
-the contract fields and provenance rules.
+the contract fields and provenance rules. Task-scoped creative names cannot be
+preserved under `.system`; nested links must resolve within their own package
+after relocation, or activation refuses the contract.
 Regenerate older private profiles that listed `.system` built-ins as ordinary
 skills; activation rejects those duplicates.
 

@@ -90,6 +90,76 @@ RETIRED_SYSTEM_SKILLS = {
 }
 
 
+def task_scoped_creative(name):
+    return bool(name and (name == 'hyperframes' or name.startswith('hyperframes-') or name == 'media-use'))
+
+
+def verify_system_skill_links(package):
+    """A preserved link must resolve entirely within its relocated package."""
+    root = package.resolve(strict=True)
+    for parent, directories, files in os.walk(root, followlinks=False):
+        for name in directories + files:
+            link = Path(parent) / name
+            if not link.is_symlink():
+                continue
+            cursor, seen = link, set()
+            for _ in range(40):
+                if not cursor.parent.resolve(strict=True).is_relative_to(root):
+                    raise ValueError('Codex .system link leaves its package: ' + link.name)
+                if not cursor.is_symlink():
+                    if not cursor.exists():
+                        raise ValueError('Codex .system link is dangling: ' + link.name)
+                    resolved = cursor.resolve(strict=True)
+                    if not resolved.is_relative_to(root) or not (resolved.is_file() or resolved.is_dir()):
+                        raise ValueError('Codex .system link leaves its package: ' + link.name)
+                    break
+                if cursor in seen:
+                    raise ValueError('Codex .system link chain loops: ' + link.name)
+                seen.add(cursor)
+                target = os.readlink(cursor)
+                if os.path.isabs(target):
+                    raise ValueError('Codex .system absolute link is forbidden: ' + link.name)
+                depth = len(cursor.parent.relative_to(root).parts)
+                for part in target.split('/'):
+                    depth += -1 if part == '..' else (1 if part not in ('', '.') else 0)
+                    if depth < 0:
+                        raise ValueError('Codex .system link leaves its package: ' + link.name)
+                cursor = Path(os.path.normpath(os.path.join(cursor.parent, target)))
+                if not cursor.is_relative_to(root):
+                    raise ValueError('Codex .system link leaves its package: ' + link.name)
+            else:
+                raise ValueError('Codex .system link chain is too long: ' + link.name)
+            try:
+                resolved = link.resolve(strict=True)
+            except (OSError, RuntimeError) as error:
+                raise ValueError('Codex .system link is dangling or looping: ' + link.name) from error
+            if not resolved.is_relative_to(root):
+                raise ValueError('Codex .system link leaves its package: ' + link.name)
+
+
+def system_skill_declared_name(package):
+    entrypoint = package / 'SKILL.md'
+    if not entrypoint.is_file():
+        return None
+    with entrypoint.open(encoding='utf-8') as stream:
+        if stream.readline().strip() != '---':
+            return None
+        for line in stream:
+            if line.strip() == '---':
+                break
+            if not re.match(r'^name\s*:', line):
+                continue
+            value = line.split(':', 1)[1].strip()
+            if value.startswith(("'", '"')):
+                if len(value) < 2 or value[-1] != value[0]:
+                    raise ValueError('unsupported Codex .system skill name')
+                value = value[1:-1]
+            if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', value):
+                raise ValueError('unsupported Codex .system skill name')
+            return value
+    return None
+
+
 def system_skill_plan(contract_path, home):
     contract = read_json(contract_path)
     root = Path(home) / '.codex/skills/.system'
@@ -114,6 +184,8 @@ def system_skill_plan(contract_path, home):
             raise ValueError('unknown Codex .system classification: ' + name)
         if action != ('exclude' if category == 'retired-legacy' else 'preserve'):
             raise ValueError('invalid Codex .system action: ' + name)
+        if task_scoped_creative(name):
+            raise ValueError('task-scoped creative skill cannot be globally discovered: ' + name)
         if (name in RETIRED_SYSTEM_SKILLS or name.startswith('vsok-')) and category != 'retired-legacy':
             raise ValueError('retired legacy Codex .system skill cannot be preserved: ' + name)
         if category == 'retired-legacy' and name not in RETIRED_SYSTEM_SKILLS:
@@ -123,6 +195,11 @@ def system_skill_plan(contract_path, home):
                 raise ValueError('Codex .system classification lacks ' + field + ': ' + name)
         if name not in actual or actual[name].is_symlink() or not (actual[name].is_dir() or actual[name].is_file()):
             raise ValueError('Codex .system entry is missing or not a regular file/directory: ' + name)
+        if action == 'preserve' and actual[name].is_dir():
+            verify_system_skill_links(actual[name])
+            declared_name = system_skill_declared_name(actual[name])
+            if task_scoped_creative(declared_name):
+                raise ValueError('task-scoped creative skill cannot be globally discovered: ' + declared_name)
         observed = fingerprint(actual[name])
         if item.get('fingerprint') != observed:
             raise ValueError('Codex .system classification is stale: ' + name)
@@ -139,6 +216,7 @@ def stage_system_skills(contract_path, home, destination):
         if item['action'] == 'preserve':
             if (root / name).is_dir():
                 shutil.copytree(root / name, destination / name, symlinks=True, copy_function=shutil.copy2)
+                verify_system_skill_links(destination / name)
             else:
                 shutil.copy2(root / name, destination / name)
             if fingerprint(destination / name) != item['fingerprint']:
