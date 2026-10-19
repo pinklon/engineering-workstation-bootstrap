@@ -142,26 +142,48 @@ def verify_system_skill_links(package):
 
 
 def system_skill_declared_name(package):
+    """Read an unambiguous root name from simple skill frontmatter."""
     entrypoint = package / 'SKILL.md'
     if not entrypoint.is_file():
         return None
     with entrypoint.open(encoding='utf-8') as stream:
-        if stream.readline().strip() != '---':
-            return None
+        if stream.readline().rstrip(' \t\r\n') != '---':
+            raise ValueError('Codex .system skill frontmatter is missing')
+        root_indent = None
+        declared_name = None
         for line in stream:
-            if line.strip() == '---':
+            if line.rstrip(' \t\r\n') == '---':
                 break
-            if not re.match(r'^name\s*:', line):
+            if not line.strip() or line.lstrip().startswith('#'):
                 continue
-            value = line.split(':', 1)[1].strip()
+            content = line.lstrip(' ')
+            indent = len(line) - len(content)
+            if root_indent is None:
+                root_indent = indent
+            if indent < root_indent:
+                raise ValueError('ambiguous Codex .system skill frontmatter indentation')
+            if indent > root_indent:
+                continue
+            key_value = re.fullmatch(r'([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)', content.rstrip('\r\n'))
+            if key_value is None:
+                raise ValueError('unsupported Codex .system skill frontmatter')
+            if key_value[1] != 'name':
+                continue
+            if declared_name is not None:
+                raise ValueError('duplicate Codex .system skill name')
+            value = key_value[2].strip()
             if value.startswith(("'", '"')):
                 if len(value) < 2 or value[-1] != value[0]:
                     raise ValueError('unsupported Codex .system skill name')
                 value = value[1:-1]
             if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', value):
                 raise ValueError('unsupported Codex .system skill name')
-            return value
-    return None
+            declared_name = value
+        else:
+            raise ValueError('Codex .system skill frontmatter is unterminated')
+    if declared_name is None:
+        raise ValueError('Codex .system skill name is missing')
+    return declared_name
 
 
 def system_skill_plan(contract_path, home):

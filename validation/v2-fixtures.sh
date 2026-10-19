@@ -236,20 +236,70 @@ rm -r "$fixture_home/.codex/skills/.system/owner-alias"
 printf 'Validating retired identities cannot be preserved through Codex .system aliases...\n'
 for declared_retired in governed-edit-protocol vsok-ticket-runner vsok-unregistered; do
   for category in owner-managed openai-builtin; do
-    mkdir -p "$fixture_home/.codex/skills/.system/owner-alias"
-    printf '%s\n' '---' "name: \"$declared_retired\"" 'description: aliased retired fixture' '---' \
-      > "$fixture_home/.codex/skills/.system/owner-alias/SKILL.md"
-    alias_fp="$(python3 lib/workstation-recovery.py fingerprint "$fixture_home/.codex/skills/.system/owner-alias")"
-    write_activation_contract fixture-system-retired-alias "$tmp/activation-system-retired-alias-base.json"
-    jq --arg category "$category" --argjson fingerprint "$alias_fp" \
-      '.codexSystemSkills += [{name:"owner-alias",classification:$category,action:"preserve",
-        evidenceReference:"fixture:retired-alias",authorityReference:"fixture:owner",fingerprint:$fingerprint}]' \
-      "$tmp/activation-system-retired-alias-base.json" > "$tmp/activation-system-retired-alias.json"
-    if python3 lib/workstation-recovery.py system-skills-check "$tmp/activation-system-retired-alias.json" \
-      "$fixture_home" >"$tmp/system-retired-alias.log" 2>&1; then exit 1; fi
-    grep -Fq 'retired legacy Codex .system skill cannot be preserved' "$tmp/system-retired-alias.log"
-    rm -r "$fixture_home/.codex/skills/.system/owner-alias"
+    for name_prefix in 'name:' ' name:'; do
+      mkdir -p "$fixture_home/.codex/skills/.system/owner-alias"
+      name_indent="${name_prefix%name:}"
+      printf '%s\n' '---' "$name_prefix \"$declared_retired\"" "${name_indent}description: aliased retired fixture" '---' \
+        > "$fixture_home/.codex/skills/.system/owner-alias/SKILL.md"
+      alias_fp="$(python3 lib/workstation-recovery.py fingerprint "$fixture_home/.codex/skills/.system/owner-alias")"
+      write_activation_contract fixture-system-retired-alias "$tmp/activation-system-retired-alias-base.json"
+      jq --arg category "$category" --argjson fingerprint "$alias_fp" \
+        '.codexSystemSkills += [{name:"owner-alias",classification:$category,action:"preserve",
+          evidenceReference:"fixture:retired-alias",authorityReference:"fixture:owner",fingerprint:$fingerprint}]' \
+        "$tmp/activation-system-retired-alias-base.json" > "$tmp/activation-system-retired-alias.json"
+      if python3 lib/workstation-recovery.py system-skills-check "$tmp/activation-system-retired-alias.json" \
+        "$fixture_home" >"$tmp/system-retired-alias.log" 2>&1; then
+        printf 'FAIL: preserved %s alias with %s\n' "$category" "$name_prefix" >&2
+        exit 1
+      fi
+      grep -Fq 'retired legacy Codex .system skill cannot be preserved' "$tmp/system-retired-alias.log"
+      rm -r "$fixture_home/.codex/skills/.system/owner-alias"
+    done
   done
+done
+
+printf 'Validating indented built-in frontmatter and delimiter whitespace remain preserved...\n'
+for opening_marker in '---' '--- '; do
+  for closing_marker in '---' '--- '; do
+    printf '%s\n' "$opening_marker" ' name: "skill-creator"' ' description: indented built-in fixture' "$closing_marker" \
+      > "$fixture_home/.codex/skills/.system/skill-creator/SKILL.md"
+    write_activation_contract fixture-system-indented-builtin "$tmp/activation-system-indented-builtin.json"
+    python3 lib/workstation-recovery.py system-skills-check "$tmp/activation-system-indented-builtin.json" "$fixture_home"
+  done
+done
+cp "$tmp/system-original/skill-creator/SKILL.md" "$fixture_home/.codex/skills/.system/skill-creator/SKILL.md"
+
+printf 'Validating ambiguous Codex .system skill frontmatter fails closed...\n'
+for frontmatter_case in missing nested duplicate embedded_delimiter; do
+  mkdir -p "$fixture_home/.codex/skills/.system/owner-alias"
+  case "$frontmatter_case" in
+    missing)
+      printf '%s\n' '---' 'description: no declared identity' '---' \
+        > "$fixture_home/.codex/skills/.system/owner-alias/SKILL.md"
+      expected_frontmatter_error='Codex .system skill name is missing' ;;
+    nested)
+      printf '%s\n' '---' 'metadata:' '  name: vsok-ticket-runner' 'description: nested identity' '---' \
+        > "$fixture_home/.codex/skills/.system/owner-alias/SKILL.md"
+      expected_frontmatter_error='Codex .system skill name is missing' ;;
+    duplicate)
+      printf '%s\n' '---' 'name: owner-alias' 'name: vsok-ticket-runner' '---' \
+        > "$fixture_home/.codex/skills/.system/owner-alias/SKILL.md"
+      expected_frontmatter_error='duplicate Codex .system skill name' ;;
+    embedded_delimiter)
+      printf '%s\n' '---' 'name: owner-alias' 'description: |' '  ---' 'name: vsok-ticket-runner' '---' \
+        > "$fixture_home/.codex/skills/.system/owner-alias/SKILL.md"
+      expected_frontmatter_error='duplicate Codex .system skill name' ;;
+  esac
+  alias_fp="$(python3 lib/workstation-recovery.py fingerprint "$fixture_home/.codex/skills/.system/owner-alias")"
+  write_activation_contract fixture-system-ambiguous "$tmp/activation-system-ambiguous-base.json"
+  jq --argjson fingerprint "$alias_fp" \
+    '.codexSystemSkills += [{name:"owner-alias",classification:"owner-managed",action:"preserve",
+      evidenceReference:"fixture:ambiguous",authorityReference:"fixture:owner",fingerprint:$fingerprint}]' \
+    "$tmp/activation-system-ambiguous-base.json" > "$tmp/activation-system-ambiguous.json"
+  if python3 lib/workstation-recovery.py system-skills-check "$tmp/activation-system-ambiguous.json" \
+    "$fixture_home" >"$tmp/system-ambiguous.log" 2>&1; then exit 1; fi
+  grep -Fq "$expected_frontmatter_error" "$tmp/system-ambiguous.log"
+  rm -r "$fixture_home/.codex/skills/.system/owner-alias"
 done
 
 printf 'Validating nested Codex .system links stay inside their package...\n'
