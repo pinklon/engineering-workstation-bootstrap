@@ -36,8 +36,15 @@ managed file inventory and each file's SHA-256 match its version 2 receipt.
 This includes the root and nested `AGENTS.md` files and the rendered
 `config/codex/config.toml`. A legacy version 1 receipt is accepted only when
 every staged file still exactly matches the current source; reconcile upgrades
-it to version 2. Reconcile refuses changed or unrelated policy before copying,
-and rollback refuses changed or unowned targets.
+it to version 2. A version 2 stage is verified against the inventory and hashes
+in its own receipt before a later checkout's inventory is applied. Reconcile
+then replaces the verified staged skill subtree, so additions and retirements
+under `skills/workstation-operations` can be sealed to the new source. A
+version 2 receipt records files, not independently provable empty directories;
+an unrecorded empty directory therefore fails closed. Reconcile refuses changed
+or unrelated policy before copying, and rollback refuses changed or unowned
+targets. An interrupted reconcile may need manual cleanup of the verified
+disposable stage.
 
 This is an incomplete qualification implementation. The HTTP, native Codex client,
 and scoped GitHub canary adapters are implemented. Desktop restart and hosted

@@ -41,6 +41,10 @@ render_stage() {
   require_stage
   if [[ -d "$STAGE_ROOT" && -n "$(command ls -A "$STAGE_ROOT")" ]]; then
     require_owned_stage
+    # The old receipt proves exactly which skill package bytes are owned.
+    # Remove that verified subtree so a later source checkout may retire files
+    # as well as add them before sealing the new source inventory.
+    rm -r "$STAGE_ROOT/skills/workstation-operations"
   fi
   mkdir -p "$STAGE_ROOT/config/codex" "$STAGE_ROOT/manifests" "$STAGE_ROOT/skills" "$STAGE_ROOT/docs"
   # Keep the stage's skill lookup chain resolvable without activating a home.
