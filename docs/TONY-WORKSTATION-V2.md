@@ -81,6 +81,15 @@ PR #32 covers reversible Codex config cleanup; it does not classify a skill as
 retired or turn an unknown `.system` entry into a built-in.
 Regenerate a private profile captured before this rule if it exported built-ins
 as ordinary Codex skills; activation refuses that duplicate discovery state.
+If a fresh Codex task fails to list the preserved `.system/review-agent` skill,
+an owner-approved activation contract may set
+`"codexSystemCatalogBridge":"review-agent"`. This single-name option requires
+that `review-agent` be classified as a fingerprint-bound, preserved OpenAI
+built-in. The activator stages the classified package once under `.system` and
+adds a top-level discovery wrapper that points to those staged bytes. It does
+not import a private-profile duplicate. A fresh Codex task must still prove
+catalog discovery and read the package after activation; file presence alone
+does not pass that check. Exact-receipt rollback is required if discovery fails.
 
 ## Lean installed skill profile
 

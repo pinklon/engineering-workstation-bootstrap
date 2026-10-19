@@ -234,6 +234,13 @@ def system_skill_plan(contract_path, home):
         plan[name] = item
     if set(plan) != set(actual):
         raise ValueError('Codex .system has unclassified entries: ' + ', '.join(sorted(set(actual) - set(plan))))
+    bridge = contract.get('codexSystemCatalogBridge')
+    if bridge is not None:
+        item = plan.get('review-agent')
+        if bridge != 'review-agent' or item is None or item['classification'] != 'openai-builtin' or item['action'] != 'preserve':
+            raise ValueError('review-agent catalog bridge requires a preserved classified built-in')
+        if system_skill_declared_name(actual[bridge]) != bridge:
+            raise ValueError('review-agent catalog bridge package declares another name')
     return root, plan
 
 

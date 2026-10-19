@@ -72,6 +72,12 @@ preserved under `.system`; nested links must resolve within their own package
 after relocation, or activation refuses the contract.
 Regenerate older private profiles that listed `.system` built-ins as ordinary
 skills; activation rejects those duplicates.
+The optional, owner-approved `codexSystemCatalogBridge:"review-agent"` contract
+field adds one top-level discovery wrapper for that preserved, fingerprint-bound
+built-in without copying it into the private profile. Use it only after a fresh
+task has shown that `.system/review-agent` is not catalogued. After activation,
+require a new task to discover and read `review-agent`; roll back the exact
+transaction receipt if it remains absent.
 
 An owner may optionally pin a **verified account-supported Codex model** for a
 single managed activation by adding `codexModel` to that same exact activation
