@@ -25,11 +25,11 @@
   "repository": "pinklon/engineering-workstation-bootstrap",
   "image": "universal",
   "image_python_selection": "3.13",
-  "node_selection": "24-via-workstation-cloud-node",
+  "node_selection": "manifest-nodeMajor-via-workstation-cloud-node",
   "environment_variables": {
     "WORKSTATION_CLOUD_ROOT": "/workspace/.bootstrap-runtime",
     "WORKSTATION_BOOTSTRAP_BROWSER_ROOT": "/workspace/.bootstrap-runtime/browser",
-    "BASH_ENV": "/workspace/.codex-node24/env.sh"
+    "BASH_ENV": "/workspace/.codex-node/env.sh"
   },
   "configured_secrets": [],
   "agent_network_preset": "common-dependencies",
