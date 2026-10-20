@@ -75,9 +75,11 @@ adoption require separate acceptance; a task thread alone proves neither.
 - **dot:** coordinates retrieved context, capability lookup, accepted
   assignments, dependencies, independent review and completion evidence.
   Coordination is not an infrastructure grant.
-- **GhostMesh:** an openly AI bounded executor or coordinator only on a
-  verified eligible host and within the accepted task scope. It may not
-  self-assign a protected writer or infer authority from a conversation.
+- **Bounded AI executor or coordinator:** an explicitly identified actor may
+  work only on a verified eligible host and within the accepted task scope.
+  It may not self-assign a protected writer or infer authority from a
+  conversation. GhostMesh names the overall system, not an individual agent
+  or authorization principal; resolve the actual actor and current grant.
 - **Independent reviewer:** checks the exact artifact and source head without
   becoming the writer or release custodian.
 - **Existing dispatch/broker owners:** preserve the shared task/result ID,
