@@ -17,3 +17,25 @@ Keep routine updates concise; consequential decisions need full context.
 Distinguish planned, coded, tested, merged, deployed and independently verified.
 Unknown stays unknown. Technical receipts follow the human explanation.
 This communication rule grants no approval, execution, disclosure or live authority.
+
+## Human-facing callsigns
+
+The owner-approved display names in `pinklon/shareplane-control-tower#1056`
+are recorded in its versioned presentation catalog,
+`pinklon/shareplane-control-tower/architecture/mesh-presentation-aliases.v1.json`
+(`ghostmesh-presentation-aliases.v1`). Read that catalog at a verified accepted
+Control Tower ref and verify `presentationOnly: true` and its
+`authorityRegistry: architecture/mesh-identity-registry.v1.json` reference.
+A draft PR is candidate evidence, not current-main canon.
+
+- `segfault` = ChatGPT architecture/reasoning partner (`agent`).
+- `syscall` = Codex engineering agent (`agent`).
+- `phorse` = existing Pale Horse coordinator (`agent`).
+- `GhostMesh` = overall system (`system`).
+
+`phorse` does not create a new agent; `GhostMesh` is not an individual agent.
+These names are presentation aliases only. They do not create security
+principals, permissions, credentials, runtime identities, executor selection,
+or task authority. They do not rename installed tools or accounts. Continue
+to resolve the actual actor, task scope, writer lease and current grants from
+the governing contracts before consequential work.

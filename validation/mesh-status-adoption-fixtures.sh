@@ -88,6 +88,28 @@ class NativeAdoption(unittest.TestCase):
         self.assertIn(b'Unknown stays unknown.', data[431:])
         self.assertIn(b'grants no approval, execution, disclosure or live authority', data[431:])
 
+    def test_callsigns_are_display_only_in_staged_codex_instructions(self):
+        source = (ROOT / 'config/codex/AGENTS.md').read_text()
+        mappings = {
+            'segfault': ('ChatGPT architecture/reasoning partner', 'agent'),
+            'syscall': ('Codex engineering agent', 'agent'),
+            'phorse': ('existing Pale Horse coordinator', 'agent'),
+            'GhostMesh': ('overall system', 'system'),
+        }
+        for name, (meaning, kind) in mappings.items():
+            self.assertEqual(source.count(f'- `{name}` = {meaning} (`{kind}`).'), 1)
+        self.assertIn('architecture/mesh-presentation-aliases.v1.json', source)
+        self.assertIn('ghostmesh-presentation-aliases.v1', source)
+        self.assertIn('presentationOnly: true', source)
+        self.assertIn('authorityRegistry: architecture/mesh-identity-registry.v1.json', source)
+        self.assertIn('A draft PR is candidate evidence, not current-main canon.', source)
+        self.assertIn('presentation aliases only', source)
+        self.assertIn('They do not create security\nprincipals, permissions, credentials, runtime identities, executor selection,\nor task authority.', source)
+        _, receipt = self.successful_activation()
+        staged = (Path(receipt['releaseDir']) / 'config/codex/AGENTS.md').read_text()
+        self.assertEqual(staged, source)
+        self.assertEqual((self.home / '.codex/AGENTS.md').read_text(), source)
+
     def test_wrapper_and_package_work_without_staging_source(self):
         _, receipt = self.successful_activation()
         release = Path(receipt['releaseDir'])
