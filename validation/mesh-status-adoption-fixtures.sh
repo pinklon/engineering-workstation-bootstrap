@@ -91,13 +91,18 @@ class NativeAdoption(unittest.TestCase):
     def test_callsigns_are_display_only_in_staged_codex_instructions(self):
         source = (ROOT / 'config/codex/AGENTS.md').read_text()
         mappings = {
-            'segfault': 'ChatGPT, architecture and reasoning partner.',
-            'syscall': 'Codex, engineering agent.',
-            'phorse': 'Pale Horse coordinator, not a new agent.',
-            'GhostMesh': 'the overall system, not an individual agent.',
+            'segfault': ('ChatGPT architecture/reasoning partner', 'agent'),
+            'syscall': ('Codex engineering agent', 'agent'),
+            'phorse': ('existing Pale Horse coordinator', 'agent'),
+            'GhostMesh': ('overall system', 'system'),
         }
-        for name, meaning in mappings.items():
-            self.assertEqual(source.count(f'- `{name}` = {meaning}'), 1)
+        for name, (meaning, kind) in mappings.items():
+            self.assertEqual(source.count(f'- `{name}` = {meaning} (`{kind}`).'), 1)
+        self.assertIn('architecture/mesh-presentation-aliases.v1.json', source)
+        self.assertIn('ghostmesh-presentation-aliases.v1', source)
+        self.assertIn('presentationOnly: true', source)
+        self.assertIn('authorityRegistry: architecture/mesh-identity-registry.v1.json', source)
+        self.assertIn('A draft PR is candidate evidence, not current-main canon.', source)
         self.assertIn('presentation aliases only', source)
         self.assertIn('They do not create security\nprincipals, permissions, credentials, runtime identities, executor selection,\nor task authority.', source)
         _, receipt = self.successful_activation()
