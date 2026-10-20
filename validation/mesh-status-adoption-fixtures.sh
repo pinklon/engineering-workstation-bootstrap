@@ -88,6 +88,23 @@ class NativeAdoption(unittest.TestCase):
         self.assertIn(b'Unknown stays unknown.', data[431:])
         self.assertIn(b'grants no approval, execution, disclosure or live authority', data[431:])
 
+    def test_callsigns_are_display_only_in_staged_codex_instructions(self):
+        source = (ROOT / 'config/codex/AGENTS.md').read_text()
+        mappings = {
+            'segfault': 'ChatGPT, architecture and reasoning partner.',
+            'syscall': 'Codex, engineering agent.',
+            'phorse': 'Pale Horse coordinator, not a new agent.',
+            'GhostMesh': 'the overall system, not an individual agent.',
+        }
+        for name, meaning in mappings.items():
+            self.assertEqual(source.count(f'- `{name}` = {meaning}'), 1)
+        self.assertIn('presentation aliases only', source)
+        self.assertIn('They do not create security\nprincipals, permissions, credentials, runtime identities, executor selection,\nor task authority.', source)
+        _, receipt = self.successful_activation()
+        staged = (Path(receipt['releaseDir']) / 'config/codex/AGENTS.md').read_text()
+        self.assertEqual(staged, source)
+        self.assertEqual((self.home / '.codex/AGENTS.md').read_text(), source)
+
     def test_wrapper_and_package_work_without_staging_source(self):
         _, receipt = self.successful_activation()
         release = Path(receipt['releaseDir'])
