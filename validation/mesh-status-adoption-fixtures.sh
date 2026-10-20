@@ -110,6 +110,17 @@ class NativeAdoption(unittest.TestCase):
         self.assertEqual(staged, source)
         self.assertEqual((self.home / '.codex/AGENTS.md').read_text(), source)
 
+    def test_operating_roles_agree_with_system_alias(self):
+        instructions = (ROOT / 'config/codex/AGENTS.md').read_text()
+        contract = (ROOT / 'docs/AGENT-OPERATING-CONTRACT.md').read_text()
+        self.assertIn('- `GhostMesh` = overall system (`system`).', instructions)
+        self.assertIn('GhostMesh names the overall system, not an individual agent\n'
+                      '  or authorization principal', contract)
+        self.assertIn('**Bounded AI executor or coordinator:** an explicitly identified actor',
+                      contract)
+        self.assertNotIn('**GhostMesh:**', contract)
+        self.assertIn('docs/AGENT-OPERATING-CONTRACT.md', (ROOT / 'AGENTS.md').read_text())
+
     def test_wrapper_and_package_work_without_staging_source(self):
         _, receipt = self.successful_activation()
         release = Path(receipt['releaseDir'])
