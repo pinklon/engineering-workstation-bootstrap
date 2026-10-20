@@ -246,3 +246,4 @@ class RecoveryBoundaries(unittest.TestCase):
 
 unittest.main(argv=['managed-recovery'] + sys.argv[2:], verbosity=2)
 PY
+python3 -B "$ROOT/validation/instruction-only-fixtures.py"
