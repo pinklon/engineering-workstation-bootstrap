@@ -287,5 +287,196 @@ class InstructionOnly(unittest.TestCase):
         self.unchanged()
 
 
+class LinuxFirstInstall(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix='linux-first-install-')
+        self.addCleanup(self.tmp.cleanup)
+        self.base = Path(self.tmp.name).resolve()
+        self.home = self.base / 'home'
+        (self.home / '.codex').mkdir(parents=True)
+        self.config = self.home / '.codex/config.toml'
+        self.config.write_text('model = "existing-owner-model"\n')
+        self.shell = self.home / '.zshrc'
+        self.shell.write_text('# unrelated shell\n')
+        self.config_bytes = self.config.read_bytes()
+        self.shell_bytes = self.shell.read_bytes()
+        self.wsrepo = self.base / 'workstation-source'
+        self.ctrepo = self.base / 'catalog-source'
+        self.wsrepo.mkdir()
+        self.ctrepo.mkdir()
+        self.source = 'pinned Linux fixture instructions\n'
+        ws_commit = fixture_repo(self.wsrepo, self.wsrepo / 'config/codex/AGENTS.md', self.source)
+        ct_commit = fixture_repo(self.ctrepo, self.ctrepo / 'architecture/mesh-presentation-aliases.v1.json',
+                                 json.dumps(CATALOG, indent=2) + '\n')
+        catalog_blob = run('git', '-C', str(self.ctrepo), 'rev-parse',
+                           ct_commit + ':architecture/mesh-presentation-aliases.v1.json').stdout.strip()
+        self.contract = self.base / 'first-install.json'
+        self.contract.write_text(json.dumps({
+            'schemaVersion': 1, 'linuxFirstInstallAuthorized': True, 'allowLiveHome': False,
+            'authorityReference': 'fixture:linux-first-install', 'targetHome': str(self.home),
+            'version': 'fixture-first', 'workstationCommit': ws_commit,
+            'workstationInstructionSha256': hashlib.sha256(self.source.encode()).hexdigest(),
+            'catalogCommit': ct_commit, 'catalogBlobSha1': catalog_blob,
+        }))
+        self.txn = 'fixture-first-install'
+        self.state = self.home / '.local/state/engineering-workstation-bootstrap'
+        self.share = self.home / '.local/share/engineering-workstation-bootstrap'
+        self.pointer = self.share / 'current'
+        self.marker = self.state / 'current-transaction'
+        self.link = self.home / '.codex/AGENTS.md'
+        self.receipt = self.state / 'receipts' / ('activation-' + self.txn + '.json')
+        self.env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', WORKSTATION_TRANSACTION_ID=self.txn)
+        for key in list(self.env):
+            if key.startswith('WORKSTATION_FAIL') or key.startswith('WORKSTATION_INSTRUCTIONS_FAIL'):
+                self.env.pop(key)
+
+    def command(self, action, **extra):
+        return run('bash', str(ROOT / 'bin/workstation-instructions'), action,
+                   '--contract', str(self.contract), '--home', str(self.home),
+                   '--workstation-repo', str(self.wsrepo), '--catalog-repo', str(self.ctrepo),
+                   env=dict(self.env, **extra))
+
+    def rollback(self):
+        return run('bash', str(ROOT / 'bin/workstation-instructions'), 'rollback',
+                   '--receipt', str(self.receipt), '--home', str(self.home), env=self.env)
+
+    def unrelated_unchanged(self):
+        self.assertEqual(self.config.read_bytes(), self.config_bytes)
+        self.assertEqual(self.shell.read_bytes(), self.shell_bytes)
+
+    def test_read_only_preflight_install_and_exact_rollback(self):
+        result = self.command('first-install-preflight')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)['status'], 'FIRST_INSTALL_READY')
+        self.assertFalse((self.home / '.local').exists())
+        result = self.command('first-install')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        receipt = json.loads(self.receipt.read_text())
+        self.assertEqual(receipt['status'], 'active')
+        self.assertEqual(receipt['preimageType'], 'absent')
+        self.assertEqual(receipt['previousCurrent'], '')
+        self.assertEqual(receipt['previousTransaction'], '')
+        self.assertEqual(self.link.read_text(), self.source)
+        self.assertEqual(os.readlink(self.link), str(self.pointer / 'config/codex/AGENTS.md'))
+        self.assertEqual(self.marker.read_text().strip(), self.txn)
+        self.unrelated_unchanged()
+        result = self.rollback()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(self.receipt.read_text())['status'], 'rolled-back')
+        self.assertFalse(self.link.exists() or self.link.is_symlink())
+        self.assertFalse(self.pointer.exists() or self.pointer.is_symlink())
+        self.assertFalse(self.marker.exists())
+        self.unrelated_unchanged()
+
+    def test_partial_or_occupied_state_refuses_without_writes(self):
+        for relative, kind in [('.codex/AGENTS.md', 'file'),
+                               ('.local/share/engineering-workstation-bootstrap', 'directory'),
+                               ('.local/state/engineering-workstation-bootstrap', 'directory'),
+                               ('.codex/AGENTS.md', 'broken-link')]:
+            with self.subTest(relative=relative, kind=kind):
+                path = self.home / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if kind == 'directory':
+                    path.mkdir()
+                elif kind == 'broken-link':
+                    path.symlink_to('missing')
+                else:
+                    path.write_text('unmanaged instructions\n')
+                result = self.command('first-install')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(self.receipt.exists())
+                self.assertFalse(self.pointer.is_symlink())
+                self.assertFalse(self.marker.exists())
+                self.unrelated_unchanged()
+                if kind == 'directory':
+                    path.rmdir()
+                else:
+                    path.unlink()
+
+    def test_wrong_pin_refuses_before_host_state(self):
+        value = json.loads(self.contract.read_text())
+        value['workstationInstructionSha256'] = '0' * 64
+        self.contract.write_text(json.dumps(value))
+        result = self.command('first-install')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.home / '.local').exists())
+        self.unrelated_unchanged()
+
+    def test_competing_share_root_is_preserved_on_race(self):
+        original_mkdir = Path.mkdir
+
+        def competing_mkdir(path, *args, **kwargs):
+            if path == self.share:
+                original_mkdir(path, *args, **kwargs)
+                raise FileExistsError('another source created the share root')
+            return original_mkdir(path, *args, **kwargs)
+
+        arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
+                                    workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
+        with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
+             patch.object(Path, 'mkdir', competing_mkdir):
+            with self.assertRaises(FileExistsError):
+                instructions.first_install(arguments)
+        self.assertTrue(self.share.is_dir())
+        self.assertFalse(self.receipt.exists())
+        self.assertFalse(self.pointer.is_symlink())
+        self.assertFalse(self.marker.exists())
+        self.unrelated_unchanged()
+
+    def test_interrupted_pointer_recovers_from_exact_receipt(self):
+        result = self.command('first-install', WORKSTATION_INSTRUCTIONS_FAIL_POINT='after-pointer',
+                              WORKSTATION_INSTRUCTIONS_FAIL_MODE='exit')
+        self.assertEqual(result.returncode, 75, result.stdout + result.stderr)
+        self.assertEqual(json.loads(self.receipt.read_text())['status'], 'applying')
+        self.assertTrue(self.pointer.is_symlink())
+        result = self.rollback()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(self.pointer.is_symlink())
+        self.assertFalse(self.marker.exists())
+        self.assertFalse(self.link.is_symlink())
+        self.unrelated_unchanged()
+
+    def test_codex_parent_drift_holds_without_following_symlink(self):
+        original_atomic = instructions.recovery.atomic_bytes
+        moved = self.home / '.codex-moved'
+
+        def swap_after_marker(path, value):
+            original_atomic(path, value)
+            if Path(path) == self.marker and value == (self.txn + '\n').encode():
+                (self.home / '.codex').rename(moved)
+                (self.home / '.codex').symlink_to(moved)
+
+        arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
+                                    workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
+        with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
+             patch.object(instructions.recovery, 'atomic_bytes', side_effect=swap_after_marker):
+            with self.assertRaises(instructions.ManagedPathDrift):
+                instructions.first_install(arguments)
+        self.assertEqual(json.loads(self.receipt.read_text())['status'], 'recovery-required')
+        self.assertFalse((moved / 'AGENTS.md').exists())
+        (self.home / '.codex').unlink()
+        moved.rename(self.home / '.codex')
+        self.assertEqual(self.rollback().returncode, 0)
+        self.unrelated_unchanged()
+
+    def test_failure_after_link_recovers_and_other_writer_blocks_rollback(self):
+        result = self.command('first-install', WORKSTATION_INSTRUCTIONS_FAIL_POINT='after-link')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(json.loads(self.receipt.read_text())['status'], 'rolled-back')
+        self.assertFalse(self.link.is_symlink())
+        self.unrelated_unchanged()
+        # A second, fresh disposable home checks the active-receipt writer fence.
+        self.state.rename(self.base / 'old-state')
+        self.share.rename(self.base / 'old-share')
+        self.assertEqual(self.command('first-install').returncode, 0)
+        self.marker.write_text('other-writer\n')
+        result = self.rollback()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(self.link.is_symlink())
+        self.marker.write_text(self.txn + '\n')
+        self.assertEqual(self.rollback().returncode, 0)
+        self.unrelated_unchanged()
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
