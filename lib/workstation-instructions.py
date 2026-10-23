@@ -36,6 +36,17 @@ class ManagedPathDrift(ValueError):
     """A live managed path changed outside this pointer-only transaction."""
 
 
+def real_directory_identity(path):
+    """Bind managed directories without following a replacement symlink."""
+    try:
+        value = os.lstat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    if not stat.S_ISDIR(value.st_mode):
+        raise ManagedPathDrift('managed directory is not real: ' + str(path))
+    return value.st_dev, value.st_ino
+
+
 def require(condition, message):
     if not condition:
         raise ValueError(message)
@@ -115,6 +126,63 @@ def verify_managed_paths(home, manifest_path, expected):
 
 def snapshot_hash(value):
     return sha256(json.dumps(value, sort_keys=True).encode())
+
+
+def first_install_inputs(args):
+    """Qualify an empty managed footprint before creating any host state."""
+    home = Path(args.home).resolve(strict=True)
+    contract = recovery.read_json(args.contract)
+    required = {'schemaVersion', 'linuxFirstInstallAuthorized', 'allowLiveHome',
+                'authorityReference', 'targetHome', 'version', 'workstationCommit',
+                'workstationInstructionSha256', 'catalogCommit', 'catalogBlobSha1'}
+    require(set(contract) == required and contract['schemaVersion'] == 1
+            and contract['linuxFirstInstallAuthorized'] is True,
+            'invalid Linux first-install contract')
+    require(type(contract['allowLiveHome']) is bool and bool(contract['authorityReference']),
+            'first-install authority is incomplete')
+    require(contract['targetHome'] == str(home), 'contract targetHome does not match --home')
+    require(home != Path.home().resolve() or contract['allowLiveHome'] is True,
+            'contract does not authorize a live home')
+    require(home != Path.home().resolve() or sys.platform.startswith('linux'),
+            'live first-install is limited to Linux homes')
+    require(isinstance(contract['version'], str) and SAFE_ID.fullmatch(contract['version']),
+            'unsafe first-install release version')
+    require(isinstance(contract['workstationInstructionSha256'], str)
+            and SHA256.fullmatch(contract['workstationInstructionSha256']),
+            'invalid instruction SHA-256 pin')
+    source = pinned_file(args.workstation_repo, contract['workstationCommit'], str(INSTRUCTIONS))
+    require(sha256(source) == contract['workstationInstructionSha256'],
+            'Workstation source hash mismatch')
+    catalog_proof(contract, args.catalog_repo)
+    first_install_empty(home)
+    return home, contract, source
+
+
+def first_install_empty(home):
+    """Existing Codex profile is allowed; any managed footprint is a hold."""
+    codex = home / '.codex'
+    require(codex.is_dir() and not codex.is_symlink(),
+            'Codex profile directory must be an existing real directory')
+    for parent in (home / '.local', home / '.local/share', home / '.local/state'):
+        if parent.exists() or parent.is_symlink():
+            require(parent.is_dir() and not parent.is_symlink(),
+                    'managed parent is not a real directory: ' + str(parent))
+    managed = (codex / 'AGENTS.md',
+               home / '.local/share/engineering-workstation-bootstrap',
+               home / '.local/state/engineering-workstation-bootstrap')
+    require(all(recovery.fingerprint(path)['type'] == 'absent' for path in managed),
+            'partial, damaged, or occupied managed state; first-install held')
+
+
+def first_install_preflight(args):
+    home, contract, source = first_install_inputs(args)
+    print(json.dumps({'status': 'FIRST_INSTALL_READY', 'targetHome': str(home),
+                      'authorityReference': contract['authorityReference'],
+                      'workstationCommit': contract['workstationCommit'],
+                      'instructionSha256': sha256(source),
+                      'catalogCommit': contract['catalogCommit'],
+                      'catalogBlobSha1': contract['catalogBlobSha1'],
+                      'managedState': 'absent'}, sort_keys=True))
 
 
 def current_state(home, contract):
@@ -334,6 +402,207 @@ def install(args):
         unlock_state(lock)
 
 
+def first_install(args):
+    home, contract, source = first_install_inputs(args)
+    transaction = os.environ.get('WORKSTATION_TRANSACTION_ID') or datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + str(os.getpid())
+    require(SAFE_ID.fullmatch(transaction), 'unsafe first-install transaction ID')
+    state = home / '.local/state/engineering-workstation-bootstrap'
+    share = home / '.local/share/engineering-workstation-bootstrap'
+    release = share / 'versions' / (contract['version'] + '-' + transaction)
+    backup = state / 'backups' / transaction
+    receipt_path = state / 'receipts' / ('activation-' + transaction + '.json')
+    lock = None
+    intent_owned = False
+    committed = False
+    state_owned = False
+    owned_dirs = {}
+    parents = [home, home / '.codex', home / '.local', home / '.local/state',
+               home / '.local/share', state, share, state / 'receipts',
+               state / 'backups', share / 'versions', release, backup]
+    identities = {path: real_directory_identity(path) for path in parents}
+
+    def guard():
+        for path, expected in identities.items():
+            if real_directory_identity(path) != expected:
+                raise ManagedPathDrift('managed directory changed during first-install: ' + str(path))
+
+    def matches_owned_path(path):
+        try:
+            return all(real_directory_identity(parent) == identities[parent]
+                       for parent in identities if parent == path or parent in path.parents)
+        except ManagedPathDrift:
+            return False
+
+    def mkdir_owned(path):
+        guard()
+        path.mkdir()
+        identity = real_directory_identity(path)
+        if identity is None:
+            raise ManagedPathDrift('created directory changed during first-install: ' + str(path))
+        identities[path] = identity
+        owned_dirs[path] = identity
+        guard()
+
+    def cleanup_owned():
+        # Never descend through a replaced parent or remove a directory with
+        # contents another writer may have added after our last check.
+        for path in sorted(owned_dirs, key=lambda item: len(item.parts), reverse=True):
+            if matches_owned_path(path):
+                try:
+                    path.rmdir()
+                except OSError:
+                    pass
+    try:
+        # Both roots must be absent. mkdir with exist_ok=False also rejects a
+        # competing first installer before its release can be selected.
+        if identities[home / '.local'] is None:
+            mkdir_owned(home / '.local')
+        if identities[home / '.local/state'] is None:
+            mkdir_owned(home / '.local/state')
+        if identities[home / '.local/share'] is None:
+            mkdir_owned(home / '.local/share')
+        mkdir_owned(state)
+        state_owned = True
+        mkdir_owned(share)
+        mkdir_owned(state / 'receipts')
+        mkdir_owned(state / 'backups')
+        mkdir_owned(share / 'versions')
+        guard()
+        lock = lock_state(state, transaction)
+        identities[lock] = real_directory_identity(lock)
+        guard()
+        first_install_empty_except_owned(home, state, share, lock)
+        candidate = release / INSTRUCTIONS
+        mkdir_owned(release)
+        mkdir_owned(release / 'config')
+        mkdir_owned(release / 'config/codex')
+        guard()
+        candidate.write_bytes(source)
+        candidate.chmod(0o644)
+        require(sha256(candidate.read_bytes()) == contract['workstationInstructionSha256'],
+                'staged instruction hash changed')
+        mkdir_owned(backup)
+        bundle = backup / 'recovery'
+        mkdir_owned(bundle)
+        mkdir_owned(bundle / 'bin')
+        mkdir_owned(bundle / 'lib')
+        guard()
+        for source_path, target_path in (
+            (ROOT / 'bin/workstation-instructions', bundle / 'bin/workstation-instructions'),
+            (ROOT / 'lib/workstation-instructions.py', bundle / 'lib/workstation-instructions.py'),
+            (ROOT / 'lib/workstation-recovery.py', bundle / 'lib/workstation-recovery.py'),
+        ):
+            shutil.copy2(source_path, target_path)
+            require(recovery.digest(source_path) == recovery.digest(target_path),
+                    'rollback tool changed during staging')
+        manifest = backup / 'manifest.json'
+        recovery.write_json(manifest, {'schemaVersion': 1, 'transactionId': transaction,
+                                       'targetHome': str(home), 'createdAt': datetime.now(timezone.utc).isoformat(),
+                                       'paths': [{'relativePath': '.codex/AGENTS.md', 'originalType': 'absent',
+                                                  'backupRelative': 'files/.codex/AGENTS.md',
+                                                  'sha256': None, 'linkTarget': None}]})
+        install_map = backup / 'install-map.tsv'
+        install_map.write_text('.codex/AGENTS.md\tlink\tconfig/codex/AGENTS.md\n')
+        guard()
+        recovery.seal(home, release, manifest, install_map)
+        receipt = {'schemaVersion': 1, 'transactionId': transaction, 'version': contract['version'],
+                   'targetHome': str(home), 'authorityReference': contract['authorityReference'],
+                   'releaseDir': str(release), 'backupManifest': str(manifest),
+                   'backupManifestSha256': recovery.digest(manifest), 'previousCurrent': '',
+                   'previousTransaction': '', 'status': 'applying', 'phase': 'prepared',
+                   'recoveryProtocol': 1, 'instructionOnly': True, 'linuxFirstInstall': True,
+                   'preimageType': 'absent', 'instructionSha256': contract['workstationInstructionSha256'],
+                   'workstationCommit': contract['workstationCommit'],
+                   'catalogCommit': contract['catalogCommit'], 'catalogBlobSha1': contract['catalogBlobSha1'],
+                   'rollbackEntryPoint': str(bundle / 'bin/workstation-instructions'),
+                   'rollbackWrapperSha256': recovery.digest(bundle / 'bin/workstation-instructions'),
+                   'rollbackModuleSha256': recovery.digest(bundle / 'lib/workstation-instructions.py'),
+                   'rollbackHelperSha256': recovery.digest(bundle / 'lib/workstation-recovery.py'),
+                   'startedAt': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                   'secretValues': False, 'liveHomeActivated': False}
+        guard()
+        recovery.write_json(receipt_path, receipt)
+        intent_owned = True
+        guard()
+        first_install_empty_except_owned(home, state, share, lock)
+        recovery.load_transaction(receipt_path, home)
+        checkpoint('after-intent')
+        guard()
+        recovery.patch(receipt_path, {'phase': 'publishing-pointer'})
+        recovery.atomic_link(str(release), share / 'current')
+        checkpoint('after-pointer')
+        guard()
+        recovery.patch(receipt_path, {'phase': 'publishing-marker'})
+        recovery.atomic_bytes(state / 'current-transaction', (transaction + '\n').encode())
+        checkpoint('after-marker')
+        live = home / '.codex/AGENTS.md'
+        guard()
+        if not live.parent.is_dir() or live.parent.is_symlink():
+            raise ManagedPathDrift('Codex profile directory changed before publication')
+        require(recovery.fingerprint(live)['type'] == 'absent',
+                'Codex instruction path changed before publication')
+        guard()
+        recovery.patch(receipt_path, {'phase': 'publishing-instructions',
+                                      'pendingPath': '.codex/AGENTS.md'})
+        guard()
+        live.symlink_to(share / 'current' / INSTRUCTIONS)
+        recovery.sync_dir(live.parent)
+        guard()
+        recovery.patch(receipt_path, {'pendingPath': None, 'phase': 'checking'})
+        checkpoint('after-link')
+        guard()
+        check, manifest_check, state_check, share_check, release_check = recovery.load_transaction(receipt_path, home)
+        recovery.custody(check, state_check, share_check, release_check)
+        recovery.live_paths(check, manifest_check, home)
+        require(sha256(live.read_bytes()) == contract['workstationInstructionSha256'],
+                'live instruction bytes differ from source')
+        require((share / 'current').is_symlink() and os.readlink(share / 'current') == str(release)
+                and (state / 'current-transaction').read_text().strip() == transaction,
+                'first-install pointer or marker changed')
+        checkpoint('before-active')
+        guard()
+        recovery.patch(receipt_path, {'status': 'active', 'phase': 'active',
+                                      'completedAt': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                                      'liveHomeActivated': home == Path.home().resolve()})
+        committed = True
+        print('PASS: Linux instruction first-install ' + transaction)
+        print('Receipt: ' + str(receipt_path))
+    except ManagedPathDrift as error:
+        if intent_owned and not committed:
+            if matches_owned_path(state):
+                recovery.patch(receipt_path, {'status': 'recovery-required', 'phase': 'managed-parent-drift',
+                                              'recoveryError': str(error)})
+            print('REQUIRES_OWNER: managed directory drift blocks automatic rollback', file=sys.stderr)
+        raise
+    except Exception:
+        if intent_owned and not committed:
+            try:
+                guard()
+                recovery.recover(receipt_path, home)
+            except Exception as error:
+                if matches_owned_path(state):
+                    recovery.patch(receipt_path, {'status': 'recovery-required', 'recoveryError': str(error)})
+                print('REQUIRES_OWNER: first-install rollback incomplete; retain receipt', file=sys.stderr)
+        raise
+    finally:
+        if lock and matches_owned_path(lock):
+            unlock_state(lock)
+        if state_owned and not intent_owned:
+            cleanup_owned()
+
+
+def first_install_empty_except_owned(home, state, share, lock):
+    if not (home / '.codex').is_dir() or (home / '.codex').is_symlink():
+        raise ManagedPathDrift('Codex profile directory changed during first-install')
+    require(recovery.fingerprint(home / '.codex/AGENTS.md')['type'] == 'absent',
+            'Codex instruction path changed during first-install')
+    require(not (share / 'current').exists() and not (share / 'current').is_symlink()
+            and not (state / 'current-transaction').exists()
+            and not (state / 'current-transaction').is_symlink(),
+            'managed pointer or marker appeared during first-install')
+    require(lock.is_dir() and not lock.is_symlink(), 'first-install lock was lost')
+
+
 def rollback(args):
     home = Path(args.home).resolve(strict=True)
     receipt_path = Path(args.receipt)
@@ -358,14 +627,23 @@ def rollback(args):
     lock = None
     try:
         lock = lock_state(state, receipt['transactionId'])
-        prior_receipt = Path(receipt['previousActivationReceipt'])
-        require(recovery.digest(prior_receipt) == receipt['previousActivationReceiptSha256'],
-                'predecessor activation receipt changed')
-        prior_manifest = Path(recovery.read_json(prior_receipt)['backupManifest'])
-        require(recovery.digest(prior_manifest) == receipt['previousBackupManifestSha256'],
-                'predecessor backup manifest changed')
-        require(snapshot_hash(managed_paths_snapshot(home, prior_manifest)) == receipt['managedPathsSha256'],
-                'managed live path drift blocks instruction-only rollback')
+        if receipt.get('linuxFirstInstall') is True:
+            require(receipt.get('previousCurrent') == '' and receipt.get('previousTransaction') == ''
+                    and receipt.get('preimageType') == 'absent',
+                    'first-install receipt has a predecessor')
+            _, manifest, _, _, _ = recovery.load_transaction(receipt_path, home)
+            require(len(manifest['paths']) == 1 and
+                    manifest['paths'][0]['originalFingerprint'] == {'type': 'absent'},
+                    'first-install preimage was not absent')
+        else:
+            prior_receipt = Path(receipt['previousActivationReceipt'])
+            require(recovery.digest(prior_receipt) == receipt['previousActivationReceiptSha256'],
+                    'predecessor activation receipt changed')
+            prior_manifest = Path(recovery.read_json(prior_receipt)['backupManifest'])
+            require(recovery.digest(prior_manifest) == receipt['previousBackupManifestSha256'],
+                    'predecessor backup manifest changed')
+            require(snapshot_hash(managed_paths_snapshot(home, prior_manifest)) == receipt['managedPathsSha256'],
+                    'managed live path drift blocks instruction-only rollback')
         recovery.recover(receipt_path, home)
         print('PASS: instruction-only rollback ' + receipt['transactionId'])
         print('Receipt: ' + recovery.read_json(receipt_path)['rollbackReceipt'])
@@ -381,12 +659,25 @@ def main():
     activate.add_argument('--home', required=True)
     activate.add_argument('--workstation-repo', required=True, type=Path)
     activate.add_argument('--catalog-repo', required=True, type=Path)
+    for name in ('first-install-preflight', 'first-install'):
+        first = commands.add_parser(name)
+        first.add_argument('--contract', required=True, type=Path)
+        first.add_argument('--home', required=True)
+        first.add_argument('--workstation-repo', required=True, type=Path)
+        first.add_argument('--catalog-repo', required=True, type=Path)
     restore = commands.add_parser('rollback')
     restore.add_argument('--receipt', required=True)
     restore.add_argument('--home', required=True)
     args = parser.parse_args()
     try:
-        install(args) if args.command == 'install' else rollback(args)
+        if args.command == 'install':
+            install(args)
+        elif args.command == 'first-install-preflight':
+            first_install_preflight(args)
+        elif args.command == 'first-install':
+            first_install(args)
+        else:
+            rollback(args)
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         print('REFUSE: ' + str(error), file=sys.stderr)
         raise SystemExit(64)

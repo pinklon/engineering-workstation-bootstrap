@@ -5,6 +5,58 @@ instruction update when the active release must otherwise remain byte-for-byte
 unchanged. It does not enroll credentials, install Skills, rewrite shell or Codex
 configuration, or invoke `workstation-activate`.
 
+## Linux first install when no managed release exists
+
+`bin/workstation-instructions first-install-preflight` is the read-only entry
+point for a Linux user's existing Codex profile. It checks the exact Workstation
+instruction commit and SHA-256, accepted Control Tower catalog commit and Git
+blob, target home and authority contract. It reports `FIRST_INSTALL_READY` only
+when `~/.codex` is a real directory and all three managed footprints are absent:
+`~/.codex/AGENTS.md`, the Workstation managed state root, and the Workstation
+managed share root. A regular file, even a broken symlink, or any partial release,
+pointer, marker, receipt, or backup under either root is a hold for the existing
+host custodian. Do not delete or overwrite it to force first-install.
+
+The exact-home JSON contract has only `schemaVersion:1`,
+`linuxFirstInstallAuthorized:true`, `allowLiveHome`, `authorityReference`,
+`targetHome`, `version`, `workstationCommit`, `workstationInstructionSha256`,
+`catalogCommit`, and `catalogBlobSha1`. The host custodian binds the actual
+source and catalog checkouts, home and owner-approved scope before execution.
+No live-host contract is shipped in this repository. Both commands take
+`--contract`, `--home`, `--workstation-repo`, and `--catalog-repo`:
+
+```text
+bin/workstation-instructions first-install-preflight --contract CONTRACT.json --home HOME --workstation-repo WORKSTATION_CHECKOUT --catalog-repo CONTROL_TOWER_CHECKOUT
+bin/workstation-instructions first-install --contract CONTRACT.json --home HOME --workstation-repo WORKSTATION_CHECKOUT --catalog-repo CONTROL_TOWER_CHECKOUT
+```
+
+The first-install command repeats the preflight before writing. Under the
+existing activation lock, it stages a minimal versioned release with only the
+pinned `config/codex/AGENTS.md`, seals an **absent** one-path preimage and exact
+rollback code, then publishes the `current` pointer, transaction marker and
+`~/.codex/AGENTS.md` link. The receipt binds source, catalog, release, backup
+manifest and rollback hashes. It leaves existing Codex config, Skills, shell,
+services and other home paths untouched. This is an instruction-only foothold,
+not a full Workstation install or Linux capability qualification. On failure
+after receipt intent, the same receipt recovery removes the managed link,
+pointer and marker. The release and receipts remain as audit evidence.
+
+Rollback requires the exact activation receipt and the matching reviewed
+source checkout:
+
+```text
+bin/workstation-instructions rollback --receipt ACTIVATION_RECEIPT.json --home HOME
+```
+
+The rollback refuses a changed writer marker, changed candidate bytes or
+changed recovery code; it restores the previously absent instruction path and
+pointer/marker. If it reports `recovery-required`, keep its receipt and hand the
+host to the current custodian. A fresh Codex context must still prove that the
+new instruction file is loaded and consumed. A Linux host doctor, source versus
+actual inventory, privileged setup and off-host restore remain separate gates.
+`validation/instruction-only-fixtures.py` exercises both the existing update
+and Linux first-install against disposable homes; `make validate` runs it.
+
 ## Chosen transaction
 
 `bin/workstation-instructions install` requires a private, exact-home contract
