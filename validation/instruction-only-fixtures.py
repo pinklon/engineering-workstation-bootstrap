@@ -423,6 +423,55 @@ class LinuxFirstInstall(unittest.TestCase):
         self.assertFalse(self.marker.exists())
         self.unrelated_unchanged()
 
+    def test_competing_backup_directory_is_never_removed(self):
+        backup = self.state / 'backups' / self.txn
+        original_mkdir = Path.mkdir
+
+        def competing_mkdir(path, *args, **kwargs):
+            if path == backup:
+                original_mkdir(path, *args, **kwargs)
+                (path / 'other-writer.txt').write_text('foreign evidence\n')
+                raise FileExistsError('another writer created the backup')
+            return original_mkdir(path, *args, **kwargs)
+
+        arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
+                                    workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
+        with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
+             patch.object(Path, 'mkdir', competing_mkdir):
+            with self.assertRaises(FileExistsError):
+                instructions.first_install(arguments)
+        self.assertEqual((backup / 'other-writer.txt').read_text(), 'foreign evidence\n')
+        self.assertFalse(self.receipt.exists())
+        self.assertFalse(self.pointer.is_symlink())
+        self.assertFalse(self.link.is_symlink())
+        self.unrelated_unchanged()
+
+    def test_share_parent_replacement_refuses_before_staging_outside_home(self):
+        original_mkdir = Path.mkdir
+        parent = self.home / '.local/share'
+        moved = self.home / '.local/share-moved'
+        outside = self.base / 'outside-share'
+        outside.mkdir()
+
+        def replace_parent(path, *args, **kwargs):
+            result = original_mkdir(path, *args, **kwargs)
+            if path == self.share:
+                parent.rename(moved)
+                parent.symlink_to(outside, target_is_directory=True)
+            return result
+
+        arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
+                                    workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
+        with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
+             patch.object(Path, 'mkdir', replace_parent):
+            with self.assertRaises(instructions.ManagedPathDrift):
+                instructions.first_install(arguments)
+        self.assertEqual(list(outside.iterdir()), [])
+        self.assertFalse(self.receipt.exists())
+        self.assertFalse(self.link.is_symlink())
+        self.assertTrue((moved / 'engineering-workstation-bootstrap').is_dir())
+        self.unrelated_unchanged()
+
     def test_interrupted_pointer_recovers_from_exact_receipt(self):
         result = self.command('first-install', WORKSTATION_INSTRUCTIONS_FAIL_POINT='after-pointer',
                               WORKSTATION_INSTRUCTIONS_FAIL_MODE='exit')

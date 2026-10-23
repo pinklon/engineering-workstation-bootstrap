@@ -36,6 +36,17 @@ class ManagedPathDrift(ValueError):
     """A live managed path changed outside this pointer-only transaction."""
 
 
+def real_directory_identity(path):
+    """Bind managed directories without following a replacement symlink."""
+    try:
+        value = os.lstat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    if not stat.S_ISDIR(value.st_mode):
+        raise ManagedPathDrift('managed directory is not real: ' + str(path))
+    return value.st_dev, value.st_ino
+
+
 def require(condition, message):
     if not condition:
         raise ValueError(message)
@@ -404,31 +415,78 @@ def first_install(args):
     intent_owned = False
     committed = False
     state_owned = False
-    share_owned = False
-    release_owned = False
+    owned_dirs = {}
+    parents = [home, home / '.codex', home / '.local', home / '.local/state',
+               home / '.local/share', state, share, state / 'receipts',
+               state / 'backups', share / 'versions', release, backup]
+    identities = {path: real_directory_identity(path) for path in parents}
+
+    def guard():
+        for path, expected in identities.items():
+            if real_directory_identity(path) != expected:
+                raise ManagedPathDrift('managed directory changed during first-install: ' + str(path))
+
+    def matches_owned_path(path):
+        try:
+            return all(real_directory_identity(parent) == identities[parent]
+                       for parent in identities if parent == path or parent in path.parents)
+        except ManagedPathDrift:
+            return False
+
+    def mkdir_owned(path):
+        guard()
+        path.mkdir()
+        identity = real_directory_identity(path)
+        if identity is None:
+            raise ManagedPathDrift('created directory changed during first-install: ' + str(path))
+        identities[path] = identity
+        owned_dirs[path] = identity
+        guard()
+
+    def cleanup_owned():
+        # Never descend through a replaced parent or remove a directory with
+        # contents another writer may have added after our last check.
+        for path in sorted(owned_dirs, key=lambda item: len(item.parts), reverse=True):
+            if matches_owned_path(path):
+                try:
+                    path.rmdir()
+                except OSError:
+                    pass
     try:
         # Both roots must be absent. mkdir with exist_ok=False also rejects a
         # competing first installer before its release can be selected.
-        state.mkdir(parents=True, exist_ok=False)
+        if identities[home / '.local'] is None:
+            mkdir_owned(home / '.local')
+        if identities[home / '.local/state'] is None:
+            mkdir_owned(home / '.local/state')
+        if identities[home / '.local/share'] is None:
+            mkdir_owned(home / '.local/share')
+        mkdir_owned(state)
         state_owned = True
-        share.mkdir(parents=True, exist_ok=False)
-        share_owned = True
-        (state / 'receipts').mkdir()
-        (state / 'backups').mkdir()
-        (share / 'versions').mkdir()
+        mkdir_owned(share)
+        mkdir_owned(state / 'receipts')
+        mkdir_owned(state / 'backups')
+        mkdir_owned(share / 'versions')
+        guard()
         lock = lock_state(state, transaction)
+        identities[lock] = real_directory_identity(lock)
+        guard()
         first_install_empty_except_owned(home, state, share, lock)
         candidate = release / INSTRUCTIONS
-        candidate.parent.mkdir(parents=True)
-        release_owned = True
+        mkdir_owned(release)
+        mkdir_owned(release / 'config')
+        mkdir_owned(release / 'config/codex')
+        guard()
         candidate.write_bytes(source)
         candidate.chmod(0o644)
         require(sha256(candidate.read_bytes()) == contract['workstationInstructionSha256'],
                 'staged instruction hash changed')
-        backup.mkdir()
+        mkdir_owned(backup)
         bundle = backup / 'recovery'
-        (bundle / 'bin').mkdir(parents=True)
-        (bundle / 'lib').mkdir()
+        mkdir_owned(bundle)
+        mkdir_owned(bundle / 'bin')
+        mkdir_owned(bundle / 'lib')
+        guard()
         for source_path, target_path in (
             (ROOT / 'bin/workstation-instructions', bundle / 'bin/workstation-instructions'),
             (ROOT / 'lib/workstation-instructions.py', bundle / 'lib/workstation-instructions.py'),
@@ -445,6 +503,7 @@ def first_install(args):
                                                   'sha256': None, 'linkTarget': None}]})
         install_map = backup / 'install-map.tsv'
         install_map.write_text('.codex/AGENTS.md\tlink\tconfig/codex/AGENTS.md\n')
+        guard()
         recovery.seal(home, release, manifest, install_map)
         receipt = {'schemaVersion': 1, 'transactionId': transaction, 'version': contract['version'],
                    'targetHome': str(home), 'authorityReference': contract['authorityReference'],
@@ -461,28 +520,37 @@ def first_install(args):
                    'rollbackHelperSha256': recovery.digest(bundle / 'lib/workstation-recovery.py'),
                    'startedAt': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
                    'secretValues': False, 'liveHomeActivated': False}
+        guard()
         recovery.write_json(receipt_path, receipt)
         intent_owned = True
+        guard()
         first_install_empty_except_owned(home, state, share, lock)
         recovery.load_transaction(receipt_path, home)
         checkpoint('after-intent')
+        guard()
         recovery.patch(receipt_path, {'phase': 'publishing-pointer'})
         recovery.atomic_link(str(release), share / 'current')
         checkpoint('after-pointer')
+        guard()
         recovery.patch(receipt_path, {'phase': 'publishing-marker'})
         recovery.atomic_bytes(state / 'current-transaction', (transaction + '\n').encode())
         checkpoint('after-marker')
         live = home / '.codex/AGENTS.md'
+        guard()
         if not live.parent.is_dir() or live.parent.is_symlink():
             raise ManagedPathDrift('Codex profile directory changed before publication')
         require(recovery.fingerprint(live)['type'] == 'absent',
                 'Codex instruction path changed before publication')
+        guard()
         recovery.patch(receipt_path, {'phase': 'publishing-instructions',
                                       'pendingPath': '.codex/AGENTS.md'})
+        guard()
         live.symlink_to(share / 'current' / INSTRUCTIONS)
         recovery.sync_dir(live.parent)
+        guard()
         recovery.patch(receipt_path, {'pendingPath': None, 'phase': 'checking'})
         checkpoint('after-link')
+        guard()
         check, manifest_check, state_check, share_check, release_check = recovery.load_transaction(receipt_path, home)
         recovery.custody(check, state_check, share_check, release_check)
         recovery.live_paths(check, manifest_check, home)
@@ -492,6 +560,7 @@ def first_install(args):
                 and (state / 'current-transaction').read_text().strip() == transaction,
                 'first-install pointer or marker changed')
         checkpoint('before-active')
+        guard()
         recovery.patch(receipt_path, {'status': 'active', 'phase': 'active',
                                       'completedAt': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
                                       'liveHomeActivated': home == Path.home().resolve()})
@@ -500,39 +569,26 @@ def first_install(args):
         print('Receipt: ' + str(receipt_path))
     except ManagedPathDrift as error:
         if intent_owned and not committed:
-            recovery.patch(receipt_path, {'status': 'recovery-required', 'phase': 'codex-parent-drift',
-                                          'recoveryError': str(error)})
-            print('REQUIRES_OWNER: Codex profile drift blocks automatic rollback', file=sys.stderr)
-        elif state_owned:
-            if release_owned and release.is_dir() and not release.is_symlink():
-                shutil.rmtree(release)
-            if backup.is_dir() and not backup.is_symlink():
-                shutil.rmtree(backup)
+            if matches_owned_path(state):
+                recovery.patch(receipt_path, {'status': 'recovery-required', 'phase': 'managed-parent-drift',
+                                              'recoveryError': str(error)})
+            print('REQUIRES_OWNER: managed directory drift blocks automatic rollback', file=sys.stderr)
         raise
     except Exception:
         if intent_owned and not committed:
             try:
+                guard()
                 recovery.recover(receipt_path, home)
             except Exception as error:
-                recovery.patch(receipt_path, {'status': 'recovery-required', 'recoveryError': str(error)})
+                if matches_owned_path(state):
+                    recovery.patch(receipt_path, {'status': 'recovery-required', 'recoveryError': str(error)})
                 print('REQUIRES_OWNER: first-install rollback incomplete; retain receipt', file=sys.stderr)
-        elif state_owned:
-            if release_owned and release.is_dir() and not release.is_symlink():
-                shutil.rmtree(release)
-            if backup.is_dir() and not backup.is_symlink():
-                shutil.rmtree(backup)
         raise
     finally:
-        unlock_state(lock)
+        if lock and matches_owned_path(lock):
+            unlock_state(lock)
         if state_owned and not intent_owned:
-            cleanup = [state / 'backups', state / 'receipts', state]
-            if share_owned:
-                cleanup = [share / 'versions', share] + cleanup
-            for path in cleanup:
-                try:
-                    path.rmdir()
-                except OSError:
-                    pass
+            cleanup_owned()
 
 
 def first_install_empty_except_owned(home, state, share, lock):
