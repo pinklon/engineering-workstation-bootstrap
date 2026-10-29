@@ -116,8 +116,8 @@ def evaluate(args):
                      'state': state, 'requested': requested,
                      'evidenceCommand': command, 'evidence': evidence,
                      'remediation': remediation if state != 'ready' and requested else None,
-                     'humanInteractionRequired': None if state == 'unknown' else state in
-                     ('unauthenticated', 'insufficient-permission'),
+                     'humanInteractionRequired': False if state == 'ready' else True if state in
+                     ('unauthenticated', 'insufficient-permission') else None,
                      'blocks': ['selected-github-checks'] if requested and state != 'ready' else []})
 
     result = probe(['gh', '--version'], args.timeout)
@@ -164,7 +164,7 @@ def evaluate(args):
         if result['reason'] == 'missing-tool':
             state = 'missing-tool'
         elif result['reason'] == 'completed' and result['code'] == 1 and greeting and identity:
-            state = 'ready' if greeting.group(1) == identity['login'] else 'unknown'
+            state = 'ready' if greeting.group(1).casefold() == identity['login'].casefold() else 'unknown'
         row('ssh-identity', state, ' '.join(command),
             'Verify existing host trust and matching identity separately; no trust is enrolled.',
             evidence={'identityMatchesApi': state == 'ready'})
@@ -194,7 +194,8 @@ def evaluate(args):
             row('webhook-read', 'ready' if isinstance(body, list) else failure_state(result),
                 ' '.join(command), 'Check existing webhook read access; this does not prove write authority.')
 
-    return {'schemaVersion': 1, 'observedAt': datetime.now(timezone.utc).isoformat(),
+    return {'schemaVersion': 1, 'secretValues': False,
+            'observedAt': datetime.now(timezone.utc).isoformat(),
             'host': args.hostname, 'profile': 'github-selected-checks', 'transport': transport,
             'ready': all(not item['blocks'] for item in rows), 'capabilities': rows,
             'unverified': ['https-git-transport', 'github-app-operator-authority',
@@ -216,6 +217,7 @@ def main():
     parser.add_argument('--check-webhooks', action='store_true')
     parser.add_argument('--timeout', type=float, default=5.0, help='Per-command deadline in seconds (0.1 to 30)')
     args = parser.parse_args()
+    args.hostname = args.hostname.lower()
     if (not public_name(args.hostname, r'[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?')
             or '..' in args.hostname or not 0.1 <= args.timeout <= 30):
         parser.error('invalid host or timeout')

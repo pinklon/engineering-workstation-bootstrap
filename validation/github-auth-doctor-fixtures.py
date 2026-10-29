@@ -49,7 +49,8 @@ elif args[0] == 'api':
         elif scenario == 'secret-identity':
             print(json.dumps({'login': 'ghp_' + 'a' * 30, 'type': 'User'}))
         else:
-            print(json.dumps({'login': 'fixture-user', 'type': 'User', 'token': canary, 'email': canary}))
+            login = 'Fixture-User' if scenario == 'ssh-case' else 'fixture-user'
+            print(json.dumps({'login': login, 'type': 'User', 'token': canary, 'email': canary}))
     elif '/hooks?' in target:
         print(json.dumps([{'config': {'secret': canary, 'url': canary}}]) if scenario == 'hook-data' else '[]')
     else:
@@ -98,6 +99,8 @@ class DoctorFixtures(unittest.TestCase):
         self.assertNotIn('ghp_' + 'a' * 30, result.stdout + result.stderr)
         self.assertEqual(self.snapshot(), self.before)
         data = None if human or result.returncode == 2 else json.loads(result.stdout)
+        if data is not None:
+            self.assertIs(data['secretValues'], False)
         return result, data
 
     def calls(self):
@@ -136,6 +139,12 @@ class DoctorFixtures(unittest.TestCase):
                 result, data = self.run_doctor(scenario)
                 self.assertEqual(result.returncode, 1)
                 self.assertEqual(self.capability(data, 'ssh-identity')['state'], 'unknown')
+
+    def test_github_identity_and_hostname_are_case_insensitive(self):
+        result, data = self.run_doctor('ssh-case', ['--hostname', 'GitHub.COM'])
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(data['host'], 'github.com')
+        self.assertEqual(self.capability(data, 'ssh-identity')['state'], 'ready')
 
     def test_timeout_and_output_flood_are_bounded(self):
         for scenario in ('hung', 'flood'):
