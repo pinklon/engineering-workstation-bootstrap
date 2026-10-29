@@ -50,7 +50,20 @@ def read_json(path):
 
 
 def digest(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    path = Path(path)
+    fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+    with os.fdopen(fd, 'rb') as stream:
+        opened = os.fstat(stream.fileno())
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError('digest source is not a regular file')
+        value = hashlib.sha256()
+        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            value.update(chunk)
+        retained = os.lstat(path)
+        if not stat.S_ISREG(retained.st_mode) or \
+                (retained.st_dev, retained.st_ino) != (opened.st_dev, opened.st_ino):
+            raise ValueError('digest source changed during read')
+        return value.hexdigest()
 
 
 def _exclusive_regular(path, stream, mode, expected_parent=None, metadata_source=None):
@@ -119,7 +132,8 @@ def write_regular_exclusive(path, data, mode=0o644, expected_parent=None):
 
 
 def copy_regular_exclusive(source, destination, expected_parent=None):
-    source_fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW)
+    # A competing FIFO leaf must not block before the regular-file check.
+    source_fd = os.open(source, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
     with os.fdopen(source_fd, 'rb') as stream:
         source_stat = os.fstat(stream.fileno())
         if not stat.S_ISREG(source_stat.st_mode):
@@ -141,7 +155,8 @@ def require_regular_identity(path, identity, expected_sha256=None, expected_pare
         parent_stat = os.fstat(parent)
         if expected_parent is not None and (parent_stat.st_dev, parent_stat.st_ino) != expected_parent:
             raise ValueError('staged file parent changed')
-        fd = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+        # Inspect an occupied special leaf without waiting for a FIFO writer.
+        fd = os.open(path.name, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW, dir_fd=parent)
         with os.fdopen(fd, 'rb') as stream:
             opened = os.fstat(stream.fileno())
             if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != identity:
@@ -375,8 +390,18 @@ def sync_tree(path):
     if path.is_symlink():
         return
     if path.is_file():
-        with path.open('rb') as stream:
-            os.fsync(stream.fileno())
+        fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+        try:
+            opened = os.fstat(fd)
+            if not stat.S_ISREG(opened.st_mode):
+                raise ValueError('sync source is not a regular file')
+            os.fsync(fd)
+            retained = os.lstat(path)
+            if not stat.S_ISREG(retained.st_mode) or \
+                    (retained.st_dev, retained.st_ino) != (opened.st_dev, opened.st_ino):
+                raise ValueError('sync source changed')
+        finally:
+            os.close(fd)
         return
     for child in path.iterdir():
         sync_tree(child)

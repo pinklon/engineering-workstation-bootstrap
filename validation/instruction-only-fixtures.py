@@ -540,6 +540,107 @@ class LinuxFirstInstall(unittest.TestCase):
         self.assertFalse(self.receipt.exists())
         self.unrelated_unchanged()
 
+    def test_competing_fifo_instruction_leaf_refuses_without_wait(self):
+        # Run the real first-install path in a child so a blocking FIFO open has
+        # a bounded failure instead of hanging the validation suite.
+        script = '''import importlib.util, os, sys
+from pathlib import Path
+from types import SimpleNamespace
+root = Path(sys.argv[1])
+spec = importlib.util.spec_from_file_location('instructions', root / 'lib/workstation-instructions.py')
+instructions = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(instructions)
+original = instructions.recovery.write_regular_exclusive
+def replace_with_fifo(path, *args, **kwargs):
+    identity = original(path, *args, **kwargs)
+    path = Path(path)
+    path.rename(path.with_name('retained-original'))
+    os.mkfifo(path)
+    return identity
+instructions.recovery.write_regular_exclusive = replace_with_fifo
+arguments = SimpleNamespace(home=sys.argv[2], contract=Path(sys.argv[3]),
+                            workstation_repo=Path(sys.argv[4]), catalog_repo=Path(sys.argv[5]))
+try:
+    instructions.first_install(arguments)
+except ValueError as error:
+    print(type(error).__name__ + ': ' + str(error))
+else:
+    raise AssertionError('competing FIFO was accepted')
+'''
+        result = subprocess.run([sys.executable, '-B', '-c', script, str(ROOT), str(self.home),
+                                 str(self.contract), str(self.wsrepo), str(self.ctrepo)],
+                                capture_output=True, text=True, env=self.env, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('staged file leaf changed', result.stdout)
+        self.assertFalse(self.receipt.exists())
+        self.assertFalse(self.pointer.is_symlink())
+        self.assertFalse(self.link.is_symlink())
+        self.unrelated_unchanged()
+
+    def test_fifo_rollback_copy_source_refuses_without_wait(self):
+        source = self.base / 'competing-rollback-source'
+        destination = self.base / 'should-not-be-created'
+        os.mkfifo(source)
+        script = '''import importlib.util, sys
+from pathlib import Path
+spec = importlib.util.spec_from_file_location('recovery', sys.argv[1])
+recovery = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(recovery)
+try:
+    recovery.copy_regular_exclusive(Path(sys.argv[2]), Path(sys.argv[3]))
+except ValueError as error:
+    print(type(error).__name__ + ': ' + str(error))
+else:
+    raise AssertionError('FIFO source was accepted')
+'''
+        result = subprocess.run([sys.executable, '-B', '-c', script,
+                                 str(ROOT / 'lib/workstation-recovery.py'), str(source), str(destination)],
+                                capture_output=True, text=True, env=self.env, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('rollback source is not a regular file', result.stdout)
+        self.assertFalse(destination.exists())
+
+    def test_fifo_replacement_before_recovery_reads_refuses_without_wait(self):
+        script = '''import importlib.util, os, sys
+from pathlib import Path
+from unittest.mock import patch
+spec = importlib.util.spec_from_file_location('recovery', sys.argv[1])
+recovery = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(recovery)
+target = Path(sys.argv[2])
+action = sys.argv[3]
+original = Path.is_file
+replaced = False
+def swap_after_file_check(path):
+    global replaced
+    value = original(path)
+    if path == target and value and not replaced:
+        path.rename(path.with_name('retained-original'))
+        os.mkfifo(path)
+        replaced = True
+    return value
+with patch.object(Path, 'is_file', swap_after_file_check):
+    try:
+        getattr(recovery, action)(target)
+    except ValueError as error:
+        print(type(error).__name__ + ': ' + str(error))
+    else:
+        raise AssertionError('competing FIFO was accepted')
+assert replaced
+'''
+        for action in ('fingerprint', 'sync_tree'):
+            with self.subTest(action=action):
+                target = self.base / ('competing-' + action)
+                target.write_bytes(b'fixture')
+                result = subprocess.run([sys.executable, '-B', '-c', script,
+                                         str(ROOT / 'lib/workstation-recovery.py'), str(target), action],
+                                        capture_output=True, text=True, env=self.env, timeout=5)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn('not a regular file', result.stdout)
+                self.assertTrue(target.is_fifo())
+        self.assertFalse(self.receipt.exists())
+        self.unrelated_unchanged()
+
     def test_competing_rollback_bundle_leaf_never_writes_outside(self):
         target = self.state / 'backups' / self.txn / 'recovery/bin/workstation-instructions'
         outside = self.base / 'foreign-rollback-wrapper'
