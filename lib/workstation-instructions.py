@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import shutil
 import stat
 import subprocess
@@ -36,6 +37,10 @@ class ManagedPathDrift(ValueError):
     """A live managed path changed outside this pointer-only transaction."""
 
 
+class FirstInstallPublicationOccupied(ManagedPathDrift):
+    """An initially absent first-install pointer or marker belongs to another writer."""
+
+
 def real_directory_identity(path):
     """Bind managed directories without following a replacement symlink."""
     try:
@@ -45,6 +50,72 @@ def real_directory_identity(path):
     if not stat.S_ISDIR(value.st_mode):
         raise ManagedPathDrift('managed directory is not real: ' + str(path))
     return value.st_dev, value.st_ino
+
+
+def first_install_parent_fd(path, expected_identity):
+    """Open the same managed parent that was checked before publication."""
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError as error:
+        raise ManagedPathDrift('first-install publication parent changed: ' + str(path)) from error
+    observed = os.fstat(fd)
+    if (observed.st_dev, observed.st_ino) != expected_identity:
+        os.close(fd)
+        raise ManagedPathDrift('first-install publication parent changed: ' + str(path))
+    return fd
+
+
+def publish_first_install_pointer(share, release, expected_identity):
+    parent = first_install_parent_fd(share, expected_identity)
+    try:
+        try:
+            os.symlink(str(release), 'current', dir_fd=parent)
+        except FileExistsError as error:
+            raise FirstInstallPublicationOccupied('first-install pointer became occupied') from error
+        os.fsync(parent)
+    finally:
+        os.close(parent)
+
+
+def publish_first_install_marker(state, transaction, expected_identity):
+    parent = first_install_parent_fd(state, expected_identity)
+    staged = '.current-transaction.' + secrets.token_hex(16)
+    staged_identity = None
+    try:
+        fd = os.open(staged, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                     0o600, dir_fd=parent)
+        with os.fdopen(fd, 'wb') as stream:
+            created = os.fstat(stream.fileno())
+            staged_identity = created.st_dev, created.st_ino
+            stream.write((transaction + '\n').encode())
+            stream.flush()
+            os.fsync(stream.fileno())
+        retained = os.stat(staged, dir_fd=parent, follow_symlinks=False)
+        if not stat.S_ISREG(retained.st_mode) or \
+                (retained.st_dev, retained.st_ino) != staged_identity:
+            raise ManagedPathDrift('first-install marker staging changed')
+        try:
+            # linkat creates the final name atomically and refuses any occupant.
+            os.link(staged, 'current-transaction', src_dir_fd=parent,
+                    dst_dir_fd=parent, follow_symlinks=False)
+        except FileExistsError as error:
+            raise FirstInstallPublicationOccupied('first-install marker became occupied') from error
+        published = os.stat('current-transaction', dir_fd=parent, follow_symlinks=False)
+        if not stat.S_ISREG(published.st_mode) or \
+                (published.st_dev, published.st_ino) != staged_identity:
+            raise ManagedPathDrift('first-install marker changed during publication')
+        os.fsync(parent)
+    finally:
+        if staged_identity is not None:
+            try:
+                remaining = os.stat(staged, dir_fd=parent, follow_symlinks=False)
+            except FileNotFoundError:
+                pass
+            else:
+                if stat.S_ISREG(remaining.st_mode) and \
+                        (remaining.st_dev, remaining.st_ino) == staged_identity:
+                    os.unlink(staged, dir_fd=parent)
+        os.close(parent)
 
 
 def require(condition, message):
@@ -558,11 +629,11 @@ def first_install(args):
         checkpoint('after-intent')
         guard()
         recovery.patch(receipt_path, {'phase': 'publishing-pointer'})
-        recovery.atomic_link(str(release), share / 'current')
+        publish_first_install_pointer(share, release, identities[share])
         checkpoint('after-pointer')
         guard()
         recovery.patch(receipt_path, {'phase': 'publishing-marker'})
-        recovery.atomic_bytes(state / 'current-transaction', (transaction + '\n').encode())
+        publish_first_install_marker(state, transaction, identities[state])
         checkpoint('after-marker')
         live = home / '.codex/AGENTS.md'
         guard()
@@ -599,9 +670,11 @@ def first_install(args):
     except ManagedPathDrift as error:
         if intent_owned and not committed:
             if matches_owned_path(state):
-                recovery.patch(receipt_path, {'status': 'recovery-required', 'phase': 'managed-parent-drift',
+                phase = ('publication-conflict' if isinstance(error, FirstInstallPublicationOccupied)
+                         else 'managed-parent-drift')
+                recovery.patch(receipt_path, {'status': 'recovery-required', 'phase': phase,
                                               'recoveryError': str(error)})
-            print('REQUIRES_OWNER: managed directory drift blocks automatic rollback', file=sys.stderr)
+            print('REQUIRES_OWNER: first-install custody drift blocks automatic rollback', file=sys.stderr)
         raise
     except Exception:
         if intent_owned and not committed:
