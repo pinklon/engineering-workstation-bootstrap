@@ -128,6 +128,27 @@ def snapshot_hash(value):
     return sha256(json.dumps(value, sort_keys=True).encode())
 
 
+ROLLBACK_TOOLS = ('bin/workstation-instructions', 'lib/workstation-instructions.py',
+                  'lib/workstation-recovery.py')
+
+
+def stage_rollback_tools(bundle, parent_identities):
+    staged = {}
+    for relative in ROLLBACK_TOOLS:
+        source_path, target_path = ROOT / relative, bundle / relative
+        parent_identity = parent_identities[target_path.parent]
+        identity = recovery.copy_regular_exclusive(source_path, target_path, parent_identity)
+        digest = recovery.require_regular_identity(target_path, identity,
+                                                   recovery.digest(source_path), parent_identity)
+        staged[relative] = identity, digest, parent_identity
+    return staged
+
+
+def verify_rollback_tools(bundle, staged):
+    for relative, (identity, digest, parent_identity) in staged.items():
+        recovery.require_regular_identity(bundle / relative, identity, digest, parent_identity)
+
+
 def first_install_inputs(args):
     """Qualify an empty managed footprint before creating any host state."""
     home = Path(args.home).resolve(strict=True)
@@ -286,12 +307,19 @@ def install(args):
                 and not receipt_path.exists(), 'instruction transaction already exists')
         prior_hash = tree_without_instructions(active)
         release_owned = True
-        shutil.copytree(active, release, symlinks=True, copy_function=shutil.copy2)
+        def ignore_instruction_leaf(directory, names):
+            return {INSTRUCTIONS.name} if Path(directory) == active / INSTRUCTIONS.parent \
+                and INSTRUCTIONS.name in names else set()
+
+        shutil.copytree(active, release, symlinks=True, copy_function=shutil.copy2,
+                        ignore=ignore_instruction_leaf)
         candidate = release / INSTRUCTIONS
-        candidate.write_bytes(source)
-        os.chmod(candidate, stat.S_IMODE((active / INSTRUCTIONS).stat().st_mode))
-        require(sha256(candidate.read_bytes()) == contract['workstationInstructionSha256'],
-                'staged instruction hash changed')
+        candidate_parent = real_directory_identity(candidate.parent)
+        candidate_identity = recovery.write_regular_exclusive(
+            candidate, source, stat.S_IMODE((active / INSTRUCTIONS).stat().st_mode),
+            candidate_parent)
+        recovery.require_regular_identity(candidate, candidate_identity,
+                                          contract['workstationInstructionSha256'], candidate_parent)
         require(tree_without_instructions(release) == prior_hash,
                 'non-instruction release content changed during staging')
         backup_file = backup / 'files/.codex/AGENTS.md'
@@ -301,14 +329,9 @@ def install(args):
         bundle = backup / 'recovery'
         (bundle / 'bin').mkdir(parents=True)
         (bundle / 'lib').mkdir()
-        for source_path, target_path in (
-            (ROOT / 'bin/workstation-instructions', bundle / 'bin/workstation-instructions'),
-            (ROOT / 'lib/workstation-instructions.py', bundle / 'lib/workstation-instructions.py'),
-            (ROOT / 'lib/workstation-recovery.py', bundle / 'lib/workstation-recovery.py'),
-        ):
-            shutil.copy2(source_path, target_path)
-            require(recovery.digest(source_path) == recovery.digest(target_path),
-                    'rollback tool changed during staging')
+        bundle_parents = {path: real_directory_identity(path)
+                          for path in (bundle / 'bin', bundle / 'lib')}
+        rollback_tools = stage_rollback_tools(bundle, bundle_parents)
         manifest = backup / 'manifest.json'
         recovery.write_json(manifest, {'schemaVersion': 1, 'transactionId': transaction,
                                        'targetHome': str(home), 'createdAt': datetime.now(timezone.utc).isoformat(),
@@ -318,6 +341,9 @@ def install(args):
         install_map = backup / 'install-map.tsv'
         install_map.write_text('.codex/AGENTS.md\tlink\tconfig/codex/AGENTS.md\n')
         recovery.seal(home, release, manifest, install_map)
+        recovery.require_regular_identity(candidate, candidate_identity,
+                                          contract['workstationInstructionSha256'], candidate_parent)
+        verify_rollback_tools(bundle, rollback_tools)
         require(tree_without_instructions(release) == prior_hash, 'staged release changed after sealing')
         receipt = {'schemaVersion': 1, 'transactionId': transaction, 'version': contract['version'],
                    'targetHome': str(home), 'authorityReference': contract['authorityReference'],
@@ -335,13 +361,16 @@ def install(args):
                    'previousActivationReceiptSha256': prior_receipt_sha,
                    'previousBackupManifestSha256': prior_manifest_sha,
                    'rollbackEntryPoint': str(bundle / 'bin/workstation-instructions'),
-                   'rollbackWrapperSha256': recovery.digest(bundle / 'bin/workstation-instructions'),
-                   'rollbackModuleSha256': recovery.digest(bundle / 'lib/workstation-instructions.py'),
-                   'rollbackHelperSha256': recovery.digest(bundle / 'lib/workstation-recovery.py'),
+                   'rollbackWrapperSha256': rollback_tools['bin/workstation-instructions'][1],
+                   'rollbackModuleSha256': rollback_tools['lib/workstation-instructions.py'][1],
+                   'rollbackHelperSha256': rollback_tools['lib/workstation-recovery.py'][1],
                    'startedAt': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
                    'secretValues': False, 'liveHomeActivated': False}
         recovery.write_json(receipt_path, receipt)
         intent_owned = True
+        recovery.require_regular_identity(candidate, candidate_identity,
+                                          contract['workstationInstructionSha256'], candidate_parent)
+        verify_rollback_tools(bundle, rollback_tools)
         require(current_state(home, contract)[2] == active, 'predecessor changed before publication')
         verify_managed_paths(home, prior_manifest, managed_before)
         checkpoint('after-intent')
@@ -477,24 +506,18 @@ def first_install(args):
         mkdir_owned(release / 'config')
         mkdir_owned(release / 'config/codex')
         guard()
-        candidate.write_bytes(source)
-        candidate.chmod(0o644)
-        require(sha256(candidate.read_bytes()) == contract['workstationInstructionSha256'],
-                'staged instruction hash changed')
+        candidate_parent = identities[candidate.parent]
+        candidate_identity = recovery.write_regular_exclusive(candidate, source, 0o644,
+                                                               candidate_parent)
+        recovery.require_regular_identity(candidate, candidate_identity,
+                                          contract['workstationInstructionSha256'], candidate_parent)
         mkdir_owned(backup)
         bundle = backup / 'recovery'
         mkdir_owned(bundle)
         mkdir_owned(bundle / 'bin')
         mkdir_owned(bundle / 'lib')
         guard()
-        for source_path, target_path in (
-            (ROOT / 'bin/workstation-instructions', bundle / 'bin/workstation-instructions'),
-            (ROOT / 'lib/workstation-instructions.py', bundle / 'lib/workstation-instructions.py'),
-            (ROOT / 'lib/workstation-recovery.py', bundle / 'lib/workstation-recovery.py'),
-        ):
-            shutil.copy2(source_path, target_path)
-            require(recovery.digest(source_path) == recovery.digest(target_path),
-                    'rollback tool changed during staging')
+        rollback_tools = stage_rollback_tools(bundle, identities)
         manifest = backup / 'manifest.json'
         recovery.write_json(manifest, {'schemaVersion': 1, 'transactionId': transaction,
                                        'targetHome': str(home), 'createdAt': datetime.now(timezone.utc).isoformat(),
@@ -505,6 +528,9 @@ def first_install(args):
         install_map.write_text('.codex/AGENTS.md\tlink\tconfig/codex/AGENTS.md\n')
         guard()
         recovery.seal(home, release, manifest, install_map)
+        recovery.require_regular_identity(candidate, candidate_identity,
+                                          contract['workstationInstructionSha256'], candidate_parent)
+        verify_rollback_tools(bundle, rollback_tools)
         receipt = {'schemaVersion': 1, 'transactionId': transaction, 'version': contract['version'],
                    'targetHome': str(home), 'authorityReference': contract['authorityReference'],
                    'releaseDir': str(release), 'backupManifest': str(manifest),
@@ -515,15 +541,18 @@ def first_install(args):
                    'workstationCommit': contract['workstationCommit'],
                    'catalogCommit': contract['catalogCommit'], 'catalogBlobSha1': contract['catalogBlobSha1'],
                    'rollbackEntryPoint': str(bundle / 'bin/workstation-instructions'),
-                   'rollbackWrapperSha256': recovery.digest(bundle / 'bin/workstation-instructions'),
-                   'rollbackModuleSha256': recovery.digest(bundle / 'lib/workstation-instructions.py'),
-                   'rollbackHelperSha256': recovery.digest(bundle / 'lib/workstation-recovery.py'),
+                   'rollbackWrapperSha256': rollback_tools['bin/workstation-instructions'][1],
+                   'rollbackModuleSha256': rollback_tools['lib/workstation-instructions.py'][1],
+                   'rollbackHelperSha256': rollback_tools['lib/workstation-recovery.py'][1],
                    'startedAt': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
                    'secretValues': False, 'liveHomeActivated': False}
         guard()
         recovery.write_json(receipt_path, receipt)
         intent_owned = True
         guard()
+        recovery.require_regular_identity(candidate, candidate_identity,
+                                          contract['workstationInstructionSha256'], candidate_parent)
+        verify_rollback_tools(bundle, rollback_tools)
         first_install_empty_except_owned(home, state, share, lock)
         recovery.load_transaction(receipt_path, home)
         checkpoint('after-intent')

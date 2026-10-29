@@ -287,6 +287,74 @@ class InstructionOnly(unittest.TestCase):
         self.unchanged()
 
 
+    def test_recovery_copy_leaf_never_writes_outside(self):
+        outside = self.base / 'foreign-restore'
+        outside.write_text('other writer\n')
+        original_mkdtemp = tempfile.mkdtemp
+        injected = False
+
+        def plant_restore_leaf(*args, **kwargs):
+            nonlocal injected
+            directory = original_mkdtemp(*args, **kwargs)
+            if Path(kwargs.get('dir', '')) == self.home and not injected:
+                (Path(directory) / 'payload').symlink_to(outside)
+                injected = True
+            return directory
+
+        with patch.object(recovery.tempfile, 'mkdtemp', plant_restore_leaf):
+            with self.assertRaises(FileExistsError):
+                recovery.recover(self.prior_receipt, self.home)
+        self.assertTrue(injected)
+        self.assertEqual(outside.read_text(), 'other writer\n')
+
+    def test_recovery_copy_preserves_regular_file_metadata(self):
+        backup = self.prior_manifest.parent / 'files/.zshrc'
+        os.utime(backup, ns=(946684800123456789, 946684800123456789))
+        backed_up_mtime = backup.stat().st_mtime_ns
+        xattr_name = 'user.workstation-recovery-fixture'
+        xattr_supported = False
+        if hasattr(os, 'setxattr'):
+            try:
+                os.setxattr(backup, xattr_name, b'fixture')
+                xattr_supported = True
+            except OSError:
+                pass
+        recovery.recover(self.prior_receipt, self.home)
+        restored = self.home / '.zshrc'
+        self.assertEqual(restored.stat().st_mtime_ns, backed_up_mtime)
+        if xattr_supported:
+            self.assertEqual(os.getxattr(restored, xattr_name), b'fixture')
+
+    def test_upgrade_instruction_leaf_never_writes_outside(self):
+        release = self.pointer.parent / 'versions' / ('fixture-instructions-' + self.txn)
+        candidate = release / 'config/codex/AGENTS.md'
+        outside = self.base / 'foreign-upgrade-instructions'
+        outside.write_text('other writer\n')
+        original_copytree = instructions.shutil.copytree
+        injected = False
+
+        def plant_upgrade_leaf(source, destination, *args, **kwargs):
+            nonlocal injected
+            result = original_copytree(source, destination, *args, **kwargs)
+            if Path(destination) == release:
+                if candidate.exists() or candidate.is_symlink():
+                    candidate.unlink()
+                candidate.symlink_to(outside)
+                injected = True
+            return result
+
+        arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
+                                    workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
+        with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
+             patch.object(instructions.shutil, 'copytree', plant_upgrade_leaf):
+            with self.assertRaises(FileExistsError):
+                instructions.install(arguments)
+        self.assertTrue(injected)
+        self.assertEqual(outside.read_text(), 'other writer\n')
+        self.assertFalse(self.receipt.exists())
+        self.unchanged()
+
+
 class LinuxFirstInstall(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix='linux-first-install-')
@@ -444,6 +512,58 @@ class LinuxFirstInstall(unittest.TestCase):
         self.assertFalse(self.receipt.exists())
         self.assertFalse(self.pointer.is_symlink())
         self.assertFalse(self.link.is_symlink())
+        self.unrelated_unchanged()
+
+    def test_competing_instruction_leaf_never_writes_outside(self):
+        candidate = self.share / 'versions' / ('fixture-first-' + self.txn) / 'config/codex/AGENTS.md'
+        outside = self.base / 'foreign-instructions'
+        outside.write_text('other writer\n')
+        original_mkdir = Path.mkdir
+        injected = False
+
+        def plant_leaf(path, *args, **kwargs):
+            nonlocal injected
+            result = original_mkdir(path, *args, **kwargs)
+            if path == candidate.parent:
+                candidate.symlink_to(outside)
+                injected = True
+            return result
+
+        arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
+                                    workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
+        with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
+             patch.object(Path, 'mkdir', plant_leaf):
+            with self.assertRaises(FileExistsError):
+                instructions.first_install(arguments)
+        self.assertTrue(injected)
+        self.assertEqual(outside.read_text(), 'other writer\n')
+        self.assertFalse(self.receipt.exists())
+        self.unrelated_unchanged()
+
+    def test_competing_rollback_bundle_leaf_never_writes_outside(self):
+        target = self.state / 'backups' / self.txn / 'recovery/bin/workstation-instructions'
+        outside = self.base / 'foreign-rollback-wrapper'
+        outside.write_text('other writer\n')
+        original_mkdir = Path.mkdir
+        injected = False
+
+        def plant_leaf(path, *args, **kwargs):
+            nonlocal injected
+            result = original_mkdir(path, *args, **kwargs)
+            if path == target.parent:
+                target.symlink_to(outside)
+                injected = True
+            return result
+
+        arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
+                                    workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
+        with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
+             patch.object(Path, 'mkdir', plant_leaf):
+            with self.assertRaises(FileExistsError):
+                instructions.first_install(arguments)
+        self.assertTrue(injected)
+        self.assertEqual(outside.read_text(), 'other writer\n')
+        self.assertFalse(self.receipt.exists())
         self.unrelated_unchanged()
 
     def test_share_parent_replacement_refuses_before_staging_outside_home(self):

@@ -2,6 +2,8 @@
 """Durable metadata and bounded recovery for the existing managed transaction."""
 import hashlib
 from datetime import datetime, timezone
+import errno
+import io
 import json
 import os
 from pathlib import Path
@@ -49,6 +51,113 @@ def read_json(path):
 
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _exclusive_regular(path, stream, mode, expected_parent=None, metadata_source=None):
+    """Create a new leaf in the bound real directory; never follow an occupied leaf."""
+    path = Path(path)
+    parent = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        parent_stat = os.fstat(parent)
+        if not stat.S_ISDIR(parent_stat.st_mode) or (expected_parent is not None and
+                (parent_stat.st_dev, parent_stat.st_ino) != expected_parent):
+            raise ValueError('staged file parent changed')
+        fd = os.open(path.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                     0o600, dir_fd=parent)
+        try:
+            with os.fdopen(fd, 'wb', closefd=False) as target:
+                shutil.copyfileobj(stream, target, length=1024 * 1024)
+                target.flush()
+            if metadata_source is not None:
+                source_stat = os.fstat(metadata_source)
+                if hasattr(os, 'listxattr'):
+                    try:
+                        names = os.listxattr(metadata_source)
+                    except OSError as error:
+                        if error.errno not in (errno.ENOTSUP, errno.EPERM):
+                            raise
+                        names = ()
+                    for name in names:
+                        try:
+                            os.setxattr(fd, name, os.getxattr(metadata_source, name))
+                        except OSError as error:
+                            if error.errno not in (errno.ENOTSUP, errno.ENODATA, errno.EPERM):
+                                raise
+                os.utime(fd, ns=(source_stat.st_atime_ns, source_stat.st_mtime_ns))
+            os.fchmod(fd, mode)
+            os.fsync(fd)
+            created = os.fstat(fd)
+            retained = os.stat(path.name, dir_fd=parent, follow_symlinks=False)
+            identity = created.st_dev, created.st_ino
+            if not stat.S_ISREG(created.st_mode) or not stat.S_ISREG(retained.st_mode) or \
+                    (retained.st_dev, retained.st_ino) != identity:
+                raise ValueError('staged file leaf changed before sealing')
+            if metadata_source is not None and hasattr(source_stat, 'st_flags') and \
+                    source_stat.st_flags and hasattr(os, 'chflags'):
+                # Python exposes no fchflags on macOS. The no-follow call is
+                # limited to the same retained leaf, then checked again.
+                parent_path = os.lstat(path.parent)
+                if not stat.S_ISDIR(parent_path.st_mode) or \
+                        (parent_path.st_dev, parent_path.st_ino) != \
+                        (parent_stat.st_dev, parent_stat.st_ino):
+                    raise ValueError('staged file parent changed before flags')
+                os.chflags(path, source_stat.st_flags, follow_symlinks=False)
+                retained = os.stat(path.name, dir_fd=parent, follow_symlinks=False)
+                if not stat.S_ISREG(retained.st_mode) or \
+                        (retained.st_dev, retained.st_ino) != identity:
+                    raise ValueError('staged file leaf changed during flags')
+        finally:
+            os.close(fd)
+        os.fsync(parent)
+        return identity
+    finally:
+        os.close(parent)
+
+
+def write_regular_exclusive(path, data, mode=0o644, expected_parent=None):
+    return _exclusive_regular(path, io.BytesIO(data), mode, expected_parent)
+
+
+def copy_regular_exclusive(source, destination, expected_parent=None):
+    source_fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(source_fd, 'rb') as stream:
+        source_stat = os.fstat(stream.fileno())
+        if not stat.S_ISREG(source_stat.st_mode):
+            raise ValueError('rollback source is not a regular file')
+        identity = _exclusive_regular(destination, stream, stat.S_IMODE(source_stat.st_mode),
+                                      expected_parent, metadata_source=stream.fileno())
+        after = os.fstat(stream.fileno())
+        if (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns) != \
+                (source_stat.st_dev, source_stat.st_ino, source_stat.st_size, source_stat.st_mtime_ns):
+            raise ValueError('rollback source changed during staging')
+        return identity
+
+
+def require_regular_identity(path, identity, expected_sha256=None, expected_parent=None):
+    """Hash the retained inode itself, refusing a replacement leaf or parent."""
+    path = Path(path)
+    parent = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        parent_stat = os.fstat(parent)
+        if expected_parent is not None and (parent_stat.st_dev, parent_stat.st_ino) != expected_parent:
+            raise ValueError('staged file parent changed')
+        fd = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+        with os.fdopen(fd, 'rb') as stream:
+            opened = os.fstat(stream.fileno())
+            if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != identity:
+                raise ValueError('staged file leaf changed')
+            value = hashlib.sha256()
+            for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                value.update(chunk)
+            retained = os.stat(path.name, dir_fd=parent, follow_symlinks=False)
+            if not stat.S_ISREG(retained.st_mode) or (retained.st_dev, retained.st_ino) != identity:
+                raise ValueError('staged file leaf changed')
+            result = value.hexdigest()
+            if expected_sha256 is not None and result != expected_sha256:
+                raise ValueError('staged file bytes changed')
+            return result
+    finally:
+        os.close(parent)
 
 
 def fingerprint(path):
@@ -473,17 +582,24 @@ def recover(receipt_path, home):
             live_paths(receipt, manifest, home)
             checkpoint('before-path:' + name)
             staging = None
+            staged_identity = None
+            staging_parent_identity = None
             try:
                 if original['type'] != 'absent':
                     backup = Path(receipt['backupManifest']).parent / relative(entry['backupRelative'])
                     live.parent.mkdir(parents=True, exist_ok=True)
                     staging = Path(tempfile.mkdtemp(prefix='.recovery-', dir=live.parent)) / 'payload'
+                    parent_stat = os.lstat(staging.parent)
+                    staging_parent_identity = parent_stat.st_dev, parent_stat.st_ino
                     if backup.is_symlink():
                         staging.symlink_to(os.readlink(backup))
                     elif backup.is_dir():
                         shutil.copytree(backup, staging, symlinks=True, copy_function=shutil.copy2)
                     else:
-                        shutil.copy2(backup, staging)
+                        staged_identity = copy_regular_exclusive(backup, staging,
+                                                                 staging_parent_identity)
+                        require_regular_identity(staging, staged_identity, original['sha256'],
+                                                 staging_parent_identity)
                     if fingerprint(staging) != original:
                         raise ValueError('staged restore differs from sealed backup')
                     sync_tree(staging)
@@ -498,6 +614,9 @@ def recover(receipt_path, home):
                     sync_dir(live.parent)
                 checkpoint('after-remove:' + name)
                 if staging:
+                    if staged_identity is not None:
+                        require_regular_identity(staging, staged_identity, original['sha256'],
+                                                 staging_parent_identity)
                     os.replace(staging, live)
                     sync_dir(live.parent)
                     staging.parent.rmdir()
