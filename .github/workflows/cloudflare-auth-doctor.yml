@@ -1,0 +1,36 @@
+name: Cloudflare offline doctor fixtures
+
+on:
+  pull_request:
+    paths:
+      - bin/cloudflare-auth-doctor
+      - lib/cloudflare_auth_receipts.py
+      - validation/cloudflare-auth-doctor-fixtures.py
+      - docs/CLOUDFLARE-AUTH-DOCTOR.md
+      - .github/workflows/cloudflare-auth-doctor.yml
+  push:
+    branches: [main]
+    paths:
+      - bin/cloudflare-auth-doctor
+      - lib/cloudflare_auth_receipts.py
+      - validation/cloudflare-auth-doctor-fixtures.py
+      - docs/CLOUDFLARE-AUTH-DOCTOR.md
+      - .github/workflows/cloudflare-auth-doctor.yml
+
+permissions:
+  contents: read
+
+jobs:
+  offline-fixtures:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Classify synthetic observations without provider execution
+        run: python3 -B validation/cloudflare-auth-doctor-fixtures.py
