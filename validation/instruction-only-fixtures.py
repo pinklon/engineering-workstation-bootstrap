@@ -558,6 +558,63 @@ class LinuxFirstInstall(unittest.TestCase):
         self.assertEqual(json.loads(self.receipt.read_text())['status'], 'recovery-required')
         self.unrelated_unchanged()
 
+    def test_publication_conflict_recovery_preserves_competing_leaves(self):
+        # Each fixture has its own disposable home. A matching value does not
+        # prove ownership of a leaf created by a competing writer.
+        for occupant in ('fifo-marker', 'empty-marker', 'matching-marker', 'matching-pointer'):
+            if occupant != 'fifo-marker':
+                self.setUp()
+            with self.subTest(occupant=occupant):
+                if occupant == 'matching-pointer':
+                    target = str(self.share / 'versions' / ('fixture-first-' + self.txn))
+                    boundary = 'after-intent'
+                else:
+                    boundary = 'after-pointer'
+                    contents = ('' if occupant == 'empty-marker' else self.txn + '\n')
+                original_checkpoint = instructions.checkpoint
+
+                def occupy(name):
+                    if name == boundary:
+                        if occupant == 'matching-pointer':
+                            self.pointer.symlink_to(target)
+                        elif occupant == 'fifo-marker':
+                            os.mkfifo(self.marker)
+                        else:
+                            self.marker.write_text(contents)
+                    return original_checkpoint(name)
+
+                arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
+                                            workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
+                with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
+                     patch.object(instructions, 'checkpoint', occupy):
+                    with self.assertRaises(instructions.ManagedPathDrift):
+                        instructions.first_install(arguments)
+                receipt_before = self.receipt.read_bytes()
+                self.assertEqual(json.loads(receipt_before)['phase'], 'publication-conflict')
+                if occupant == 'fifo-marker':
+                    before = os.lstat(self.marker)
+                elif occupant == 'matching-pointer':
+                    before = os.lstat(self.pointer)
+                else:
+                    before = self.marker.read_bytes()
+                result = subprocess.run(['bash', str(ROOT / 'bin/workstation-instructions'), 'rollback',
+                                         '--receipt', str(self.receipt), '--home', str(self.home)],
+                                        capture_output=True, text=True, env=self.env, timeout=5)
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(self.receipt.read_bytes(), receipt_before)
+                if occupant == 'fifo-marker':
+                    after = os.lstat(self.marker)
+                    self.assertTrue(stat.S_ISFIFO(after.st_mode))
+                    self.assertEqual((after.st_dev, after.st_ino), (before.st_dev, before.st_ino))
+                elif occupant == 'matching-pointer':
+                    after = os.lstat(self.pointer)
+                    self.assertEqual((after.st_dev, after.st_ino), (before.st_dev, before.st_ino))
+                    self.assertEqual(os.readlink(self.pointer), target)
+                else:
+                    self.assertEqual(self.marker.read_bytes(), before)
+                self.assertFalse(self.link.exists() or self.link.is_symlink())
+                self.unrelated_unchanged()
+
     def test_marker_write_failure_never_publishes_partial_marker(self):
         original_fsync = os.fsync
         observed = []

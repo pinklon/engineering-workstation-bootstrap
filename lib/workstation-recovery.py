@@ -516,6 +516,11 @@ def load_transaction(receipt_path, home):
 
 
 def custody(receipt, state, share, release):
+    # Exclusive first-install publication found an occupied leaf. Its value
+    # cannot establish ownership, even when it matches this transaction. Do
+    # not open a competing marker (which could be a FIFO), or start rollback.
+    if receipt.get('phase') == 'publication-conflict':
+        raise ValueError('publication conflict requires owner custody reconciliation')
     pointer = share / 'current'
     if pointer.is_symlink():
         selected = os.readlink(pointer)
