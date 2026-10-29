@@ -58,6 +58,10 @@ implementation and fixtures before acceptance.
 
 ## Deterministic qualification
 
+Both commands below are required. `make validate` currently does **not** include
+the GitHub doctor fixtures; it cannot replace the first command. The shared
+validation dispatcher is outside this change's accepted writer scope.
+
 ```sh
 python3 -B validation/github-auth-doctor-fixtures.py
 make validate
