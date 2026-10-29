@@ -6,6 +6,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import stat
 import subprocess
 import sys
 import tempfile
@@ -514,6 +515,131 @@ class LinuxFirstInstall(unittest.TestCase):
         self.assertFalse(self.link.is_symlink())
         self.unrelated_unchanged()
 
+    def test_competing_first_install_pointer_is_never_replaced(self):
+        foreign_target = str(self.base / 'foreign-pointer')
+        original_checkpoint = instructions.checkpoint
+
+        def occupy_pointer(name):
+            if name == 'after-intent':
+                self.pointer.symlink_to(foreign_target)
+            return original_checkpoint(name)
+
+        arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
+                                    workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
+        with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
+             patch.object(instructions, 'checkpoint', occupy_pointer):
+            with self.assertRaises(instructions.ManagedPathDrift):
+                instructions.first_install(arguments)
+        self.assertEqual(os.readlink(self.pointer), foreign_target)
+        self.assertFalse(self.marker.exists())
+        self.assertFalse(self.link.is_symlink())
+        self.assertEqual(json.loads(self.receipt.read_text())['status'], 'recovery-required')
+        self.unrelated_unchanged()
+
+    def test_competing_first_install_marker_is_never_replaced(self):
+        foreign_marker = 'foreign-transaction\n'
+        original_checkpoint = instructions.checkpoint
+
+        def occupy_marker(name):
+            if name == 'after-pointer':
+                self.marker.write_text(foreign_marker)
+            return original_checkpoint(name)
+
+        arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
+                                    workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
+        with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
+             patch.object(instructions, 'checkpoint', occupy_marker):
+            with self.assertRaises(instructions.ManagedPathDrift):
+                instructions.first_install(arguments)
+        self.assertEqual(self.marker.read_text(), foreign_marker)
+        self.assertEqual(os.readlink(self.pointer), str(self.share / 'versions' /
+                                                         ('fixture-first-' + self.txn)))
+        self.assertFalse(self.link.is_symlink())
+        self.assertEqual(json.loads(self.receipt.read_text())['status'], 'recovery-required')
+        self.unrelated_unchanged()
+
+    def test_publication_conflict_recovery_preserves_competing_leaves(self):
+        # Each fixture has its own disposable home. A matching value does not
+        # prove ownership of a leaf created by a competing writer.
+        for occupant in ('fifo-marker', 'empty-marker', 'matching-marker', 'matching-pointer'):
+            if occupant != 'fifo-marker':
+                self.setUp()
+            with self.subTest(occupant=occupant):
+                if occupant == 'matching-pointer':
+                    target = str(self.share / 'versions' / ('fixture-first-' + self.txn))
+                    boundary = 'after-intent'
+                else:
+                    boundary = 'after-pointer'
+                    contents = ('' if occupant == 'empty-marker' else self.txn + '\n')
+                original_checkpoint = instructions.checkpoint
+
+                def occupy(name):
+                    if name == boundary:
+                        if occupant == 'matching-pointer':
+                            self.pointer.symlink_to(target)
+                        elif occupant == 'fifo-marker':
+                            os.mkfifo(self.marker)
+                        else:
+                            self.marker.write_text(contents)
+                    return original_checkpoint(name)
+
+                arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
+                                            workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
+                with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
+                     patch.object(instructions, 'checkpoint', occupy):
+                    with self.assertRaises(instructions.ManagedPathDrift):
+                        instructions.first_install(arguments)
+                receipt_before = self.receipt.read_bytes()
+                self.assertEqual(json.loads(receipt_before)['phase'], 'publication-conflict')
+                if occupant == 'fifo-marker':
+                    before = os.lstat(self.marker)
+                elif occupant == 'matching-pointer':
+                    before = os.lstat(self.pointer)
+                else:
+                    before = self.marker.read_bytes()
+                result = subprocess.run(['bash', str(ROOT / 'bin/workstation-instructions'), 'rollback',
+                                         '--receipt', str(self.receipt), '--home', str(self.home)],
+                                        capture_output=True, text=True, env=self.env, timeout=5)
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(self.receipt.read_bytes(), receipt_before)
+                if occupant == 'fifo-marker':
+                    after = os.lstat(self.marker)
+                    self.assertTrue(stat.S_ISFIFO(after.st_mode))
+                    self.assertEqual((after.st_dev, after.st_ino), (before.st_dev, before.st_ino))
+                elif occupant == 'matching-pointer':
+                    after = os.lstat(self.pointer)
+                    self.assertEqual((after.st_dev, after.st_ino), (before.st_dev, before.st_ino))
+                    self.assertEqual(os.readlink(self.pointer), target)
+                else:
+                    self.assertEqual(self.marker.read_bytes(), before)
+                self.assertFalse(self.link.exists() or self.link.is_symlink())
+                self.unrelated_unchanged()
+
+    def test_marker_write_failure_never_publishes_partial_marker(self):
+        original_fsync = os.fsync
+        observed = []
+
+        def fail_before_marker_publication(fd):
+            metadata = os.fstat(fd)
+            if not observed and stat.S_ISREG(metadata.st_mode) and \
+                    metadata.st_size == len(self.txn) + 1:
+                observed.append(self.marker.exists())
+                raise OSError('controlled marker staging failure')
+            return original_fsync(fd)
+
+        arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
+                                    workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
+        with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
+             patch.object(instructions.os, 'fsync', fail_before_marker_publication):
+            with self.assertRaisesRegex(OSError, 'controlled marker staging failure'):
+                instructions.first_install(arguments)
+        self.assertEqual(observed, [False])
+        self.assertFalse(self.marker.exists())
+        self.assertFalse(self.pointer.exists() or self.pointer.is_symlink())
+        self.assertFalse(self.link.is_symlink())
+        self.assertEqual(json.loads(self.receipt.read_text())['status'], 'rolled-back')
+        self.unrelated_unchanged()
+
     def test_competing_instruction_leaf_never_writes_outside(self):
         candidate = self.share / 'versions' / ('fixture-first-' + self.txn) / 'config/codex/AGENTS.md'
         outside = self.base / 'foreign-instructions'
@@ -707,19 +833,18 @@ assert replaced
         self.unrelated_unchanged()
 
     def test_codex_parent_drift_holds_without_following_symlink(self):
-        original_atomic = instructions.recovery.atomic_bytes
+        original_publish = instructions.publish_first_install_marker
         moved = self.home / '.codex-moved'
 
-        def swap_after_marker(path, value):
-            original_atomic(path, value)
-            if Path(path) == self.marker and value == (self.txn + '\n').encode():
-                (self.home / '.codex').rename(moved)
-                (self.home / '.codex').symlink_to(moved)
+        def swap_after_marker(state, transaction, expected_identity):
+            original_publish(state, transaction, expected_identity)
+            (self.home / '.codex').rename(moved)
+            (self.home / '.codex').symlink_to(moved)
 
         arguments = SimpleNamespace(home=str(self.home), contract=self.contract,
                                     workstation_repo=self.wsrepo, catalog_repo=self.ctrepo)
         with patch.dict(os.environ, WORKSTATION_TRANSACTION_ID=self.txn), \
-             patch.object(instructions.recovery, 'atomic_bytes', side_effect=swap_after_marker):
+             patch.object(instructions, 'publish_first_install_marker', side_effect=swap_after_marker):
             with self.assertRaises(instructions.ManagedPathDrift):
                 instructions.first_install(arguments)
         self.assertEqual(json.loads(self.receipt.read_text())['status'], 'recovery-required')
