@@ -44,6 +44,11 @@ class Failed(Exception):
         self.attempts = attempts or []
 
 
+def require_positive_pr(pr):
+    if pr is not None and (type(pr) is not int or pr <= 0):
+        raise Failed('INVALID_PR_NUMBER')
+
+
 def command(argv, cwd=None, timeout=12, env=None):
     try:
         return subprocess.run(argv, cwd=cwd, capture_output=True, text=True,
@@ -114,6 +119,7 @@ def require_unmodified_ssh_transport(root):
 
 
 def git_source(args):
+    require_positive_pr(args.pr)
     if not shutil.which('git'):
         raise Failed('TOOL_UNAVAILABLE')
     root = Path(args.repository).resolve()
@@ -145,7 +151,7 @@ def git_source(args):
                             '--no-progress', args.sha], cwd=root)
     if verified.returncode:
         raise Failed('SOURCE_COMMIT_REMOTE_UNVERIFIED')
-    if args.pr:
+    if args.pr is not None:
         head = command(GIT + ['ls-remote', remote_url, f'refs/pull/{args.pr}/head'],
                        cwd=root, env=ssh_env)
         if head.returncode or not head.stdout.strip():
@@ -299,6 +305,7 @@ def api_artifact(prefix, name, root_tree, token, via_gh):
 
 
 def api_source(args, via_gh):
+    require_positive_pr(args.pr)
     token = None
     if not via_gh:
         if args.api_token_env not in ('GH_TOKEN', 'GITHUB_TOKEN'):
@@ -321,7 +328,7 @@ def api_source(args, via_gh):
             or not isinstance(commit['tree'].get('sha'), str)
             or not SHA.fullmatch(commit['tree']['sha'])):
         raise Failed('TOOL_SCHEMA_MISMATCH')
-    if args.pr:
+    if args.pr is not None:
         pull = api_get(prefix + '/pulls/' + str(args.pr), token, via_gh)
         if (not isinstance(pull, dict) or not isinstance(pull.get('base'), dict)
                 or not isinstance(pull['base'].get('repo'), dict)
@@ -363,6 +370,7 @@ def model_probe(model, repository, timeout):
 
 
 def preflight(args):
+    require_positive_pr(args.pr)
     if not REPO.fullmatch(args.identity) or not SHA.fullmatch(args.sha):
         raise Failed('INVALID_SOURCE_IDENTITY')
     if not args.artifact:
