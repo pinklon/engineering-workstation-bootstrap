@@ -18,6 +18,24 @@ Distinguish planned, coded, tested, merged, deployed and independently verified.
 Unknown stays unknown. Technical receipts follow the human explanation.
 This communication rule grants no approval, execution, disclosure or live authority.
 
+At final handoff, include task and turn identifiers, accepted claim and scope,
+actual result or blocker, evidence and artifact identities, and the next actor
+with the exact input or decision needed. Mark unknowns explicitly. Do not infer
+a writer transfer or new authority from a handoff message.
+
+## Managed skill readback
+
+After a Workstation release change, check catalog locators only for skill
+entrypoints covered by the receipt-bound install map, whether it manages a
+skill root or an individual skill link. Compare those locators to the active
+release pointer and receipt. A predecessor locator is stale even if a direct
+read of the new skill succeeds. Hold its consumption claim. Do not apply this
+rule to separately owned plugin, repository, admin, or built-in `.system` skills.
+The supported refresh path is a normal Codex restart when changes do not
+appear, as described in
+https://developers.openai.com/codex/build-skills, followed by a fresh task's
+catalog-resolved read; use that path only within the accepted host scope.
+
 ## Human-facing callsigns
 
 The owner-approved display names in `pinklon/shareplane-control-tower#1056`

@@ -37,3 +37,8 @@ At task resumption, follow the versioned
 commitments through an authorized adapter, then reconcile the shared task
 checkpoint, current writer lease, exact source, and capability evidence.
 Conversation memory is a locator, not the durable task state.
+
+At final handoff, record the task and turn identifiers, the accepted claim and
+scope, the actual result or blocker, exact evidence and artifact identities,
+and the next actor with the input or decision they need. Mark missing values
+unknown; a handoff note does not transfer a writer lease or grant authority.
