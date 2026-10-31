@@ -69,6 +69,42 @@ def api_fixture(a, content=b'fixture'):
 
 
 class SourcePreflightTests(unittest.TestCase):
+    def test_explicit_invalid_pr_refuses_before_transport_or_source_proof(self):
+        for supplied in (0, -1, False, True, '0'):
+            with self.subTest(pr=supplied):
+                a = args('/tmp')
+                a.pr = supplied
+                with (mock.patch.object(p, 'git_source', side_effect=AssertionError('git transport reached')) as git_source,
+                      mock.patch.object(p, 'api_source', side_effect=AssertionError('API transport reached')) as api_source):
+                    with self.assertRaises(p.Failed) as failure:
+                        p.preflight(a)
+                self.assertEqual(failure.exception.code, 'INVALID_PR_NUMBER')
+                git_source.assert_not_called()
+                api_source.assert_not_called()
+
+                with mock.patch.object(p.shutil, 'which', side_effect=AssertionError('git transport reached')) as which:
+                    with self.assertRaises(p.Failed) as failure:
+                        p.git_source(a)
+                self.assertEqual(failure.exception.code, 'INVALID_PR_NUMBER')
+                which.assert_not_called()
+
+                with mock.patch.object(p, 'api_get', side_effect=AssertionError('API transport reached')) as api_get:
+                    with self.assertRaises(p.Failed) as failure:
+                        p.api_source(a, True)
+                self.assertEqual(failure.exception.code, 'INVALID_PR_NUMBER')
+                api_get.assert_not_called()
+
+        with (mock.patch.object(p, 'git_source', side_effect=AssertionError('git transport reached')) as git_source,
+              mock.patch('sys.stdout', new_callable=io.StringIO) as stdout):
+            self.assertEqual(p.main(['--repository', '/tmp', '--identity', 'pinklon/skills',
+                                     '--sha', HISTORICAL, '--pr', '0', '--artifact',
+                                     'scripts/test_design_os_portability.py',
+                                     '--min-scratch-mb', '0']), 1)
+        receipt = json.loads(stdout.getvalue())
+        self.assertEqual(receipt['reason'], 'INVALID_PR_NUMBER')
+        self.assertFalse(receipt['source_verified'])
+        git_source.assert_not_called()
+
     def test_gh_api_output_is_bounded_before_buffering(self):
         normal = p.bounded_api_command([sys.executable, '-c',
             'import sys; sys.stdout.buffer.write(b"ok")'], 10)
