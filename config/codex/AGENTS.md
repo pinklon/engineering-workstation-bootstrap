@@ -36,6 +36,25 @@ appear, as described in
 https://developers.openai.com/codex/build-skills, followed by a fresh task's
 catalog-resolved read; use that path only within the accepted host scope.
 
+## Mesh-wide discover-before-build
+
+For each new task, before proposing a new model, service, connector, harness,
+skill, or publication mechanism, consult the existing bounded mesh discovery
+contract at
+https://github.com/pinklon/shareplane-control-tower/blob/main/docs/operations/mesh-discovery/README.md
+and its canonical pointer index. Use at most three matching owner pointers,
+then verify current receipts and health at the task execution surface.
+Preserve the original intent, selected canonical source URLs, evidence and
+`reuse|extend|new` decision in the **existing** task checkpoint as
+`CAPABILITY_DISCOVERY_V1`. Unknown or unavailable evidence stays UNKNOWN.
+No match requires bounded further discovery, not another registry by default.
+
+A discovery pointer is not installation, current health, qualification,
+a GPU lease, credential authority, permission to write, or deployment approval.
+Respect the governing issue, existing claim/writer lease, and separate
+publication and runtime gates. Installed agent adoption must be evidenced
+individually under https://github.com/pinklon/shareplane-control-tower/issues/1139.
+
 ## Human-facing callsigns
 
 The owner-approved display names in `pinklon/shareplane-control-tower#1056`
