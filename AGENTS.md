@@ -32,6 +32,19 @@ surface receipts; this map does not create a dispatcher or a failover lease.
 Do not copy credentials between surfaces or infer a live installation from
 this checkout.
 
+### Mesh-wide discover-before-build (source candidate)
+
+For new agent tasks across the mesh, consult the [Control Tower mesh discovery
+contract](https://github.com/pinklon/shareplane-control-tower/blob/main/docs/operations/mesh-discovery/README.md)
+and its bounded five-domain pointer index before creating new capabilities,
+services, selectors, or registries. Record a `CAPABILITY_DISCOVERY_V1` reuse,
+extend, or new decision in the existing task receipt after checking relevant
+canonical sources. No match means bounded further search, not absence.
+A pointer is not live health, qualification, or execution authority. This
+instruction becomes operational only after the upstream contract is merged
+and normal agent startup consumption is separately witnessed under
+[Control Tower #1139](https://github.com/pinklon/shareplane-control-tower/issues/1139).
+
 ### Hyperion discover-before-build
 
 When an agent task mentions Hyperion, `hyperion-96`, local AI models or
