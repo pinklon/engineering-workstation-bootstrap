@@ -76,3 +76,28 @@ principals, permissions, credentials, runtime identities, executor selection,
 or task authority. They do not rename installed tools or accounts. Continue
 to resolve the actual actor, task scope, writer lease and current grants from
 the governing contracts before consequential work.
+
+## Mesh-wide discover-before-build
+
+At every new task intake and meaningful task resumption, consult the accepted
+[Control Tower mesh discovery contract](https://github.com/pinklon/shareplane-control-tower/blob/main/docs/operations/mesh-discovery/README.md)
+and its bounded [five-domain pointer index](https://github.com/pinklon/shareplane-control-tower/blob/main/docs/operations/mesh-discovery/pointers.v1.json)
+before proposing new capabilities, services, models, selectors or registries.
+Use the existing selector (`tools/mesh_discovery.py`) when available, follow the
+canonical source pointers for the relevant domains, and record the original
+owner objective, selected sources, evidence freshness, unknowns and a
+`CAPABILITY_DISCOVERY_V1` REUSE, EXTEND or NEW disposition in the existing
+task receipt/checkpoint. Do not create a second registry or a new writer.
+No selector match warrants bounded further investigation, not an assertion of
+absence. A pointer or historical PASS is not live health, current qualification,
+permission, resource custody or execution authority. HOLD where those are
+required and unverified. Keep CODED, TESTED, MERGED, INSTALLED and
+LIVE-CONSUMED separate. Under Control Tower #1139, verify consumption with
+fresh non-leading task intakes; a startup file merely present on disk does not
+prove adoption.
+
+For tasks involving Hyperion, local inference, GPUs, models, harnesses or
+owner-only readers, also consult the canonical
+[Hyperion capability index](https://github.com/pinklon/shareplane-control-tower/blob/main/docs/operations/hyperion-96/CAPABILITIES.md)
+and linked exact evidence before downloading or creating an alternative.
+Respect existing GPU leases and protected runtime admission.
