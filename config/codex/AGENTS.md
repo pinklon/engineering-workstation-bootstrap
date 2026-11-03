@@ -51,7 +51,7 @@ Keep a small ledger of retrieved source IDs to avoid repeat fetches. Prefer
 current source files, marker-targeted issue excerpts and known receipt links.
 Do not use unbounded `--paginate`, whole-issue comment replay, broad Slack
 history, or full connector manifests for a narrow capability question. When a
-local pinned Workstation checkout exists, use `python3 bin/connector-evidence-slice.py`
+local pinned Workstation checkout exists, use `python3 lib/connector-evidence-slice.py`
 with exact `--id` and `--surface` filters to inspect connector declarations;
 read only its projected output, not the original manifest. Its reported local
 source bytes are not external transport bytes. Account for actual MCP response
