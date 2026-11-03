@@ -50,6 +50,21 @@ class ConnectorEvidenceSliceTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(json.loads(result.stdout)["missing_ids"], ["missing"])
 
+    def test_missing_surface_fails_closed(self):
+        result = self.call("--surface", "not-present")
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("EVIDENCE_INCOMPLETE", result.stderr)
+
+    def test_duplicate_connector_ids_fail_closed(self):
+        data = json.loads(self.manifest.read_text())
+        data["connectors"].append(data["connectors"][0])
+        self.manifest.write_text(json.dumps(data))
+        result = self.call()
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("duplicate connector ID", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

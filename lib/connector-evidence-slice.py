@@ -27,13 +27,26 @@ def main() -> int:
         parser.error("invalid connector manifest")
     selected = []
     missing = []
-    by_id = {c["id"]: c for c in connectors}
+    by_id = {}
+    for connector in connectors:
+        if not isinstance(connector, dict) or not isinstance(connector.get("id"), str):
+            parser.error("invalid connector entry")
+        if connector["id"] in by_id:
+            print("EVIDENCE_INCOMPLETE: duplicate connector ID", file=sys.stderr)
+            return 2
+        by_id[connector["id"]] = connector
+    missing_surfaces = []
     for identifier in dict.fromkeys(args.ids):
         connector = by_id.get(identifier)
         if connector is None:
             missing.append(identifier)
             continue
         surfaces = connector.get("surfaces", {})
+        if not isinstance(surfaces, dict):
+            parser.error("invalid connector surfaces")
+        for name in dict.fromkeys(args.surfaces):
+            if name not in surfaces:
+                missing_surfaces.append({"id": identifier, "surface": name})
         chosen = {name: surfaces[name] for name in dict.fromkeys(args.surfaces) if name in surfaces}
         selected.append({
             "id": identifier,
@@ -41,6 +54,9 @@ def main() -> int:
             "classification_reason": connector.get("classification_reason"),
             "surfaces": chosen,
         })
+    if missing_surfaces:
+        print("EVIDENCE_INCOMPLETE: requested connector surface missing", file=sys.stderr)
+        return 2
     document = {
         "contract": "CONNECTOR_EVIDENCE_SLICE_V1",
         "source_sha256": hashlib.sha256(raw).hexdigest(),
