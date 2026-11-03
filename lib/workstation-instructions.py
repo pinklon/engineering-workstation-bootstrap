@@ -203,6 +203,20 @@ def snapshot_hash(value):
     return sha256(json.dumps(value, sort_keys=True).encode())
 
 
+def ensure_release_parent(release, target):
+    """Build only absent release directories; never descend through a symlink."""
+    parent = Path('.')
+    for component in target.parent.parts:
+        parent = parent / component
+        destination = release / parent
+        identity = real_directory_identity(destination)
+        if identity is None:
+            destination.mkdir()
+            identity = real_directory_identity(destination)
+        require(identity is not None, 'invalid capability parent: ' + str(parent))
+    return real_directory_identity(release / target.parent)
+
+
 ROLLBACK_TOOLS = ('bin/workstation-instructions', 'lib/workstation-instructions.py',
                   'lib/workstation-recovery.py')
 
@@ -395,6 +409,12 @@ def install(args):
         require(not release.exists() and not release.is_symlink() and not backup.exists()
                 and not receipt_path.exists(), 'instruction transaction already exists')
         excluded = set(map(str, capability_sources))
+        for target in capability_sources:
+            for parent in target.parents:
+                if parent == Path('.'):
+                    break
+                if not (active / parent).exists() and not (active / parent).is_symlink():
+                    excluded.add(str(parent))
         prior_hash = tree_without_instructions(active, excluded)
         release_owned = True
         def ignore_instruction_leaf(directory, names):
@@ -414,13 +434,15 @@ def install(args):
         capability_staged = {}
         for target, data in capability_sources.items():
             destination = release / target
-            parent_identity = real_directory_identity(destination.parent)
-            require(parent_identity is not None, 'capability parent missing: ' + str(target))
+            parent_identity = ensure_release_parent(release, target)
+            require(parent_identity is not None, 'capability parent invalid: ' + str(target))
             active_path = active / target
-            require(active_path.is_file() and not active_path.is_symlink(),
-                    'active capability path is not regular: ' + str(target))
+            require(not active_path.is_symlink() and
+                    (not active_path.exists() or active_path.is_file()),
+                    'active capability path is not regular or absent: ' + str(target))
+            mode = stat.S_IMODE(active_path.stat().st_mode) if active_path.is_file() else 0o644
             identity = recovery.write_regular_exclusive(
-                destination, data, stat.S_IMODE(active_path.stat().st_mode), parent_identity)
+                destination, data, mode, parent_identity)
             recovery.require_regular_identity(destination, identity, sha256(data), parent_identity)
             capability_staged[target] = (identity, parent_identity)
         require(tree_without_instructions(release, excluded) == prior_hash,

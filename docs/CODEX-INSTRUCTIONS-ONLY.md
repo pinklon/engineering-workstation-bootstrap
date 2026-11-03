@@ -67,15 +67,17 @@ For the #1141 bounded connector-evidence rollout, the existing instruction-only
 both files at the same `workstationCommit` as `config/codex/AGENTS.md`.
 
 The installer clones the active release under the existing activation lock,
-replaces only those three pinned files, verifies their hashes, and verifies every
-other release entry, symlink and mode against the predecessor. The receipt records
+creates missing capability parent directories without following symlinks, stages
+both pinned files even when the predecessor never contained them, and verifies
+their hashes. The preceding one-file instruction behavior remains unchanged.
+The installer verifies every other release entry, symlink and mode against
+the predecessor. The receipt records
 both capability hashes and the excluded paths underlying the unchanged-tree hash.
 The live Codex instruction symlink continues to resolve through the versioned
 `current` pointer, so the helper and manifest must be read from that same selected
 release. The existing receipt-bound rollback restores the predecessor pointer and
 marker; unrelated home paths are not touched. An invalid, missing, or changed pin
-refuses before publication. The legacy instruction-only contract without the
-optional keys retains its original one-file behavior. This mode does not authorize
+refuses before publication. This mode does not authorize
 full Workstation activation or grant connector credentials.
 
 ## Chosen transaction

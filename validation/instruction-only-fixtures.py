@@ -6,6 +6,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import subprocess
 import sys
@@ -204,6 +205,37 @@ class InstructionOnly(unittest.TestCase):
         self.assertFalse(self.receipt.exists())
         self.assertEqual(os.readlink(self.pointer), self.previous)
         self.unchanged()
+
+    def test_bundle_migrates_missing_legacy_files_and_interrupted_pointer(self):
+        active = Path(self.previous)
+        for target in self.capability_sources:
+            (active / target).unlink()
+        # Legacy releases may also lack the manifest directory entirely.
+        shutil.rmtree(active / 'runtime/manifests')
+        bundled = dict(json.loads(self.contract.read_text()),
+                       capabilityBundleAuthorized=True,
+                       capabilitySourceSha256={target: hashlib.sha256(data).hexdigest()
+                                               for target, (origin, data) in self.capability_sources.items()})
+        self.contract.write_text(json.dumps(bundled))
+        for failure in (None, 'after-pointer', 'after-marker'):
+            self.txn = 'fixture-legacy-' + (failure or 'success')
+            self.receipt = self.state / 'receipts' / ('activation-' + self.txn + '.json')
+            extra = ({'WORKSTATION_INSTRUCTIONS_FAIL_POINT': failure,
+                      'WORKSTATION_INSTRUCTIONS_FAIL_MODE': 'exit'} if failure else {})
+            result = self.install(**extra)
+            if failure:
+                self.assertEqual(result.returncode, 75, result.stdout + result.stderr)
+                self.assertEqual(self.rollback().returncode, 0)
+            else:
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                selected = Path(os.readlink(self.pointer))
+                for target, (origin, data) in self.capability_sources.items():
+                    self.assertEqual((selected / target).read_bytes(), data)
+                self.assertEqual(self.rollback().returncode, 0)
+            self.assertEqual(os.readlink(self.pointer), self.previous)
+            for target in self.capability_sources:
+                self.assertFalse((active / target).exists())
+            self.unchanged()
 
     def test_wrong_source_or_preimage_refuses_without_switch(self):
         for field, bad in [('workstationInstructionSha256', '0' * 64),
