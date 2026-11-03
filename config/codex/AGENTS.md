@@ -50,8 +50,13 @@ at most eight external lookup attempts and 48 KiB of retrieved text in total.
 Keep a small ledger of retrieved source IDs to avoid repeat fetches. Prefer
 current source files, marker-targeted issue excerpts and known receipt links.
 Do not use unbounded `--paginate`, whole-issue comment replay, broad Slack
-history, or full connector manifests for a narrow capability question. When a
-local pinned Workstation checkout exists, use `python3 lib/connector-evidence-slice.py`
+history, or full connector manifests for a narrow capability question. Resolve the active managed release through
+`~/.local/share/engineering-workstation-bootstrap/current`, and when the
+pinned helper and manifest are present there, invoke
+`python3 ~/.local/share/engineering-workstation-bootstrap/current/runtime/lib/connector-evidence-slice.py`
+with its `--manifest` argument set to the same release's
+`runtime/manifests/connector-capabilities.json`. Otherwise, when a local pinned
+Workstation checkout exists, use `python3 lib/connector-evidence-slice.py`
 with exact `--id` and `--surface` filters to inspect connector declarations;
 read only its projected output, not the original manifest. Its reported local
 source bytes are not external transport bytes. Account for actual MCP response

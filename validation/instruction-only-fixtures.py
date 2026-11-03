@@ -99,6 +99,14 @@ class InstructionOnly(unittest.TestCase):
         self.wsrepo.mkdir()
         self.ctrepo.mkdir()
         self.source = 'accepted fixture instructions\n'
+        self.capability_sources = {
+            'runtime/lib/connector-evidence-slice.py': ('lib/connector-evidence-slice.py', b'#!/usr/bin/env python3\n# accepted fixture helper\n'),
+            'runtime/manifests/connector-capabilities.json': ('manifests/connector-capabilities.json', b'{"schemaVersion":1}\n'),
+        }
+        for origin, data in self.capability_sources.values():
+            source_path = self.wsrepo / origin
+            source_path.parent.mkdir(parents=True, exist_ok=True)
+            source_path.write_bytes(data)
         ws_commit = fixture_repo(self.wsrepo, self.wsrepo / 'config/codex/AGENTS.md', self.source)
         ct_commit = fixture_repo(self.ctrepo, self.ctrepo / 'architecture/mesh-presentation-aliases.v1.json',
                                  json.dumps(CATALOG, indent=2) + '\n')
@@ -163,6 +171,38 @@ class InstructionOnly(unittest.TestCase):
         self.assertEqual(os.readlink(self.pointer), self.previous)
         self.assertEqual((self.state / 'current-transaction').read_text().strip(), self.previous_txn)
         self.assertEqual(digest(self.link), self.original_sha)
+        self.unchanged()
+
+    def test_three_file_bundle_install_rollback_and_hash_rejection(self):
+        original_contract = json.loads(self.contract.read_text())
+        bundled = dict(original_contract,
+                       capabilityBundleAuthorized=True,
+                       capabilitySourceSha256={target: hashlib.sha256(data).hexdigest()
+                                               for target, (origin, data) in self.capability_sources.items()})
+        self.contract.write_text(json.dumps(bundled))
+        result = self.install()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        selected = Path(os.readlink(self.pointer))
+        receipt = json.loads(self.receipt.read_text())
+        self.assertEqual(receipt['capabilityBundleSha256'], bundled['capabilitySourceSha256'])
+        self.assertEqual(set(receipt['unrelatedTreeExclusions']), set(self.capability_sources))
+        for target, (origin, data) in self.capability_sources.items():
+            self.assertEqual((selected / target).read_bytes(), data)
+            self.assertEqual(digest(selected / target), bundled['capabilitySourceSha256'][target])
+        self.unchanged()
+        result = self.rollback()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(os.readlink(self.pointer), self.previous)
+        self.unchanged()
+
+        bundled['capabilitySourceSha256']['runtime/lib/connector-evidence-slice.py'] = '0' * 64
+        self.contract.write_text(json.dumps(bundled))
+        self.txn = 'fixture-bad-capability-hash'
+        self.receipt = self.state / 'receipts/activation-fixture-bad-capability-hash.json'
+        result = self.install()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(self.receipt.exists())
+        self.assertEqual(os.readlink(self.pointer), self.previous)
         self.unchanged()
 
     def test_wrong_source_or_preimage_refuses_without_switch(self):
