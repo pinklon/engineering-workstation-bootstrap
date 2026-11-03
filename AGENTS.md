@@ -32,6 +32,26 @@ surface receipts; this map does not create a dispatcher or a failover lease.
 Do not copy credentials between surfaces or infer a live installation from
 this checkout.
 
+### Hyperion discover-before-build
+
+When an agent task mentions Hyperion, `hyperion-96`, local AI models or
+inference, coding harnesses, GPU work, or owner-only readers, read the
+[canonical Hyperion capability index](https://github.com/pinklon/shareplane-control-tower/blob/main/docs/operations/hyperion-96/CAPABILITIES.md)
+and its linked `CAPABILITIES.json` and exact receipts **before** proposing a
+new download, model fallback, harness, benchmark, reader, or service. This
+extends the connector lookup above; it does not replace the workstation
+connector manifest or create another capability registry.
+
+Resolve historical qualification separately from installed, live-serving,
+task-tested, broader-qualified and held states. A merged pointer, a prior
+benchmark PASS, a discovered connector, or an old dossier does not prove
+current runtime readiness. Read-only controller/lease/host observations must
+be timestamped; unavailable observations remain UNKNOWN. Respect existing
+GPU custody, protected runtime admission and task-specific authority.
+Track actual agent intake consumption under
+[Control Tower #1129](https://github.com/pinklon/shareplane-control-tower/issues/1129);
+two blind discovery tests do not establish fleet-wide activation.
+
 At task resumption, follow the versioned
 `docs/AGENT-OPERATING-CONTRACT.md` lookup chain. Retrieve relevant owner
 commitments through an authorized adapter, then reconcile the shared task
