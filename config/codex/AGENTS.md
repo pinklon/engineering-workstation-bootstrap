@@ -50,7 +50,12 @@ at most eight external lookup attempts and 48 KiB of retrieved text in total.
 Keep a small ledger of retrieved source IDs to avoid repeat fetches. Prefer
 current source files, marker-targeted issue excerpts and known receipt links.
 Do not use unbounded `--paginate`, whole-issue comment replay, broad Slack
-history, or full connector manifests for a narrow capability question.
+history, or full connector manifests for a narrow capability question. When a
+local pinned Workstation checkout exists, use `python3 bin/connector-evidence-slice.py`
+with exact `--id` and `--surface` filters to inspect connector declarations;
+read only its projected output, not the original manifest. Its reported local
+source bytes are not external transport bytes. Account for actual MCP response
+bytes separately and mark that budget UNKNOWN if the transport cannot meter it.
 If limits are reached, stop retrieval, answer with supported findings and
 `EVIDENCE_INCOMPLETE` plus the exact missing proof. For an explicitly scoped
 deep audit, a separate authorized larger budget can be recorded in the task.
