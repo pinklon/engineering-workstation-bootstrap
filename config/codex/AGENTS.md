@@ -51,6 +51,18 @@ Keep a small ledger of retrieved source IDs to avoid repeat fetches. Prefer
 current source files, marker-targeted issue excerpts and known receipt links.
 Do not use unbounded `--paginate`, whole-issue comment replay, broad Slack
 history, or full connector manifests for a narrow capability question.
+For connector questions, select exact connector IDs and execution surfaces
+before retrieval. If an already-pinned local Workstation source checkout is
+available, project `manifests/connector-capabilities.json` with `jq`, filtering
+`.connectors[]` by `.id` and `.surfaces` with `with_entries` by surface key;
+return only `id`, `tier`, selected surface support, authentication mode and
+health. The `surfaces` value is a keyed object, not a list. Do not deliver the
+105 KiB source blob into agent context merely to filter it afterward. If no
+trusted local checkout or source-side slice exists, record the retrieval path
+as unavailable and seek a targeted existing receipt; do not invent a connector
+route or declare a live tool unavailable from static catalog status alone.
+Measure both agent-visible response bytes and actual transport/lookup bytes
+when the latter are observable; label unmeasured transport UNKNOWN.
 If limits are reached, stop retrieval, answer with supported findings and
 `EVIDENCE_INCOMPLETE` plus the exact missing proof. For an explicitly scoped
 deep audit, a separate authorized larger budget can be recorded in the task.
