@@ -36,24 +36,41 @@ appear, as described in
 https://developers.openai.com/codex/build-skills, followed by a fresh task's
 catalog-resolved read; use that path only within the accepted host scope.
 
-## Mesh-wide discover-before-build
+## Mesh-wide discovery and bounded evidence intake
 
-For each new task, before proposing a new model, service, connector, harness,
-skill, or publication mechanism, consult the existing bounded mesh discovery
-contract at
-https://github.com/pinklon/shareplane-control-tower/blob/main/docs/operations/mesh-discovery/README.md
-and its canonical pointer index. Use at most three matching owner pointers,
-then verify current receipts and health at the task execution surface.
-Preserve the original intent, selected canonical source URLs, evidence and
-`reuse|extend|new` decision in the **existing** task checkpoint as
-`CAPABILITY_DISCOVERY_V1`. Unknown or unavailable evidence stays UNKNOWN.
-No match requires bounded further discovery, not another registry by default.
+For new tasks or meaningful resumptions, check existing task authority and
+the [Control Tower bounded mesh pointer index](https://github.com/pinklon/shareplane-control-tower/blob/main/docs/operations/mesh-discovery/pointers.v1.json)
+before building a new model, service, connector, harness, skill or publication
+route. Select at most three relevant canonical owner pointers. The index is
+navigation, not qualification or an authority grant.
 
-A discovery pointer is not installation, current health, qualification,
-a GPU lease, credential authority, permission to write, or deployment approval.
-Respect the governing issue, existing claim/writer lease, and separate
-publication and runtime gates. Installed agent adoption must be evidenced
-individually under https://github.com/pinklon/shareplane-control-tower/issues/1139.
+**Default evidence budget for an ordinary assessment:** read at most three
+canonical owner summaries and two precisely identified supporting receipts;
+at most eight external lookup attempts and 48 KiB of retrieved text in total.
+Keep a small ledger of retrieved source IDs to avoid repeat fetches. Prefer
+current source files, marker-targeted issue excerpts and known receipt links.
+Do not use unbounded `--paginate`, whole-issue comment replay, broad Slack
+history, or full connector manifests for a narrow capability question.
+If limits are reached, stop retrieval, answer with supported findings and
+`EVIDENCE_INCOMPLETE` plus the exact missing proof. For an explicitly scoped
+deep audit, a separate authorized larger budget can be recorded in the task.
+
+Distinguish capability found, installed version, scoped qualification, live
+health observed at a timestamp, lifecycle/supersession, and permission. A
+historical PASS or stale URL never proves current serving or authorization.
+For Hyperion/local inference/GPU tasks, use the existing
+[Hyperion capability index](https://github.com/pinklon/shareplane-control-tower/blob/main/docs/operations/hyperion-96/CAPABILITIES.md)
+and current host/controller readback if authorized; never assume a GPU lease.
+If lookup access is denied, report UNKNOWN and the denied surface rather than
+working around sandbox or credential boundaries.
+
+Preserve original intent, selected canonical URLs, relevant exact evidence,
+health freshness or UNKNOWN and `reuse|extend|new` in the incumbent task
+checkpoint as `CAPABILITY_DISCOVERY_V1`. If no match, perform a bounded
+owner lookup; absence is not proof a capability does not exist. No new
+registry, service, writer, permission, release or lease is authorized by
+discovery. Installed policy and real agent consumption are separate gates
+under https://github.com/pinklon/shareplane-control-tower/issues/1139.
 
 ## Human-facing callsigns
 
@@ -77,27 +94,3 @@ or task authority. They do not rename installed tools or accounts. Continue
 to resolve the actual actor, task scope, writer lease and current grants from
 the governing contracts before consequential work.
 
-## Mesh-wide discover-before-build
-
-At every new task intake and meaningful task resumption, consult the accepted
-[Control Tower mesh discovery contract](https://github.com/pinklon/shareplane-control-tower/blob/main/docs/operations/mesh-discovery/README.md)
-and its bounded [five-domain pointer index](https://github.com/pinklon/shareplane-control-tower/blob/main/docs/operations/mesh-discovery/pointers.v1.json)
-before proposing new capabilities, services, models, selectors or registries.
-Use the existing selector (`tools/mesh_discovery.py`) when available, follow the
-canonical source pointers for the relevant domains, and record the original
-owner objective, selected sources, evidence freshness, unknowns and a
-`CAPABILITY_DISCOVERY_V1` REUSE, EXTEND or NEW disposition in the existing
-task receipt/checkpoint. Do not create a second registry or a new writer.
-No selector match warrants bounded further investigation, not an assertion of
-absence. A pointer or historical PASS is not live health, current qualification,
-permission, resource custody or execution authority. HOLD where those are
-required and unverified. Keep CODED, TESTED, MERGED, INSTALLED and
-LIVE-CONSUMED separate. Under Control Tower #1139, verify consumption with
-fresh non-leading task intakes; a startup file merely present on disk does not
-prove adoption.
-
-For tasks involving Hyperion, local inference, GPUs, models, harnesses or
-owner-only readers, also consult the canonical
-[Hyperion capability index](https://github.com/pinklon/shareplane-control-tower/blob/main/docs/operations/hyperion-96/CAPABILITIES.md)
-and linked exact evidence before downloading or creating an alternative.
-Respect existing GPU leases and protected runtime admission.
