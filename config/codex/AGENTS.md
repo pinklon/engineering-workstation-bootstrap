@@ -58,16 +58,17 @@ with its `--manifest` argument set to the same release's
 `runtime/manifests/connector-capabilities.json`. Otherwise, when a local pinned
 Workstation checkout exists, use `python3 lib/connector-evidence-slice.py`
 with exact `--id` and `--surface` filters to inspect connector declarations;
-read only its projected output, not the original manifest. For a read-only connector or capability-evidence question, use this local
-projection directly. Do not load an execution-routing skill or select an
-executor merely to discover what is installed or qualified. Invoke execution
-routing only when the authorized task actually requires choosing or dispatching
-an execution path; preserve its normal authority and safety gates then.
-Its reported local
+read only its projected output, not the original manifest. Its reported local
 source bytes are not external transport bytes. Account for actual MCP response
 bytes separately and mark that budget UNKNOWN if the transport cannot meter it.
 If limits are reached, stop retrieval, answer with supported findings and
-`EVIDENCE_INCOMPLETE` plus the exact missing proof. For an explicitly scoped
+`EVIDENCE_INCOMPLETE` plus the exact missing proof.
+
+For a read-only connector or capability-evidence question, use the local
+projection directly. Do not load an execution-routing skill or select an
+executor merely to discover what is installed or qualified. Invoke execution
+routing only when the authorized task actually requires choosing or dispatching
+an execution path; preserve its normal authority and safety gates then. For an explicitly scoped
 deep audit, a separate authorized larger budget can be recorded in the task.
 
 Distinguish capability found, installed version, scoped qualification, live
