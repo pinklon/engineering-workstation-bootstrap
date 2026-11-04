@@ -21,6 +21,10 @@ spec = importlib.util.spec_from_file_location('workstation_recovery', ROOT / 'li
 recovery = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(recovery)
 INSTRUCTIONS = Path('config/codex/AGENTS.md')
+CAPABILITY_FILES = {
+    Path('runtime/lib/connector-evidence-slice.py'): 'lib/connector-evidence-slice.py',
+    Path('runtime/manifests/connector-capabilities.json'): 'manifests/connector-capabilities.json',
+}
 CATALOG = 'architecture/mesh-presentation-aliases.v1.json'
 EXPECTED_ALIASES = [
     {'alias': 'segfault', 'target': 'ChatGPT architecture/reasoning partner', 'kind': 'agent'},
@@ -153,14 +157,14 @@ def catalog_proof(contract, repo):
     return blob
 
 
-def tree_without_instructions(root):
+def tree_without_instructions(root, excluded=()):
     """Seal entry bytes, links and modes without following release symlinks."""
     entries = {}
     for parent, dirs, files in os.walk(root, followlinks=False):
         for name in sorted(dirs + files):
             path = Path(parent) / name
             relative = str(path.relative_to(root))
-            if relative == str(INSTRUCTIONS):
+            if relative == str(INSTRUCTIONS) or relative in excluded:
                 continue
             if path.is_symlink():
                 entries[relative] = {'type': 'symlink', 'target': os.readlink(path)}
@@ -197,6 +201,20 @@ def verify_managed_paths(home, manifest_path, expected):
 
 def snapshot_hash(value):
     return sha256(json.dumps(value, sort_keys=True).encode())
+
+
+def ensure_release_parent(release, target):
+    """Build only absent release directories; never descend through a symlink."""
+    parent = Path('.')
+    for component in target.parent.parts:
+        parent = parent / component
+        destination = release / parent
+        identity = real_directory_identity(destination)
+        if identity is None:
+            destination.mkdir()
+            identity = real_directory_identity(destination)
+        require(identity is not None, 'invalid capability parent: ' + str(parent))
+    return real_directory_identity(release / target.parent)
 
 
 ROLLBACK_TOOLS = ('bin/workstation-instructions', 'lib/workstation-instructions.py',
@@ -338,8 +356,22 @@ def install(args):
                 'targetHome', 'version', 'workstationCommit', 'workstationInstructionSha256',
                 'catalogCommit', 'catalogBlobSha1', 'expectedCurrent', 'expectedTransaction',
                 'expectedPreimageSha256'}
-    require(set(contract) == required and contract['schemaVersion'] == 1
+    capability_mode = contract.get('capabilityBundleAuthorized') is True
+    optional = {'capabilityBundleAuthorized', 'capabilitySourceSha256'} if capability_mode else set()
+    require(set(contract) == required | optional and contract['schemaVersion'] == 1
             and contract['instructionOnlyAuthorized'] is True, 'invalid instruction-only contract')
+    capability_sources = {}
+    if capability_mode:
+        pins = contract['capabilitySourceSha256']
+        require(isinstance(pins, dict) and set(pins) == set(map(str, CAPABILITY_FILES)),
+                'capability bundle pin inventory mismatch')
+        for target, origin in CAPABILITY_FILES.items():
+            expected = pins[str(target)]
+            require(isinstance(expected, str) and SHA256.fullmatch(expected),
+                    'invalid capability source hash')
+            data = pinned_file(args.workstation_repo, contract['workstationCommit'], origin)
+            require(sha256(data) == expected, 'capability source hash mismatch: ' + str(target))
+            capability_sources[target] = data
     require(type(contract['allowLiveHome']) is bool, 'invalid live-home setting')
     require(contract['targetHome'] == str(home) and bool(contract['authorityReference']),
             'contract home or authority does not match')
@@ -376,11 +408,19 @@ def install(args):
         backup = state / 'backups' / transaction
         require(not release.exists() and not release.is_symlink() and not backup.exists()
                 and not receipt_path.exists(), 'instruction transaction already exists')
-        prior_hash = tree_without_instructions(active)
+        excluded = set(map(str, capability_sources))
+        for target in capability_sources:
+            for parent in target.parents:
+                if parent == Path('.'):
+                    break
+                if not (active / parent).exists() and not (active / parent).is_symlink():
+                    excluded.add(str(parent))
+        prior_hash = tree_without_instructions(active, excluded)
         release_owned = True
         def ignore_instruction_leaf(directory, names):
-            return {INSTRUCTIONS.name} if Path(directory) == active / INSTRUCTIONS.parent \
-                and INSTRUCTIONS.name in names else set()
+            relative = Path(directory).relative_to(active)
+            return {path.name for path in (INSTRUCTIONS, *capability_sources)
+                    if path.parent == relative and path.name in names}
 
         shutil.copytree(active, release, symlinks=True, copy_function=shutil.copy2,
                         ignore=ignore_instruction_leaf)
@@ -391,8 +431,22 @@ def install(args):
             candidate_parent)
         recovery.require_regular_identity(candidate, candidate_identity,
                                           contract['workstationInstructionSha256'], candidate_parent)
-        require(tree_without_instructions(release) == prior_hash,
-                'non-instruction release content changed during staging')
+        capability_staged = {}
+        for target, data in capability_sources.items():
+            destination = release / target
+            parent_identity = ensure_release_parent(release, target)
+            require(parent_identity is not None, 'capability parent invalid: ' + str(target))
+            active_path = active / target
+            require(not active_path.is_symlink() and
+                    (not active_path.exists() or active_path.is_file()),
+                    'active capability path is not regular or absent: ' + str(target))
+            mode = stat.S_IMODE(active_path.stat().st_mode) if active_path.is_file() else 0o644
+            identity = recovery.write_regular_exclusive(
+                destination, data, mode, parent_identity)
+            recovery.require_regular_identity(destination, identity, sha256(data), parent_identity)
+            capability_staged[target] = (identity, parent_identity)
+        require(tree_without_instructions(release, excluded) == prior_hash,
+                'unrelated release content changed during staging')
         backup_file = backup / 'files/.codex/AGENTS.md'
         backup_owned = True
         backup_file.parent.mkdir(parents=True)
@@ -415,7 +469,7 @@ def install(args):
         recovery.require_regular_identity(candidate, candidate_identity,
                                           contract['workstationInstructionSha256'], candidate_parent)
         verify_rollback_tools(bundle, rollback_tools)
-        require(tree_without_instructions(release) == prior_hash, 'staged release changed after sealing')
+        require(tree_without_instructions(release, excluded) == prior_hash, 'staged release changed after sealing')
         receipt = {'schemaVersion': 1, 'transactionId': transaction, 'version': contract['version'],
                    'targetHome': str(home), 'authorityReference': contract['authorityReference'],
                    'releaseDir': str(release), 'backupManifest': str(manifest),
@@ -425,6 +479,9 @@ def install(args):
                    'preimageSha256': contract['expectedPreimageSha256'],
                    'instructionSha256': contract['workstationInstructionSha256'],
                    'nonInstructionTreeSha256': prior_hash,
+                   'capabilityBundleSha256': {str(path): sha256(data)
+                                              for path, data in capability_sources.items()},
+                   'unrelatedTreeExclusions': sorted(excluded),
                    'managedPathsSha256': snapshot_hash(managed_before),
                    'workstationCommit': contract['workstationCommit'],
                    'catalogCommit': contract['catalogCommit'], 'catalogBlobSha1': contract['catalogBlobSha1'],
@@ -442,6 +499,9 @@ def install(args):
         recovery.require_regular_identity(candidate, candidate_identity,
                                           contract['workstationInstructionSha256'], candidate_parent)
         verify_rollback_tools(bundle, rollback_tools)
+        for target, (identity, parent) in capability_staged.items():
+            recovery.require_regular_identity(release / target, identity,
+                                              sha256(capability_sources[target]), parent)
         require(current_state(home, contract)[2] == active, 'predecessor changed before publication')
         verify_managed_paths(home, prior_manifest, managed_before)
         checkpoint('after-intent')
@@ -453,8 +513,11 @@ def install(args):
         checkpoint('after-marker')
         require(sha256(live.read_bytes()) == contract['workstationInstructionSha256'],
                 'live instruction bytes differ from staged source')
-        require(tree_without_instructions(release) == prior_hash,
-                'non-instruction release content changed after publication')
+        require(tree_without_instructions(release, excluded) == prior_hash,
+                'unrelated release content changed after publication')
+        for target, (identity, parent) in capability_staged.items():
+            recovery.require_regular_identity(release / target, identity,
+                                              sha256(capability_sources[target]), parent)
         verify_managed_paths(home, prior_manifest, managed_before)
         require(pointer.is_symlink() and os.readlink(pointer) == str(release)
                 and marker.read_text().strip() == transaction,
@@ -462,7 +525,7 @@ def install(args):
         require(live.is_symlink() and os.readlink(live) == str(pointer / INSTRUCTIONS)
                 and sha256(live.read_bytes()) == contract['workstationInstructionSha256'],
                 'live instructions changed before receipt')
-        require(tree_without_instructions(release) == prior_hash,
+        require(tree_without_instructions(release, excluded) == prior_hash,
                 'unrelated staged release content changed before receipt')
         require(recovery.digest(prior_receipt) == prior_receipt_sha
                 and recovery.digest(prior_manifest) == prior_manifest_sha,
