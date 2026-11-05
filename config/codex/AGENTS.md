@@ -64,6 +64,12 @@ bytes separately and mark that budget UNKNOWN if the transport cannot meter it.
 If limits are reached, stop retrieval, answer with supported findings and
 `EVIDENCE_INCOMPLETE` plus the exact missing proof.
 
+For a read-only connector or capability-evidence question on a managed Workstation,
+use `workstation-capability --id <connector-id> --surface <surface>` directly
+from the shell. This command uses the same active-release projection and defaults
+to a 2 KiB output cap. A missing managed release must be reported as
+`EVIDENCE_INCOMPLETE`; do not substitute a stale checkout.
+
 For a read-only connector or capability-evidence question, use the local
 projection directly. Do not load an execution-routing skill or select an
 executor merely to discover what is installed or qualified. Invoke execution
