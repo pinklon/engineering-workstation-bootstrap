@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Read-only connector evidence from the active managed Workstation release.
+set -euo pipefail
+
+release="$HOME/.local/share/engineering-workstation-bootstrap/current/runtime"
+helper="$release/lib/connector-evidence-slice.py"
+manifest="$release/manifests/connector-capabilities.json"
+if [[ ! -f "$helper" || ! -f "$manifest" ]]; then
+  printf '%s\n' 'EVIDENCE_INCOMPLETE: active pinned connector evidence unavailable' >&2
+  exit 2
+fi
+
+# The incumbent helper owns selection, output bounds, and fail-closed semantics.
+# An explicit caller limit can override this small default.
+exec python3 "$helper" --manifest "$manifest" --max-output-bytes 2048 "$@"

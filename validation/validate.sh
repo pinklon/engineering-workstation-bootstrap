@@ -19,6 +19,7 @@ bash validation/portability-fixtures.sh
 bash validation/cloud-apt-fixtures.sh
 bash validation/connector-fixtures.sh
 python3 -B validation/connector-evidence-slice-fixtures.py
+python3 -B validation/workstation-capability-fixtures.py
 bash validation/cloudflare-mcp-oauth-fixtures.sh
 bash validation/codex-model-fixtures.sh
 bash validation/mesh-status-adoption-fixtures.sh

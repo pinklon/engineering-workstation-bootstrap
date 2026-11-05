@@ -266,7 +266,7 @@ EOF
   fi
 fi
 
-managed_commands=(workstation-bootstrap workstation-activate workstation-rollback workstation-doctor connector-doctor workstation-cloudflare-mcp workstation-toolsets workstation-publish-drive workstation-private-profile environment-inventory browser-gate-python github-auth-doctor cloudflare-auth-doctor)
+managed_commands=(workstation-capability workstation-bootstrap workstation-activate workstation-rollback workstation-doctor connector-doctor workstation-cloudflare-mcp workstation-toolsets workstation-publish-drive workstation-private-profile environment-inventory browser-gate-python github-auth-doctor cloudflare-auth-doctor)
 for command_name in "${managed_commands[@]}"; do
   cat > "$release_dir/bin-links/$command_name" <<EOF
 #!/usr/bin/env bash
