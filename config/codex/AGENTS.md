@@ -23,6 +23,18 @@ actual result or blocker, evidence and artifact identities, and the next actor
 with the exact input or decision needed. Mark unknowns explicitly. Do not infer
 a writer transfer or new authority from a handoff message.
 
+## Copyable communication drafts
+
+For a message the owner intends to copy into another application, resolve
+`authority:ghostmesh-communication-copy@0.1.0` through the canonical Skills
+registry and read its declared contract through the authorized source route.
+Use the host-native copyable writing block when available. On a surface we
+control, bind a visible Copy message action to the complete draft body.
+Keep commentary outside the draft and preserve intentional line breaks,
+blank paragraphs, and Unicode. If the host cannot provide a copy action,
+return the exact body as selectable plain text and state that limitation.
+Drafting and copying do not authorize sending.
+
 ## Managed skill readback
 
 After a Workstation release change, check catalog locators only for skill
@@ -65,9 +77,10 @@ If limits are reached, stop retrieval, answer with supported findings and
 `EVIDENCE_INCOMPLETE` plus the exact missing proof.
 
 For a read-only connector or capability-evidence question on a managed Workstation,
-use `workstation-capability --id <connector-id> --surface <surface>` directly
-from the shell. This command uses the same active-release projection and defaults
-to a 2 KiB output cap. A missing managed release must be reported as
+use `workstation-capability --id <connector-id> --surface <surface>` if the
+command is installed. It uses the same active-release projection and defaults
+to a 2 KiB output cap. If the shortcut is unavailable, use the active-release
+helper described above. A missing managed release must be reported as
 `EVIDENCE_INCOMPLETE`; do not substitute a stale checkout.
 
 For a read-only connector or capability-evidence question, use the local
