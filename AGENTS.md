@@ -11,6 +11,12 @@ production/public release, destructive migration, credential creation or wider
 permission, DNS/access/repository-settings changes, or an unresolved semantic
 contradiction. Never activate a live workstation as part of repository validation.
 
+## Outbound drafts
+
+Before composing a message the owner intends to copy, read and apply
+[Copyable communication drafts](config/codex/AGENTS.md#copyable-communication-drafts).
+This applies in hosted Codex sessions that start with these repository instructions.
+
 ## Capability lookup for agents
 
 For connector and execution-surface capability claims, start at
