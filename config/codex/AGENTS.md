@@ -77,9 +77,10 @@ If limits are reached, stop retrieval, answer with supported findings and
 `EVIDENCE_INCOMPLETE` plus the exact missing proof.
 
 For a read-only connector or capability-evidence question on a managed Workstation,
-use `workstation-capability --id <connector-id> --surface <surface>` directly
-from the shell. This command uses the same active-release projection and defaults
-to a 2 KiB output cap. A missing managed release must be reported as
+use `workstation-capability --id <connector-id> --surface <surface>` if the
+command is installed. It uses the same active-release projection and defaults
+to a 2 KiB output cap. If the shortcut is unavailable, use the active-release
+helper described above. A missing managed release must be reported as
 `EVIDENCE_INCOMPLETE`; do not substitute a stale checkout.
 
 For a read-only connector or capability-evidence question, use the local
